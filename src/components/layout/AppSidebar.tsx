@@ -43,7 +43,6 @@ export default function AppSidebar({ collapsed, onCollapse }: AppSidebarProps) {
 
   return (
     <Layout.Sider
-      theme="dark"
       collapsible
       collapsed={collapsed}
       onCollapse={onCollapse}
