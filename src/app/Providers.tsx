@@ -26,6 +26,13 @@ export default function Providers({ children }: ProvidersProps) {
             colorWarning: '#d89614',
             colorSuccess: '#49aa19',
           },
+          components: {
+            Menu: {
+              itemSelectedBg: '#1668dc',
+              itemSelectedColor: '#ffffff',
+              itemHoverColor: '#ffffff',
+            },
+          },
         }}
       >
         {children}
