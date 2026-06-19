@@ -92,6 +92,42 @@ export interface Notification {
   isRead: boolean;
 }
 
+export type DialogType = 'personal' | 'group' | 'task';
+export type MessageRole = 'user' | 'assistant';
+
+export interface DialogParticipant {
+  id: string;
+  name: string;
+  role: string;
+  avatar?: string;
+}
+
+export interface DialogContext {
+  productName: string;
+  sprintName?: string;
+  taskId?: string;
+  taskTitle?: string;
+}
+
+export interface Message {
+  id: string;
+  role: MessageRole;
+  content: string;
+  time: string;
+}
+
+export interface Dialog {
+  id: string;
+  title: string;
+  type: DialogType;
+  lastMessage: string;
+  time: string;
+  unread: number;
+  context: DialogContext;
+  participants: DialogParticipant[];
+  messages: Message[];
+}
+
 export interface AIService {
   id: string;
   name: string;
