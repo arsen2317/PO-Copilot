@@ -43,13 +43,13 @@ export default function AppSidebar({ collapsed, onCollapse }: AppSidebarProps) {
 
   return (
     <Layout.Sider
+      theme="dark"
       collapsible
       collapsed={collapsed}
       onCollapse={onCollapse}
       width={220}
       collapsedWidth={56}
       style={{
-        background: token.colorBgContainer,
         borderRight: `1px solid ${token.colorBorderSecondary}`,
         display: 'flex',
         flexDirection: 'column',
