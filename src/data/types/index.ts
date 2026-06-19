@@ -1,5 +1,42 @@
 export type RiskLevel = 'critical' | 'warning' | 'ok';
 
+export interface Product {
+  id: string;
+  name: string;
+  team: string;
+}
+
+export interface FunnelStep {
+  id: string;
+  name: string;
+  value: number;
+  percent: number;
+  riskLevel: RiskLevel;
+}
+
+export interface NpsPoint {
+  date: string;
+  nps: number;
+  tickets: number;
+}
+
+export interface SprintMetric {
+  sprintName: string;
+  totalPoints: number;
+  completedPoints: number;
+  daysTotal: number;
+  daysElapsed: number;
+  forecastDate: string;
+}
+
+export interface Incident {
+  id: string;
+  title: string;
+  description: string;
+  severity: 'critical' | 'warning';
+  time: string;
+}
+
 export type TaskStatus =
   | 'backlog'
   | 'todo'
