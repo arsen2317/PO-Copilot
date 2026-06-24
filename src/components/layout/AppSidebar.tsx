@@ -49,7 +49,6 @@ export default function AppSidebar({ collapsed, onCollapse }: AppSidebarProps) {
       width={220}
       collapsedWidth={56}
       style={{
-        background: token.colorBgContainer,
         borderRight: `1px solid ${token.colorBorderSecondary}`,
         display: 'flex',
         flexDirection: 'column',

@@ -38,8 +38,8 @@
 | Раздел | Маршрут | Статус |
 |--------|---------|--------|
 | Глобальный layout (AppShell) | — | ✅ |
-| Дашборд | `/` | ⬜ заглушка |
-| Ассистент | `/assistant` | ⬜ заглушка |
+| Дашборд | `/` | ✅ |
+| Ассистент | `/assistant` | ✅ |
 | Агенты | `/agents` | ⬜ заглушка |
 | ИИ-сервисы | `/services` | ⬜ заглушка |
 | Задачи | `/tasks` | ⬜ заглушка |
@@ -88,6 +88,28 @@
 > **Решения:** … (продублируй в таблицу «Принятые решения»)
 > **Дальше:** …
 > ```
+
+### Сессия 3 — 2026-06-19
+**Сделано:** страница Ассистента (фаза 1).
+- Типы: Dialog, Message, DialogType, MessageRole, DialogContext, DialogParticipant
+- Фикстуры: 3 диалога (личный, групповой, личный) с полными лентами сообщений
+- data/api/assistant.ts — getDialogs, getDialogById
+- Три колонки: DialogList (табы Личные/Группы/Задачи), MessageFeed (лента + поле ввода), ContextPanel (продукт, спринт, задача, участники)
+- /assistant и /assistant/:dialogId → одна компонента AssistantPage через useParams
+- Высота: calc(100vh - header - padding), независимый scroll в каждой колонке
+**Дальше:** Агенты, ИИ-сервисы, Задачи и остальные разделы фазы 1.
+
+### Сессия 2 — 2026-06-19
+**Сделано:** дашборд (фаза 1).
+- Типы: FunnelStep, Incident, NpsPoint, SprintMetric, Product
+- Фикстуры: воронка конверсии (5 шагов), инциденты (3), NPS-история (30 дней), sprint metric, продукты (3)
+- data/api/dashboard.ts — async-функции через api-слой
+- 5 виджетов: ConversionFunnelWidget, NpsTrendWidget, TeamVelocityWidget, IncidentsWidget, RecentNotificationsWidget
+- DashboardPage: Select-переключатель продукта + Row/Col сетка
+- Цвета рисков из useToken() (colorError/colorWarning/colorSuccess), без хардкода
+- Спарклайн — inline SVG (antd plots не устанавливали, это Phase 2)
+**Решения:** спарклайны пока через inline SVG; @ant-design/plots — когда нужна интерактивность (Phase 2).
+**Дальше:** другие разделы фазы 1 (Ассистент, Агенты и т.д.).
 
 ### Сессия 1 — 2026-06-19
 **Сделано:** фаза 0 — инициализация проекта и каркас.
