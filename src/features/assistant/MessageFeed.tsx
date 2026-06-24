@@ -1,16 +1,14 @@
 import React, { useEffect, useRef } from 'react';
-import { Avatar, Button, Flex, Input, Skeleton, theme, Tooltip, Typography } from 'antd';
-import {
-  AudioOutlined,
-  RobotOutlined,
-  SendOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
+import { Bot, Mic, Send, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getDialogById } from '../../data/api/assistant';
 import type { Message } from '../../data/types';
-
-const { useToken } = theme;
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
+import { Button } from '../../components/ui/button';
+import { Textarea } from '../../components/ui/textarea';
+import { Skeleton } from '../../components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip';
+import { cn } from '../../lib/utils';
 
 function parseBold(text: string): React.ReactNode {
   const parts = text.split(/\*\*(.+?)\*\*/g);
@@ -24,51 +22,44 @@ function formatTime(iso: string) {
 }
 
 function MessageBubble({ msg }: { msg: Message }) {
-  const { token } = useToken();
   const isAssistant = msg.role === 'assistant';
 
   return (
-    <Flex
-      gap={10}
-      justify={isAssistant ? 'flex-start' : 'flex-end'}
-      style={{ marginBottom: 16 }}
-    >
+    <div className={cn('flex gap-2.5 mb-4', isAssistant ? 'justify-start' : 'justify-end')}>
       {isAssistant && (
-        <Avatar
-          size={32}
-          icon={<RobotOutlined />}
-          style={{ backgroundColor: token.colorPrimary, flexShrink: 0, marginTop: 2 }}
-        />
+        <Avatar className="h-8 w-8 shrink-0 mt-0.5">
+          <AvatarFallback className="bg-primary text-primary-foreground">
+            <Bot className="h-4 w-4" />
+          </AvatarFallback>
+        </Avatar>
       )}
 
-      <Flex vertical gap={4} style={{ maxWidth: '72%' }} align={isAssistant ? 'flex-start' : 'flex-end'}>
+      <div className={cn('flex flex-col gap-1 max-w-[72%]', isAssistant ? 'items-start' : 'items-end')}>
         <div
-          style={{
-            background: isAssistant ? token.colorPrimaryBg : token.colorBgContainer,
-            border: `1px solid ${isAssistant ? token.colorPrimaryBorder : token.colorBorderSecondary}`,
-            borderRadius: token.borderRadius,
-            padding: '10px 14px',
-          }}
+          className={cn(
+            'rounded-lg px-3.5 py-2.5 text-[13px] leading-relaxed',
+            isAssistant
+              ? 'bg-primary/10 border border-primary/20'
+              : 'bg-card border border-border',
+          )}
         >
           {msg.content.split('\n').map((line, i) => (
-            <Typography.Text key={i} style={{ display: 'block', fontSize: 13, lineHeight: 1.6 }}>
+            <span key={i} className="block">
               {line ? parseBold(line) : <>&nbsp;</>}
-            </Typography.Text>
+            </span>
           ))}
         </div>
-        <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-          {formatTime(msg.time)}
-        </Typography.Text>
-      </Flex>
+        <span className="text-[11px] text-muted-foreground">{formatTime(msg.time)}</span>
+      </div>
 
       {!isAssistant && (
-        <Avatar
-          size={32}
-          icon={<UserOutlined />}
-          style={{ backgroundColor: token.colorBgContainer, flexShrink: 0, marginTop: 2 }}
-        />
+        <Avatar className="h-8 w-8 shrink-0 mt-0.5">
+          <AvatarFallback className="bg-secondary">
+            <User className="h-4 w-4" />
+          </AvatarFallback>
+        </Avatar>
       )}
-    </Flex>
+    </div>
   );
 }
 
@@ -77,7 +68,6 @@ interface Props {
 }
 
 export default function MessageFeed({ dialogId }: Props) {
-  const { token } = useToken();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const { data: dialog, isLoading } = useQuery({
@@ -92,70 +82,62 @@ export default function MessageFeed({ dialogId }: Props) {
 
   if (!dialogId) {
     return (
-      <Flex flex={1} align="center" justify="center" vertical gap={12}>
-        <RobotOutlined style={{ fontSize: 48, color: token.colorTextQuaternary }} />
-        <Typography.Text type="secondary">Выберите диалог или начните новый</Typography.Text>
-      </Flex>
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
+        <Bot className="h-12 w-12 opacity-40" />
+        <p className="text-sm">Выберите диалог или начните новый</p>
+      </div>
     );
   }
 
   return (
-    <Flex vertical flex={1} style={{ overflow: 'hidden' }}>
+    <div className="flex flex-1 flex-col overflow-hidden">
       {/* Заголовок */}
-      <Flex
-        align="center"
-        style={{
-          padding: '12px 20px',
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
-          flexShrink: 0,
-        }}
-      >
+      <div className="flex items-center px-5 py-3 border-b border-border shrink-0">
         {isLoading ? (
-          <Skeleton.Input active size="small" />
+          <Skeleton className="h-5 w-40" />
         ) : (
-          <Typography.Text strong style={{ fontSize: 14 }}>
-            {dialog?.title}
-          </Typography.Text>
+          <span className="font-semibold text-sm">{dialog?.title}</span>
         )}
-      </Flex>
+      </div>
 
-      {/* Лента сообщений */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+      {/* Лента */}
+      <div className="flex-1 overflow-y-auto p-5">
         {isLoading ? (
-          <Skeleton active paragraph={{ rows: 6 }} />
+          <div className="space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+          </div>
         ) : (
           <>
-            {dialog?.messages.map((msg) => (
-              <MessageBubble key={msg.id} msg={msg} />
-            ))}
+            {dialog?.messages.map((msg) => <MessageBubble key={msg.id} msg={msg} />)}
             <div ref={bottomRef} />
           </>
         )}
       </div>
 
-      {/* Поле ввода */}
-      <Flex
-        gap={8}
-        align="flex-end"
-        style={{
-          padding: '12px 16px',
-          borderTop: `1px solid ${token.colorBorderSecondary}`,
-          flexShrink: 0,
-        }}
-      >
-        <Input.TextArea
+      {/* Ввод */}
+      <div className="flex items-end gap-2 px-4 py-3 border-t border-border shrink-0">
+        <Textarea
           placeholder="Напишите сообщение... (/ — команды, @ — упоминания)"
-          autoSize={{ minRows: 1, maxRows: 5 }}
-          style={{ flex: 1, resize: 'none' }}
-          variant="filled"
+          className="flex-1 resize-none min-h-[40px] max-h-[120px]"
+          rows={1}
         />
-        <Tooltip title="Голосовой ввод">
-          <Button icon={<AudioOutlined />} />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" size="icon">
+              <Mic className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Голосовой ввод</TooltipContent>
         </Tooltip>
-        <Tooltip title="Отправить">
-          <Button type="primary" icon={<SendOutlined />} />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="icon">
+              <Send className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Отправить</TooltipContent>
         </Tooltip>
-      </Flex>
-    </Flex>
+      </div>
+    </div>
   );
 }

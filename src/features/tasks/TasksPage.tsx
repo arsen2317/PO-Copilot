@@ -1,5 +1,3 @@
-import { Typography } from 'antd';
-
 export default function TasksPage() {
-  return <Typography.Title level={2}>Задачи</Typography.Title>;
+  return <h2 className="text-2xl font-bold">Задачи</h2>;
 }

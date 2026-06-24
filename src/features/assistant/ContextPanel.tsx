@@ -1,22 +1,17 @@
-import { Avatar, Button, Divider, Flex, Skeleton, Tag, theme, Typography } from 'antd';
-import {
-  LinkOutlined,
-  PaperClipOutlined,
-  ProductOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
+import { Link, Paperclip, Package, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getDialogById } from '../../data/api/assistant';
-
-const { useToken } = theme;
+import { Avatar, AvatarFallback } from '../../components/ui/avatar';
+import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
+import { Separator } from '../../components/ui/separator';
+import { Skeleton } from '../../components/ui/skeleton';
 
 interface Props {
   dialogId: string | undefined;
 }
 
 export default function ContextPanel({ dialogId }: Props) {
-  const { token } = useToken();
-
   const { data: dialog, isLoading } = useQuery({
     queryKey: ['dialog', dialogId],
     queryFn: () => (dialogId ? getDialogById(dialogId) : Promise.resolve(undefined)),
@@ -26,106 +21,81 @@ export default function ContextPanel({ dialogId }: Props) {
   if (!dialogId) return null;
 
   return (
-    <Flex
-      vertical
-      gap={0}
-      style={{
-        width: 260,
-        flexShrink: 0,
-        borderLeft: `1px solid ${token.colorBorderSecondary}`,
-        overflowY: 'auto',
-      }}
-    >
-      <Typography.Text
-        strong
-        style={{
-          display: 'block',
-          padding: '14px 16px',
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
-          fontSize: 13,
-        }}
-      >
-        Контекст диалога
-      </Typography.Text>
+    <div className="flex flex-col w-[260px] shrink-0 border-l border-border overflow-y-auto">
+      <div className="px-4 py-3.5 border-b border-border">
+        <span className="text-[13px] font-semibold">Контекст диалога</span>
+      </div>
 
       {isLoading ? (
-        <Skeleton active paragraph={{ rows: 6 }} style={{ padding: 16 }} />
+        <div className="p-4 space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}
+        </div>
       ) : (
-        <Flex vertical style={{ padding: 16 }} gap={16}>
+        <div className="flex flex-col gap-4 p-4">
           {/* Продукт */}
           <div>
-            <Flex align="center" gap={6} style={{ marginBottom: 6 }}>
-              <ProductOutlined style={{ color: token.colorTextSecondary, fontSize: 13 }} />
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Продукт
-              </Typography.Text>
-            </Flex>
-            <Typography.Text style={{ fontSize: 13 }}>
-              {dialog?.context.productName}
-            </Typography.Text>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Package className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Продукт</span>
+            </div>
+            <p className="text-[13px]">{dialog?.context.productName}</p>
             {dialog?.context.sprintName && (
-              <Tag style={{ marginTop: 4, display: 'block', width: 'fit-content' }}>
+              <Badge variant="secondary" className="mt-1 text-[11px]">
                 {dialog.context.sprintName}
-              </Tag>
+              </Badge>
             )}
           </div>
 
           {/* Связанная задача */}
           {dialog?.context.taskId && (
             <>
-              <Divider style={{ margin: 0 }} />
+              <Separator />
               <div>
-                <Flex align="center" gap={6} style={{ marginBottom: 6 }}>
-                  <LinkOutlined style={{ color: token.colorTextSecondary, fontSize: 13 }} />
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    Связанная задача
-                  </Typography.Text>
-                </Flex>
-                <Tag color="blue" style={{ cursor: 'pointer' }}>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Link className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Связанная задача</span>
+                </div>
+                <Badge variant="outline" className="cursor-pointer text-primary border-primary/40">
                   {dialog.context.taskId}
-                </Tag>
-                <Typography.Text style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
-                  {dialog.context.taskTitle}
-                </Typography.Text>
+                </Badge>
+                <p className="text-xs text-muted-foreground mt-1">{dialog.context.taskTitle}</p>
               </div>
             </>
           )}
 
-          <Divider style={{ margin: 0 }} />
+          <Separator />
 
           {/* Участники */}
           <div>
-            <Flex align="center" gap={6} style={{ marginBottom: 8 }}>
-              <UserOutlined style={{ color: token.colorTextSecondary, fontSize: 13 }} />
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Участники
-              </Typography.Text>
-            </Flex>
-            <Flex vertical gap={8}>
+            <div className="flex items-center gap-1.5 mb-2">
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Участники</span>
+            </div>
+            <div className="flex flex-col gap-2">
               {dialog?.participants.map((p) => (
-                <Flex key={p.id} align="center" gap={8}>
-                  <Avatar size={24} icon={<UserOutlined />} style={{ flexShrink: 0 }} />
+                <div key={p.id} className="flex items-center gap-2">
+                  <Avatar className="h-6 w-6 shrink-0">
+                    <AvatarFallback className="text-[10px]">
+                      <User className="h-3 w-3" />
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
-                    <Typography.Text style={{ fontSize: 12, display: 'block' }}>
-                      {p.name}
-                    </Typography.Text>
-                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                      {p.role}
-                    </Typography.Text>
+                    <p className="text-xs">{p.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{p.role}</p>
                   </div>
-                </Flex>
+                </div>
               ))}
-            </Flex>
+            </div>
           </div>
 
-          <Divider style={{ margin: 0 }} />
+          <Separator />
 
-          {/* Прикрепить артефакт */}
-          <Button icon={<PaperClipOutlined />} block>
+          <Button variant="outline" size="sm" className="w-full gap-2">
+            <Paperclip className="h-4 w-4" />
             Прикрепить артефакт
           </Button>
-        </Flex>
+        </div>
       )}
-    </Flex>
+    </div>
   );
 }

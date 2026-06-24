@@ -1,21 +1,18 @@
-import { Badge, Button, Flex, List, Skeleton, Tabs, theme, Typography } from 'antd';
-import {
-  MessageOutlined,
-  PlusOutlined,
-  TeamOutlined,
-  LinkOutlined,
-} from '@ant-design/icons';
+import { Link, MessageSquare, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { getDialogs } from '../../data/api/assistant';
 import type { Dialog, DialogType } from '../../data/types';
-
-const { useToken } = theme;
+import { Button } from '../../components/ui/button';
+import { Skeleton } from '../../components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { cn } from '../../lib/utils';
+import { Users } from 'lucide-react';
 
 const TYPE_ICON: Record<DialogType, React.ReactNode> = {
-  personal: <MessageOutlined />,
-  group: <TeamOutlined />,
-  task: <LinkOutlined />,
+  personal: <MessageSquare className="h-4 w-4" />,
+  group: <Users className="h-4 w-4" />,
+  task: <Link className="h-4 w-4" />,
 };
 
 interface Props {
@@ -32,104 +29,109 @@ function timeLabel(iso: string) {
 }
 
 function DialogItem({ dialog, active }: { dialog: Dialog; active: boolean }) {
-  const { token } = useToken();
   const navigate = useNavigate();
 
   return (
-    <List.Item
+    <button
       onClick={() => void navigate(`/assistant/${dialog.id}`)}
-      style={{
-        padding: '10px 16px',
-        cursor: 'pointer',
-        background: active ? token.colorPrimaryBg : 'transparent',
-        borderLeft: active ? `3px solid ${token.colorPrimary}` : '3px solid transparent',
-        transition: 'background 0.15s',
-      }}
+      className={cn(
+        'w-full flex items-start gap-3 px-4 py-2.5 text-left transition-colors border-l-2',
+        'hover:bg-accent',
+        active
+          ? 'bg-primary/10 border-primary'
+          : 'border-transparent',
+      )}
     >
-      <List.Item.Meta
-        avatar={
-          <Badge count={dialog.unread} size="small">
-            <span style={{ fontSize: 16, color: active ? token.colorText : token.colorTextSecondary }}>
-              {TYPE_ICON[dialog.type]}
-            </span>
-          </Badge>
-        }
-        title={
-          <Flex justify="space-between" align="center">
-            <Typography.Text
-              ellipsis
-              style={{ fontSize: 13, fontWeight: dialog.unread ? 600 : 400, maxWidth: 140 }}
-            >
-              {dialog.title}
-            </Typography.Text>
-            <Typography.Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>
-              {timeLabel(dialog.time)}
-            </Typography.Text>
-          </Flex>
-        }
-        description={
-          <Typography.Text type="secondary" ellipsis style={{ fontSize: 12 }}>
-            {dialog.lastMessage}
-          </Typography.Text>
-        }
-      />
-    </List.Item>
+      <div className="relative shrink-0 mt-0.5">
+        <span className={cn('text-muted-foreground', active && 'text-foreground')}>
+          {TYPE_ICON[dialog.type]}
+        </span>
+        {dialog.unread > 0 && (
+          <span className="absolute -top-1 -right-1 h-3.5 w-3.5 flex items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+            {dialog.unread}
+          </span>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-1">
+          <span className={cn('text-[13px] truncate', dialog.unread ? 'font-semibold' : 'font-normal')}>
+            {dialog.title}
+          </span>
+          <span className="text-[11px] text-muted-foreground shrink-0">{timeLabel(dialog.time)}</span>
+        </div>
+        <p className="text-xs text-muted-foreground truncate mt-0.5">{dialog.lastMessage}</p>
+      </div>
+    </button>
   );
 }
 
+function DialogListContent({ items, isLoading }: { items: Dialog[]; isLoading: boolean }) {
+  if (isLoading) {
+    return (
+      <div className="p-3 space-y-2">
+        {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
+      </div>
+    );
+  }
+  if (items.length === 0) {
+    return <p className="text-sm text-muted-foreground text-center py-6">Нет диалогов</p>;
+  }
+  return <div>{items.map((d) => <DialogItem key={d.id} dialog={d} active={false} />)}</div>;
+}
+
 export default function DialogList({ activeId }: Props) {
-  const { token } = useToken();
   const { data, isLoading } = useQuery({ queryKey: ['dialogs'], queryFn: getDialogs });
 
   const personal = data?.filter((d) => d.type === 'personal') ?? [];
   const groups = data?.filter((d) => d.type === 'group') ?? [];
   const tasks = data?.filter((d) => d.type === 'task') ?? [];
 
-  const renderList = (items: Dialog[]) =>
-    isLoading ? (
-      <Skeleton active paragraph={{ rows: 3 }} style={{ padding: '12px 16px' }} />
-    ) : (
-      <List
-        dataSource={items}
-        renderItem={(d) => <DialogItem dialog={d} active={d.id === activeId} />}
-        locale={{ emptyText: 'Нет диалогов' }}
-      />
-    );
-
   return (
-    <Flex
-      vertical
-      style={{
-        width: 280,
-        flexShrink: 0,
-        borderRight: `1px solid ${token.colorBorderSecondary}`,
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <Flex
-        justify="space-between"
-        align="center"
-        style={{ padding: '12px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}` }}
-      >
-        <Typography.Text strong>Диалоги</Typography.Text>
-        <Button type="primary" size="small" icon={<PlusOutlined />}>
+    <div className="flex flex-col w-[280px] shrink-0 border-r border-border overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <span className="font-semibold text-sm">Диалоги</span>
+        <Button size="sm" className="h-7 text-xs gap-1">
+          <Plus className="h-3 w-3" />
           Новый
         </Button>
-      </Flex>
-
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        <Tabs
-          size="small"
-          style={{ paddingLeft: 8 }}
-          items={[
-            { key: 'personal', label: 'Личные', children: renderList(personal) },
-            { key: 'group', label: 'Группы', children: renderList(groups) },
-            { key: 'task', label: 'Задачи', children: renderList(tasks) },
-          ]}
-        />
       </div>
-    </Flex>
+
+      <div className="flex-1 overflow-y-auto">
+        <Tabs defaultValue="personal" className="w-full">
+          <TabsList className="w-full rounded-none border-b border-border bg-transparent h-auto p-0">
+            <TabsTrigger value="personal" className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs py-2">
+              Личные
+            </TabsTrigger>
+            <TabsTrigger value="group" className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs py-2">
+              Группы
+            </TabsTrigger>
+            <TabsTrigger value="task" className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs py-2">
+              Задачи
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="personal" className="mt-0">
+            {isLoading ? (
+              <div className="p-3 space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
+              </div>
+            ) : (
+              <div>
+                {personal.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">Нет диалогов</p>
+                ) : (
+                  personal.map((d) => <DialogItem key={d.id} dialog={d} active={d.id === activeId} />)
+                )}
+              </div>
+            )}
+          </TabsContent>
+          <TabsContent value="group" className="mt-0">
+            <DialogListContent items={groups} isLoading={isLoading} />
+          </TabsContent>
+          <TabsContent value="task" className="mt-0">
+            <DialogListContent items={tasks} isLoading={isLoading} />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
   );
 }

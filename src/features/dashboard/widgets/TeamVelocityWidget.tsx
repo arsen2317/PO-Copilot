@@ -1,11 +1,11 @@
-import { Card, Flex, Progress, Skeleton, Statistic, theme, Typography } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { getSprintMetric } from '../../../data/api/dashboard';
-
-const { useToken } = theme;
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Progress } from '../../../components/ui/progress';
+import { Skeleton } from '../../../components/ui/skeleton';
+import { cn } from '../../../lib/utils';
 
 export default function TeamVelocityWidget() {
-  const { token } = useToken();
   const { data, isLoading } = useQuery({
     queryKey: ['sprint-metric'],
     queryFn: getSprintMetric,
@@ -13,8 +13,19 @@ export default function TeamVelocityWidget() {
 
   if (isLoading) {
     return (
-      <Card title="Скорость команды" styles={{ body: { padding: '12px 16px' } }}>
-        <Skeleton active paragraph={{ rows: 4 }} />
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle>Скорость команды</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <Skeleton className="h-5 w-full" />
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-5 w-full" />
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </CardContent>
       </Card>
     );
   }
@@ -24,82 +35,55 @@ export default function TeamVelocityWidget() {
   const pointPercent = Math.round((data.completedPoints / data.totalPoints) * 100);
   const dayPercent = Math.round((data.daysElapsed / data.daysTotal) * 100);
   const isAhead = pointPercent >= dayPercent;
-  const statusColor = isAhead ? token.colorSuccess : token.colorWarning;
+  const statusClass = isAhead ? 'text-success' : 'text-warning';
+  const progressClass = isAhead ? 'bg-success' : 'bg-warning';
   const remainingPoints = data.totalPoints - data.completedPoints;
   const remainingDays = data.daysTotal - data.daysElapsed;
 
   return (
-    <Card
-      title={
-        <Flex align="center" gap={8}>
-          Скорость команды
-          <Typography.Text style={{ fontSize: 12, color: token.colorTextSecondary, fontWeight: 400 }}>
-            {data.sprintName}
-          </Typography.Text>
-        </Flex>
-      }
-      styles={{ body: { padding: '12px 16px' } }}
-    >
-      <Flex vertical gap={16}>
-        <div>
-          <Flex justify="space-between" style={{ marginBottom: 4 }}>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              Выполнено сторипоинтов
-            </Typography.Text>
-            <Typography.Text style={{ fontSize: 12, color: statusColor, fontWeight: 600 }}>
-              {data.completedPoints} / {data.totalPoints} SP
-            </Typography.Text>
-          </Flex>
-          <Progress
-            percent={pointPercent}
-            strokeColor={statusColor}
-            trailColor={token.colorFillSecondary}
-            showInfo={false}
-            size="small"
-          />
-        </div>
-
-        <div>
-          <Flex justify="space-between" style={{ marginBottom: 4 }}>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              Прогресс по времени
-            </Typography.Text>
-            <Typography.Text style={{ fontSize: 12 }}>
-              День {data.daysElapsed} / {data.daysTotal}
-            </Typography.Text>
-          </Flex>
-          <Progress
-            percent={dayPercent}
-            strokeColor={token.colorFillTertiary}
-            trailColor={token.colorFillSecondary}
-            showInfo={false}
-            size="small"
-          />
-        </div>
-
-        <Flex gap={24}>
-          <Statistic
-            title="Осталось SP"
-            value={remainingPoints}
-            valueStyle={{ fontSize: 22 }}
-          />
-          <Statistic
-            title="Осталось дней"
-            value={remainingDays}
-            valueStyle={{ fontSize: 22 }}
-          />
+    <Card>
+      <CardHeader className="pb-2 flex-row items-center gap-2">
+        <CardTitle>Скорость команды</CardTitle>
+        <span className="text-xs text-muted-foreground font-normal">{data.sprintName}</span>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col gap-4">
           <div>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              Прогноз завершения
-            </Typography.Text>
-            <Typography.Text
-              style={{ display: 'block', fontSize: 15, fontWeight: 600, color: statusColor }}
-            >
-              {new Date(data.forecastDate).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
-            </Typography.Text>
+            <div className="flex justify-between mb-1">
+              <span className="text-xs text-muted-foreground">Выполнено сторипоинтов</span>
+              <span className={cn('text-xs font-semibold', statusClass)}>
+                {data.completedPoints} / {data.totalPoints} SP
+              </span>
+            </div>
+            <Progress value={pointPercent} indicatorClassName={progressClass} />
           </div>
-        </Flex>
-      </Flex>
+
+          <div>
+            <div className="flex justify-between mb-1">
+              <span className="text-xs text-muted-foreground">Прогресс по времени</span>
+              <span className="text-xs">День {data.daysElapsed} / {data.daysTotal}</span>
+            </div>
+            <Progress value={dayPercent} indicatorClassName="bg-muted-foreground" />
+          </div>
+
+          <div className="flex gap-6">
+            <div>
+              <p className="text-xs text-muted-foreground">Осталось SP</p>
+              <p className="text-xl font-bold">{remainingPoints}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Осталось дней</p>
+              <p className="text-xl font-bold">{remainingDays}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Прогноз завершения</p>
+              <p className={cn('text-base font-semibold', statusClass)}>
+                {new Date(data.forecastDate).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
+              </p>
+            </div>
+          </div>
+        </div>
+      </CardContent>
     </Card>
   );
 }

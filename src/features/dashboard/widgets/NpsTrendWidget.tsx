@@ -1,12 +1,12 @@
-import { Card, Flex, Skeleton, Statistic, theme, Typography } from 'antd';
-import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getNpsHistory } from '../../../data/api/dashboard';
 import type { NpsPoint } from '../../../data/types';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Skeleton } from '../../../components/ui/skeleton';
+import { cn } from '../../../lib/utils';
 
-const { useToken } = theme;
-
-function Sparkline({ data, color }: { data: number[]; color: string }) {
+function Sparkline({ data, colorClass }: { data: number[]; colorClass: string }) {
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min || 1;
@@ -21,8 +21,14 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
     .join(' ');
 
   return (
-    <svg width={w} height={h} style={{ display: 'block' }}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" />
+    <svg width={w} height={h} className="block">
+      <polyline
+        points={pts}
+        fill="none"
+        className={colorClass}
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -33,7 +39,6 @@ function npsTrend(data: NpsPoint[]) {
 }
 
 export default function NpsTrendWidget() {
-  const { token } = useToken();
   const { data, isLoading } = useQuery({
     queryKey: ['nps-history'],
     queryFn: getNpsHistory,
@@ -41,47 +46,58 @@ export default function NpsTrendWidget() {
 
   const current = data?.at(-1);
   const trend = data ? npsTrend(data) : 0;
-  const trendColor = trend >= 0 ? token.colorSuccess : token.colorError;
+  const trendPositive = trend >= 0;
 
   return (
-    <Card title="Динамика NPS и обращений" styles={{ body: { padding: '12px 16px' } }}>
-      {isLoading ? (
-        <Skeleton active paragraph={{ rows: 3 }} />
-      ) : (
-        <Flex vertical gap={12}>
-          <Flex gap={32}>
-            <Statistic
-              title="NPS (сегодня)"
-              value={current?.nps ?? 0}
-              valueStyle={{ color: trendColor, fontSize: 28 }}
-              prefix={trend >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-              suffix={
-                <Typography.Text style={{ fontSize: 13, color: trendColor }}>
-                  {trend > 0 ? `+${trend}` : trend} за 7 дней
-                </Typography.Text>
-              }
-            />
-            <Statistic
-              title="Обращений в поддержку"
-              value={current?.tickets ?? 0}
-              valueStyle={{ fontSize: 28 }}
-              suffix="/ день"
-            />
-          </Flex>
-          <div>
-            <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
-              NPS · 30 дней
-            </Typography.Text>
-            {data && <Sparkline data={data.map((d) => d.nps)} color={token.colorPrimary} />}
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle>Динамика NPS и обращений</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
           </div>
-          <div>
-            <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
-              Обращения · 30 дней
-            </Typography.Text>
-            {data && <Sparkline data={data.map((d) => d.tickets)} color={token.colorWarning} />}
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-8">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">NPS (сегодня)</p>
+                <div
+                  className={cn(
+                    'flex items-center gap-1 text-2xl font-bold',
+                    trendPositive ? 'text-success' : 'text-destructive',
+                  )}
+                >
+                  {trendPositive ? <ArrowUp className="h-5 w-5" /> : <ArrowDown className="h-5 w-5" />}
+                  {current?.nps ?? 0}
+                  <span className="text-sm font-normal ml-1">
+                    {trend > 0 ? `+${trend}` : trend} за 7 дней
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Обращений в поддержку</p>
+                <div className="text-2xl font-bold">
+                  {current?.tickets ?? 0}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">/ день</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] text-muted-foreground mb-1">NPS · 30 дней</p>
+              {data && <Sparkline data={data.map((d) => d.nps)} colorClass="stroke-primary" />}
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground mb-1">Обращения · 30 дней</p>
+              {data && <Sparkline data={data.map((d) => d.tickets)} colorClass="stroke-warning" />}
+            </div>
           </div>
-        </Flex>
-      )}
+        )}
+      </CardContent>
     </Card>
   );
 }

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
-import { ConfigProvider, theme } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import ruRU from 'antd/locale/ru_RU';
+import { TooltipProvider } from '../components/ui/tooltip';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,14 +15,7 @@ interface ProvidersProps {
 export default function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
-      <ConfigProvider
-        locale={ruRU}
-        theme={{
-          algorithm: theme.darkAlgorithm,
-        }}
-      >
-        {children}
-      </ConfigProvider>
+      <TooltipProvider>{children}</TooltipProvider>
     </QueryClientProvider>
   );
 }

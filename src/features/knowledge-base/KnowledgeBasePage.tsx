@@ -1,5 +1,3 @@
-import { Typography } from 'antd';
-
 export default function KnowledgeBasePage() {
-  return <Typography.Title level={2}>База знаний</Typography.Title>;
+  return <h2 className="text-2xl font-bold">База знаний</h2>;
 }

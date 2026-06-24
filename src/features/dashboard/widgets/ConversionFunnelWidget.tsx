@@ -1,15 +1,30 @@
-import { Button, Card, Flex, Skeleton, Tag, theme, Tooltip, Typography } from 'antd';
-import { CommentOutlined, WarningOutlined } from '@ant-design/icons';
+import { MessageSquare, TriangleAlert } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getFunnelSteps } from '../../../data/api/dashboard';
 import type { FunnelStep } from '../../../data/types';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Badge } from '../../../components/ui/badge';
+import { Button } from '../../../components/ui/button';
+import { Skeleton } from '../../../components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../../components/ui/tooltip';
+import { cn } from '../../../lib/utils';
 
-const { useToken } = theme;
+function riskVariant(step: FunnelStep): 'destructive' | 'warning' | 'success' {
+  if (step.riskLevel === 'critical') return 'destructive';
+  if (step.riskLevel === 'warning') return 'warning';
+  return 'success';
+}
 
-function riskColor(step: FunnelStep, token: ReturnType<typeof useToken>['token']) {
-  if (step.riskLevel === 'critical') return token.colorError;
-  if (step.riskLevel === 'warning') return token.colorWarning;
-  return token.colorSuccess;
+function riskBarClass(step: FunnelStep) {
+  if (step.riskLevel === 'critical') return 'bg-destructive';
+  if (step.riskLevel === 'warning') return 'bg-warning';
+  return 'bg-success';
+}
+
+function riskTextClass(step: FunnelStep) {
+  if (step.riskLevel === 'critical') return 'text-destructive';
+  if (step.riskLevel === 'warning') return 'text-warning';
+  return 'text-success';
 }
 
 function riskLabel(step: FunnelStep) {
@@ -19,83 +34,71 @@ function riskLabel(step: FunnelStep) {
 }
 
 export default function ConversionFunnelWidget() {
-  const { token } = useToken();
   const { data, isLoading } = useQuery({
     queryKey: ['funnel'],
     queryFn: getFunnelSteps,
   });
 
   return (
-    <Card
-      title="Воронка конверсии"
-      extra={
-        <Tooltip title="Спросить ассистента">
-          <Button type="text" size="small" icon={<CommentOutlined />} />
+    <Card>
+      <CardHeader className="flex-row items-center justify-between pb-2">
+        <CardTitle>Воронка конверсии</CardTitle>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7">
+              <MessageSquare className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Спросить ассистента</TooltipContent>
         </Tooltip>
-      }
-      styles={{ body: { padding: '12px 16px' } }}
-    >
-      {isLoading ? (
-        <Skeleton active paragraph={{ rows: 5 }} />
-      ) : (
-        <Flex vertical gap={4}>
-          {data?.map((step, idx) => {
-            const color = riskColor(step, token);
-            const label = riskLabel(step);
-            const barWidth = step.value / 10000;
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-6 w-full" />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {data?.map((step, idx) => {
+              const label = riskLabel(step);
+              const barWidth = step.value / 10000;
 
-            return (
-              <div key={step.id}>
-                <Flex justify="space-between" align="center" style={{ marginBottom: 2 }}>
-                  <Flex align="center" gap={6}>
-                    <Typography.Text type="secondary" style={{ fontSize: 12, minWidth: 16 }}>
-                      {idx + 1}
-                    </Typography.Text>
-                    <Typography.Text style={{ fontSize: 13 }}>{step.name}</Typography.Text>
-                    {label && (
-                      <Tag
-                        color={step.riskLevel === 'critical' ? 'error' : 'warning'}
-                        icon={<WarningOutlined />}
-                        style={{ fontSize: 11, lineHeight: '18px', padding: '0 6px' }}
-                      >
-                        {label}
-                      </Tag>
-                    )}
-                  </Flex>
-                  <Flex align="center" gap={12}>
-                    <Typography.Text
-                      style={{ fontSize: 13, color, fontWeight: 600, minWidth: 36, textAlign: 'right' }}
-                    >
-                      {step.percent}%
-                    </Typography.Text>
-                    <Typography.Text type="secondary" style={{ fontSize: 12, minWidth: 52, textAlign: 'right' }}>
-                      {step.value.toLocaleString('ru')}
-                    </Typography.Text>
-                  </Flex>
-                </Flex>
-                <div
-                  style={{
-                    height: 4,
-                    borderRadius: 2,
-                    background: token.colorFillSecondary,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${barWidth * 100}%`,
-                      background: color,
-                      borderRadius: 2,
-                      transition: 'width 0.4s ease',
-                    }}
-                  />
+              return (
+                <div key={step.id}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground w-4">{idx + 1}</span>
+                      <span className="text-[13px]">{step.name}</span>
+                      {label && (
+                        <Badge variant={riskVariant(step)} className="gap-1 text-[10px] py-0 h-[18px]">
+                          <TriangleAlert className="h-3 w-3" />
+                          {label}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={cn('text-[13px] font-semibold min-w-[36px] text-right', riskTextClass(step))}>
+                        {step.percent}%
+                      </span>
+                      <span className="text-xs text-muted-foreground min-w-[52px] text-right">
+                        {step.value.toLocaleString('ru')}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-1 rounded-full bg-secondary overflow-hidden">
+                    <div
+                      className={cn('h-full rounded-full transition-[width] duration-500', riskBarClass(step))}
+                      style={{ width: `${barWidth * 100}%` }}
+                    />
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </Flex>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
     </Card>
   );
 }

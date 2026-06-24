@@ -1,5 +1,3 @@
-import { Typography } from 'antd';
-
 export default function NotificationsPage() {
-  return <Typography.Title level={2}>Уведомления</Typography.Title>;
+  return <h2 className="text-2xl font-bold">Уведомления</h2>;
 }

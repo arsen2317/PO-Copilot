@@ -1,16 +1,17 @@
-import { Button, Card, Flex, List, Skeleton, theme, Typography } from 'antd';
-import { ExclamationCircleFilled, WarningFilled } from '@ant-design/icons';
+import { AlertCircle, TriangleAlert } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getIncidents } from '../../../data/api/dashboard';
 import type { Incident } from '../../../data/types';
-
-const { useToken } = theme;
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Button } from '../../../components/ui/button';
+import { Skeleton } from '../../../components/ui/skeleton';
+import { cn } from '../../../lib/utils';
 
 function IncidentItem({ incident }: { incident: Incident }) {
-  const { token } = useToken();
   const isCritical = incident.severity === 'critical';
-  const color = isCritical ? token.colorError : token.colorWarning;
-  const Icon = isCritical ? ExclamationCircleFilled : WarningFilled;
+  const colorClass = isCritical ? 'text-destructive' : 'text-warning';
+  const borderClass = isCritical ? 'border-destructive/30' : 'border-warning/30';
+  const Icon = isCritical ? AlertCircle : TriangleAlert;
 
   const timeLabel = new Date(incident.time).toLocaleString('ru', {
     day: 'numeric',
@@ -20,39 +21,22 @@ function IncidentItem({ incident }: { incident: Incident }) {
   });
 
   return (
-    <List.Item
-      style={{
-        padding: '10px 12px',
-        borderRadius: token.borderRadius,
-        background: token.colorFillQuaternary,
-        marginBottom: 8,
-        border: `1px solid ${color}33`,
-      }}
-      actions={[
-        <Button key="details" type="link" size="small" style={{ padding: 0, color: token.colorTextSecondary }}>
-          Подробнее
-        </Button>,
-      ]}
+    <div
+      className={cn(
+        'flex items-start gap-3 rounded-md border p-3 mb-2 bg-muted/30',
+        borderClass,
+      )}
     >
-      <List.Item.Meta
-        avatar={<Icon style={{ fontSize: 18, color, marginTop: 2 }} />}
-        title={
-          <Typography.Text style={{ fontSize: 13, fontWeight: 600, color }}>
-            {incident.title}
-          </Typography.Text>
-        }
-        description={
-          <Flex vertical gap={2}>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              {incident.description}
-            </Typography.Text>
-            <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-              {timeLabel}
-            </Typography.Text>
-          </Flex>
-        }
-      />
-    </List.Item>
+      <Icon className={cn('h-5 w-5 shrink-0 mt-0.5', colorClass)} />
+      <div className="flex-1 min-w-0">
+        <p className={cn('text-[13px] font-semibold', colorClass)}>{incident.title}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{incident.description}</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">{timeLabel}</p>
+      </div>
+      <Button variant="link" size="sm" className="text-muted-foreground h-auto p-0 text-xs shrink-0">
+        Подробнее
+      </Button>
+    </div>
   );
 }
 
@@ -63,31 +47,33 @@ export default function IncidentsWidget() {
   });
 
   const criticalCount = data?.filter((i) => i.severity === 'critical').length ?? 0;
-  const { token } = useToken();
 
   return (
-    <Card
-      title={
-        <Flex align="center" gap={8}>
-          Активные инциденты
-          {criticalCount > 0 && (
-            <Typography.Text style={{ fontSize: 12, color: token.colorError }}>
-              {criticalCount} критичных
-            </Typography.Text>
-          )}
-        </Flex>
-      }
-      styles={{ body: { padding: '12px 16px' } }}
-    >
-      {isLoading ? (
-        <Skeleton active paragraph={{ rows: 4 }} />
-      ) : (
-        <List
-          dataSource={data ?? []}
-          renderItem={(incident) => <IncidentItem incident={incident} />}
-          locale={{ emptyText: 'Нет активных инцидентов' }}
-        />
-      )}
+    <Card>
+      <CardHeader className="pb-2 flex-row items-center gap-3">
+        <CardTitle>Активные инциденты</CardTitle>
+        {criticalCount > 0 && (
+          <span className="text-xs text-destructive">{criticalCount} критичных</span>
+        )}
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        ) : (
+          <div>
+            {(data ?? []).map((incident) => (
+              <IncidentItem key={incident.id} incident={incident} />
+            ))}
+            {(data ?? []).length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">Нет активных инцидентов</p>
+            )}
+          </div>
+        )}
+      </CardContent>
     </Card>
   );
 }

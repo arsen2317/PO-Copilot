@@ -1,18 +1,23 @@
-import { Button, Col, Flex, Row, Select, Skeleton, theme, Typography } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getProducts } from '../../data/api/dashboard';
+import { Button } from '../../components/ui/button';
+import { Skeleton } from '../../components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select';
 import ConversionFunnelWidget from './widgets/ConversionFunnelWidget';
 import IncidentsWidget from './widgets/IncidentsWidget';
 import NpsTrendWidget from './widgets/NpsTrendWidget';
 import RecentNotificationsWidget from './widgets/RecentNotificationsWidget';
 import TeamVelocityWidget from './widgets/TeamVelocityWidget';
 
-const { useToken } = theme;
-
 export default function DashboardPage() {
-  const { token } = useToken();
   const [productId, setProductId] = useState('p1');
 
   const { data: products, isLoading: productsLoading } = useQuery({
@@ -21,60 +26,47 @@ export default function DashboardPage() {
   });
 
   return (
-    <Flex vertical gap={20}>
-      {/* Шапка: переключатель продукта + кнопка добавления виджета */}
-      <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
-        <Flex align="center" gap={12}>
-          <Typography.Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
-            Продукт:
-          </Typography.Text>
+    <div className="flex flex-col gap-5">
+      {/* Шапка */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Продукт:</span>
           {productsLoading ? (
-            <Skeleton.Input active style={{ width: 200 }} size="small" />
+            <Skeleton className="h-10 w-52" />
           ) : (
-            <Select
-              value={productId}
-              onChange={setProductId}
-              style={{ minWidth: 220 }}
-              options={(products ?? []).map((p) => ({
-                value: p.id,
-                label: (
-                  <Flex vertical gap={0}>
-                    <span>{p.name}</span>
-                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                      {p.team}
-                    </Typography.Text>
-                  </Flex>
-                ),
-              }))}
-            />
+            <Select value={productId} onValueChange={setProductId}>
+              <SelectTrigger className="w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(products ?? []).map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    <div className="flex flex-col">
+                      <span>{p.name}</span>
+                      <span className="text-xs text-muted-foreground">{p.team}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
-        </Flex>
-        <Button
-          icon={<PlusOutlined />}
-          style={{ color: token.colorTextSecondary }}
-        >
+        </div>
+        <Button variant="outline" size="sm">
+          <Plus className="h-4 w-4" />
           Добавить виджет
         </Button>
-      </Flex>
+      </div>
 
       {/* Сетка виджетов */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} lg={12}>
-          <ConversionFunnelWidget />
-        </Col>
-        <Col xs={24} lg={12}>
-          <NpsTrendWidget />
-        </Col>
-        <Col xs={24} lg={12}>
-          <TeamVelocityWidget />
-        </Col>
-        <Col xs={24} lg={12}>
-          <IncidentsWidget />
-        </Col>
-        <Col xs={24}>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <ConversionFunnelWidget />
+        <NpsTrendWidget />
+        <TeamVelocityWidget />
+        <IncidentsWidget />
+        <div className="lg:col-span-2">
           <RecentNotificationsWidget />
-        </Col>
-      </Row>
-    </Flex>
+        </div>
+      </div>
+    </div>
   );
 }

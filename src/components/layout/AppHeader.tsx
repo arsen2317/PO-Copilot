@@ -1,84 +1,72 @@
-import { Avatar, Badge, Button, Dropdown, Input, Layout, Space, theme, Typography } from 'antd';
+import { Bell, LogOut, Settings, User } from 'lucide-react';
+import { Button } from '../ui/button';
+import { Avatar, AvatarFallback } from '../ui/avatar';
+import { Input } from '../ui/input';
 import {
-  BellOutlined,
-  LogoutOutlined,
-  SettingOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
-import type { ItemType, MenuItemType } from 'antd/es/menu/interface';
-
-const { useToken } = theme;
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
+import { cn } from '../../lib/utils';
 
 interface AppHeaderProps {
   unreadCount: number;
 }
 
-const userMenuItems: ItemType<MenuItemType>[] = [
-  {
-    key: 'profile',
-    icon: <UserOutlined />,
-    label: 'Профиль',
-  },
-  {
-    key: 'settings',
-    icon: <SettingOutlined />,
-    label: 'Настройки',
-  },
-  { type: 'divider' },
-  {
-    key: 'logout',
-    icon: <LogoutOutlined />,
-    label: 'Выйти',
-    danger: true,
-  },
-];
-
 export default function AppHeader({ unreadCount }: AppHeaderProps) {
-  const { token } = useToken();
-
   return (
-    <Layout.Header
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 24px',
-        background: token.colorBgContainer,
-        borderBottom: `1px solid ${token.colorBorderSecondary}`,
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        gap: 16,
-      }}
-    >
-      <Typography.Text
-        strong
-        style={{ fontSize: 18, color: token.colorPrimary, whiteSpace: 'nowrap', minWidth: 120 }}
-      >
+    <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border bg-card px-6 sticky top-0 z-50">
+      <span className="text-lg font-bold text-primary whitespace-nowrap min-w-[120px]">
         ⬡ Барометр
-      </Typography.Text>
+      </span>
 
-      <Input.Search
-        placeholder="Поиск задач, документов, метрик..."
-        style={{ flex: 1, maxWidth: 480 }}
-        variant="filled"
-      />
+      <div className="flex-1 max-w-xl">
+        <Input placeholder="Поиск задач, документов, метрик..." />
+      </div>
 
-      <Space size={16} style={{ marginLeft: 'auto' }}>
-        <Badge count={unreadCount} size="small">
-          <Button
-            type="text"
-            icon={<BellOutlined style={{ fontSize: 18 }} />}
-            aria-label="Уведомления"
-          />
-        </Badge>
+      <div className="flex items-center gap-3 ml-auto">
+        <div className="relative">
+          <Button variant="ghost" size="icon" aria-label="Уведомления">
+            <Bell className="h-5 w-5" />
+          </Button>
+          {unreadCount > 0 && (
+            <span
+              className={cn(
+                'absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground',
+              )}
+            >
+              {unreadCount}
+            </span>
+          )}
+        </div>
 
-        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-          <Avatar
-            style={{ cursor: 'pointer', backgroundColor: token.colorPrimary }}
-            icon={<UserOutlined />}
-          />
-        </Dropdown>
-      </Space>
-    </Layout.Header>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Avatar className="cursor-pointer h-8 w-8">
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                <User className="h-4 w-4" />
+              </AvatarFallback>
+            </Avatar>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem>
+              <User />
+              Профиль
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <Settings />
+              Настройки
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-destructive focus:text-destructive">
+              <LogOut />
+              Выйти
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </header>
   );
 }

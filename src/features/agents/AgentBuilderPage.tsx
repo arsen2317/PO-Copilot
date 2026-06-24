@@ -1,5 +1,3 @@
-import { Typography } from 'antd';
-
 export default function AgentBuilderPage() {
-  return <Typography.Title level={2}>Конструктор агента</Typography.Title>;
+  return <h2 className="text-2xl font-bold">Конструктор агента</h2>;
 }

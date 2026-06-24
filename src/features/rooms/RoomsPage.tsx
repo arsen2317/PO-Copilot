@@ -1,5 +1,3 @@
-import { Typography } from 'antd';
-
 export default function RoomsPage() {
-  return <Typography.Title level={2}>Комнаты</Typography.Title>;
+  return <h2 className="text-2xl font-bold">Комнаты</h2>;
 }

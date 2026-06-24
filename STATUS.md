@@ -56,13 +56,16 @@
 
 | Дата | Решение | Причина |
 |------|---------|---------|
-| — | Дизайн-система — Ant Design (antd) v5 | требование заказчика |
-| — | Только тёмная тема (`darkAlgorithm`) | требование заказчика |
+| — | Только тёмная тема | требование заказчика |
 | — | Стек: Vite + React + TS | стандарт под прототип дашборда |
 | — | Старт как frontend-прототип на моках, интеграции — фаза 4 | сначала валидируем UX/IA |
 | — | Хостинг — Vercel (preview на PR, production на `main`) | требование заказчика |
-| 2026-06-19 | antd v5 (не v6) — npm установил v6 по умолчанию, откатили явно | требование спецификации |
 | 2026-06-19 | TanStack Query + QueryClientProvider в Providers.tsx | фаза 1 будет использовать useQuery |
+| 2026-06-24 | **Дизайн-система сменена с antd v5 на shadcn/ui (ReUI) + Tailwind CSS** | решение заказчика; лучше гибкость кастомизации, современная эстетика |
+| 2026-06-24 | Иконки: lucide-react (вместо @ant-design/icons) | экосистема shadcn/ReUI |
+| 2026-06-24 | Цвета: CSS-переменные + Tailwind (вместо antd useToken) | стандарт shadcn |
+| 2026-06-24 | Графики Phase 2: Recharts (вместо @ant-design/plots) | совместимость с Tailwind/shadcn |
+| 2026-06-24 | Граф знаний Phase 2: React Flow (вместо @ant-design/graphs) | совместимость с Tailwind/shadcn |
 
 ---
 
@@ -80,7 +83,24 @@
 
 ## Журнал сессий
 
-> Новые записи добавляй сверху. Шаблон:
+> Новые записи добавляй сверху.
+
+### Сессия 4 — 2026-06-24
+**Сделано:** миграция дизайн-системы с antd v5 на shadcn/ui (ReUI) + Tailwind CSS.
+- Удалены: `antd`, `@ant-design/icons`
+- Добавлены: `tailwindcss` v3, `postcss`, `autoprefixer`, `tailwindcss-animate`, `lucide-react`, `class-variance-authority`, `tailwind-merge`, `clsx`, `@radix-ui/*` (slot, dropdown-menu, tooltip, tabs, select, separator, avatar, progress)
+- Созданы shadcn UI компоненты в `src/components/ui/`: button, card, input, textarea, badge, avatar, skeleton, separator, tabs, tooltip, dropdown-menu, select, progress
+- Создан `src/lib/utils.ts` с `cn()`
+- Переписаны: AppShell, AppHeader, AppSidebar, Providers, main.tsx
+- Переписаны: DashboardPage + 5 виджетов
+- Переписаны: AssistantPage, DialogList, MessageFeed, ContextPanel
+- Обновлены все stub-страницы (убраны antd Typography.Title)
+- Обновлены: CLAUDE.md, BAROMETER.md (разделы 4 и 8), STATUS.md
+- typecheck ✅, lint ✅, tests 4/4 ✅
+**Решения:** см. таблицу «Принятые решения» — добавлено 6 строк от 2026-06-24.
+**Дальше:** Агенты, ИИ-сервисы, Задачи и остальные разделы фазы 1 (на новом стеке).
+
+> Шаблон записей:
 >
 > ```
 > ### Сессия N — YYYY-MM-DD
