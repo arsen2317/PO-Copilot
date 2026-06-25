@@ -15,7 +15,7 @@ function daysAgo(n: number, base = '2026-06-25'): string {
   return d.toISOString().slice(0, 10);
 }
 
-function trend(base: number, amplitude: number, noise: number, days = 30): MetricPoint[] {
+function trend(base: number, amplitude: number, noise: number, days = 120): MetricPoint[] {
   return Array.from({ length: days }, (_, i) => ({
     date: daysAgo(days - 1 - i),
     value: Math.max(0, base + Math.round(Math.sin(i * 0.35) * amplitude + (i / days) * noise)),
