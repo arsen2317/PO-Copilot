@@ -1,261 +1,229 @@
 import { useState } from 'react';
-import { Avatar, Badge, Button, Dropdown, Flex, Layout, Menu, theme, Tooltip, Typography } from 'antd';
 import {
   AppstoreOutlined,
   BellOutlined,
   BookOutlined,
-  BulbOutlined,
   CheckSquareOutlined,
   DashboardOutlined,
-  LogoutOutlined,
   MessageOutlined,
-  PlusOutlined,
+  QuestionCircleOutlined,
   SearchOutlined,
   SettingOutlined,
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
-import type { ItemType, MenuItemType } from 'antd/es/menu/interface';
 import SearchModal from './SearchModal';
 
-const { useToken } = theme;
-
 interface AppSidebarProps {
-  collapsed: boolean;
-  onCollapse: (collapsed: boolean) => void;
   unreadCount: number;
 }
 
-const NAV_ITEMS: ItemType<MenuItemType>[] = [
-  { key: '/', icon: <DashboardOutlined />, label: 'Дашборд' },
-  { key: '/assistant', icon: <MessageOutlined />, label: 'Ассистент' },
-  { key: '/agents', icon: <BulbOutlined />, label: 'Агенты' },
-  { key: '/services', icon: <AppstoreOutlined />, label: 'ИИ-сервисы' },
-  { key: '/tasks', icon: <CheckSquareOutlined />, label: 'Задачи' },
-  { key: '/rooms', icon: <TeamOutlined />, label: 'Комнаты' },
-  { key: '/knowledge', icon: <BookOutlined />, label: 'База знаний' },
-];
+const NAV_ITEMS = [
+  { key: '__search__', icon: SearchOutlined, label: 'Поиск' },
+  { key: '/assistant', icon: MessageOutlined, label: 'Ассистент' },
+  { key: '/', icon: DashboardOutlined, label: 'Дашборд' },
+  { key: '/services', icon: AppstoreOutlined, label: 'ИИ-сервисы' },
+  { key: '/tasks', icon: CheckSquareOutlined, label: 'Задачи' },
+  { key: '/rooms', icon: TeamOutlined, label: 'Комнаты' },
+  { key: '/knowledge', icon: BookOutlined, label: 'База знаний' },
+] as const;
 
-const userMenuItems: ItemType<MenuItemType>[] = [
-  { key: 'profile', icon: <UserOutlined />, label: 'Профиль' },
-  { key: 'settings', icon: <SettingOutlined />, label: 'Настройки' },
-  { type: 'divider' },
-  { key: 'logout', icon: <LogoutOutlined />, label: 'Выйти', danger: true },
-];
+const BOTTOM_ITEMS = [
+  { key: '/profile', icon: UserOutlined, label: 'Профиль' },
+  { key: '/notifications', icon: BellOutlined, label: 'Уведомления' },
+  { key: '/settings', icon: SettingOutlined, label: 'Настройки' },
+  { key: '__help__', icon: QuestionCircleOutlined, label: 'Помощь' },
+] as const;
 
-export default function AppSidebar({
-  collapsed,
-  onCollapse,
-  unreadCount,
-}: AppSidebarProps) {
-  const { token } = useToken();
+export default function AppSidebar({ unreadCount }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
 
   const selectedKey: string =
     NAV_ITEMS.find((item) => {
-      const key = item?.key as string | undefined;
-      return key && key !== '/' && location.pathname.startsWith(key);
-    })?.key as string | undefined
-    ?? (location.pathname === '/' ? '/' : '');
+      const k = item.key as string;
+      return k !== '/' && k !== '__search__' && location.pathname.startsWith(k);
+    })?.key as string | undefined ?? (location.pathname === '/' ? '/' : '');
 
-  const iconBtn = (icon: React.ReactNode, tooltip: string, onClick: () => void, active = false) =>
-    collapsed ? (
-      <Tooltip title={tooltip} placement="right" key={tooltip}>
-        <Button
-          type="text"
-          icon={icon}
-          onClick={onClick}
-          style={{
-            color: active ? token.colorPrimary : token.colorTextSecondary,
-            width: 40,
-            height: 40,
-          }}
-        />
-      </Tooltip>
-    ) : (
-      <Button
-        key={tooltip}
-        type="text"
-        icon={icon}
-        onClick={onClick}
-        style={{
-          color: active ? token.colorPrimary : token.colorTextSecondary,
-          width: 40,
-          height: 40,
-        }}
-      />
-    );
+  const handleNavClick = (key: string) => {
+    if (key === '__search__') { setSearchOpen(true); return; }
+    if (key === '__help__') return;
+    void navigate(key);
+  };
+
+  const navItemStyle = (key: string): React.CSSProperties => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: 9.57,
+    height: 38,
+    paddingLeft: 9.57,
+    paddingRight: 9.57,
+    borderRadius: 9.57,
+    cursor: 'pointer',
+    background:
+      key === selectedKey
+        ? 'rgba(255,255,255,0.07)'
+        : hoveredKey === key
+          ? 'rgba(255,255,255,0.04)'
+          : 'transparent',
+    transition: 'background 0.15s',
+  });
+
+  const bottomItemStyle = (key: string): React.CSSProperties => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    height: 36,
+    paddingLeft: 8,
+    paddingRight: 8,
+    borderRadius: 9.57,
+    cursor: key === '__help__' ? 'default' : 'pointer',
+    background: hoveredKey === key ? 'rgba(255,255,255,0.04)' : 'transparent',
+    transition: 'background 0.15s',
+  });
+
+  const iconStyle: React.CSSProperties = {
+    width: 20,
+    height: 20,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 15,
+    color: '#9B9C9E',
+    flexShrink: 0,
+  };
+
+  const labelStyle: React.CSSProperties = {
+    color: '#9B9C9E',
+    fontSize: 15.55,
+    fontWeight: 500,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  };
 
   return (
     <>
-      <Layout.Sider
-        collapsible
-        collapsed={collapsed}
-        onCollapse={onCollapse}
-        width={220}
-        collapsedWidth={56}
+      <div
         style={{
-          borderRight: 'none',
-          background: token.colorBgLayout,
+          width: 238,
+          flexShrink: 0,
           display: 'flex',
           flexDirection: 'column',
+          justifyContent: 'space-between',
+          paddingRight: 12,
           overflow: 'hidden',
         }}
       >
-        <Flex vertical style={{ height: '100%' }}>
-
-          {/* ── Logo ── */}
-          <Flex
-            align="center"
-            justify={collapsed ? 'center' : 'flex-start'}
+        {/* ── Top: logo + nav ── */}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {/* Logo */}
+          <div
             style={{
-              height: 56,
-              padding: collapsed ? 0 : '0 16px',
-              borderBottom: `1px solid ${token.colorBorderSecondary}`,
-              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 9.57,
+              padding: '20px 9.57px 16px',
             }}
           >
-            <Typography.Text
-              strong
+            <div
               style={{
-                fontSize: collapsed ? 20 : 17,
-                color: token.colorPrimary,
+                width: 20,
+                height: 20,
+                background: '#4A82F7',
+                borderRadius: 4,
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                color: '#D7D8DA',
+                fontSize: 15.55,
+                fontWeight: 600,
                 whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                letterSpacing: collapsed ? 0 : 0.3,
               }}
             >
-              {collapsed ? '⬡' : '⬡ Барометр'}
-            </Typography.Text>
-          </Flex>
+              PO Copilot
+            </span>
+          </div>
 
-          {/* ── Search ── */}
-          <div
-            style={{
-              borderBottom: `1px solid ${token.colorBorderSecondary}`,
-              flexShrink: 0,
-            }}
-          >
-            {collapsed ? (
-              <Tooltip title="Поиск" placement="right">
-                <Button
-                  type="text"
-                  icon={<SearchOutlined />}
-                  onClick={() => setSearchOpen(true)}
-                  style={{
-                    width: '100%',
-                    height: 40,
-                    color: token.colorTextSecondary,
-                    borderRadius: 0,
-                  }}
-                />
-              </Tooltip>
-            ) : (
-              <Button
-                type="text"
-                icon={<SearchOutlined />}
-                onClick={() => setSearchOpen(true)}
+          {/* Nav items */}
+          {NAV_ITEMS.map(({ key, icon: Icon, label }) => (
+            <div
+              key={key}
+              style={navItemStyle(key)}
+              onClick={() => handleNavClick(key)}
+              onMouseEnter={() => setHoveredKey(key)}
+              onMouseLeave={() => setHoveredKey(null)}
+            >
+              <span style={iconStyle}>
+                <Icon />
+              </span>
+              <span
                 style={{
-                  width: '100%',
-                  height: 40,
-                  display: 'flex',
-                  alignItems: 'center',
-                  paddingLeft: 16,
-                  color: token.colorTextSecondary,
-                  fontSize: 13,
-                  borderRadius: 0,
-                  justifyContent: 'flex-start',
+                  ...labelStyle,
+                  color: key === selectedKey ? '#D7D8DA' : '#9B9C9E',
                 }}
               >
-                Поиск
-              </Button>
-            )}
-          </div>
+                {label}
+              </span>
+            </div>
+          ))}
+        </div>
 
-          {/* ── Create button ── */}
-          <div
-            style={{
-              padding: collapsed ? '10px 8px' : '10px 12px',
-              borderBottom: `1px solid ${token.colorBorderSecondary}`,
-              flexShrink: 0,
-            }}
-          >
-            {collapsed ? (
-              <Tooltip title="Создать" placement="right">
-                <Button type="primary" icon={<PlusOutlined />} style={{ width: '100%' }} />
-              </Tooltip>
-            ) : (
-              <Button type="primary" icon={<PlusOutlined />} style={{ width: '100%' }}>
-                Создать
-              </Button>
-            )}
-          </div>
-
-          {/* ── Nav menu ── */}
-          <Menu
-            mode="inline"
-            selectedKeys={selectedKey ? [selectedKey] : []}
-            items={NAV_ITEMS}
-            style={{ borderRight: 0, flex: 1, overflow: 'auto' }}
-            onClick={({ key }) => void navigate(key)}
-          />
-
-          {/* ── Bottom bar ── */}
-          <Flex
-            align="center"
-            justify={collapsed ? 'center' : 'space-between'}
-            style={{
-              padding: collapsed ? '10px 8px' : '10px 8px',
-              borderTop: `1px solid ${token.colorBorderSecondary}`,
-              flexShrink: 0,
-              flexWrap: collapsed ? 'wrap' : 'nowrap',
-              gap: 4,
-            }}
-          >
-            {/* Left icons */}
-            <Flex align="center" gap={0} wrap="wrap">
-              <Badge count={unreadCount} size="small" offset={[-4, 4]}>
-                {iconBtn(
-                  <BellOutlined />,
-                  'Уведомления',
-                  () => void navigate('/notifications'),
-                )}
-              </Badge>
-
-              {iconBtn(
-                <SettingOutlined />,
-                'Настройки',
-                () => void navigate('/profile'),
+        {/* ── Bottom items ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: 4 }}>
+          {BOTTOM_ITEMS.map(({ key, icon: Icon, label }) => (
+            <div
+              key={key}
+              style={bottomItemStyle(key)}
+              onClick={() => handleNavClick(key)}
+              onMouseEnter={() => setHoveredKey(key)}
+              onMouseLeave={() => setHoveredKey(null)}
+            >
+              {key === '/profile' ? (
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: '50%',
+                    background: '#4A82F7',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    fontSize: 12,
+                    color: '#fff',
+                  }}
+                >
+                  <UserOutlined />
+                </div>
+              ) : key === '/notifications' ? (
+                <div style={{ position: 'relative', width: 24, height: 24, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon style={{ fontSize: 15, color: '#9B9C9E' }} />
+                  {unreadCount > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0, right: 0,
+                      width: 8, height: 8,
+                      background: '#F04438',
+                      borderRadius: '50%',
+                    }} />
+                  )}
+                </div>
+              ) : (
+                <span style={iconStyle}>
+                  <Icon />
+                </span>
               )}
-            </Flex>
-
-            {/* User avatar */}
-            {collapsed ? (
-              <Tooltip title="Профиль" placement="right">
-                <Dropdown menu={{ items: userMenuItems }} placement="topRight">
-                  <Avatar
-                    size={32}
-                    icon={<UserOutlined />}
-                    style={{ cursor: 'pointer', background: token.colorPrimary, flexShrink: 0 }}
-                  />
-                </Dropdown>
-              </Tooltip>
-            ) : (
-              <Dropdown menu={{ items: userMenuItems }} placement="topRight">
-                <Avatar
-                  size={32}
-                  icon={<UserOutlined />}
-                  style={{ cursor: 'pointer', background: token.colorPrimary, flexShrink: 0 }}
-                />
-              </Dropdown>
-            )}
-          </Flex>
-
-        </Flex>
-      </Layout.Sider>
+              <span style={labelStyle}>{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
