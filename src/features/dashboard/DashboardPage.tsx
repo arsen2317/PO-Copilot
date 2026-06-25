@@ -18,11 +18,6 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import {
-  getActiveUsersTrend,
-  getNewUsersTrend,
-  getNpsHistory,
-} from '../../data/api/dashboard';
 import { getMetricDefinitions, getMetricGroupDefs } from '../../data/api/metric-definitions';
 import type { MetricDefinition, MetricPoint } from '../../data/types';
 
@@ -214,12 +209,12 @@ function LineChartSVG({ data, color, label, forecastRatio = 0.88 }: LineChartPro
 
 interface KpiTileProps {
   label: string;
-  sublabel?: string;
+  sublabel?: string | undefined;
   value: string | number;
-  change?: number;
-  loading?: boolean;
-  selected?: boolean;
-  onClick?: () => void;
+  change?: number | undefined;
+  loading?: boolean | undefined;
+  selected?: boolean | undefined;
+  onClick?: (() => void) | undefined;
 }
 
 function KpiTile({ label, sublabel, value, change, loading, selected, onClick }: KpiTileProps) {
@@ -293,7 +288,6 @@ function KpiTile({ label, sublabel, value, change, loading, selected, onClick }:
 // Dashboard Page
 // ────────────────────────────────────────────────────────────────────────────────
 
-type ChartMetric = 'active' | 'new' | 'nps';
 type BreakdownSegment = 'all' | 'site' | 'mobile';
 
 function fmtMetric(v: number, m: MetricDefinition): string {
@@ -325,75 +319,32 @@ export default function DashboardPage() {
   const { token } = useToken();
   const [granularity, setGranularity] = useState('daily');
   const [dateRange, setDateRange] = useState('7d');
-  const [selectedMetric, setSelectedMetric] = useState<ChartMetric>('active');
+  const [selectedMetricId, setSelectedMetricId] = useState<string>('');
   const [metricGroupId, setMetricGroupId] = useState<string>('');
   const [breakdownSegment, setBreakdownSegment] = useState<BreakdownSegment>('all');
 
-  const { data: activeUsers, isLoading: activeLoading } = useQuery({
-    queryKey: ['active-users-trend'],
-    queryFn: getActiveUsersTrend,
-  });
-  const { data: newUsers, isLoading: newLoading } = useQuery({
-    queryKey: ['new-users-trend'],
-    queryFn: getNewUsersTrend,
-  });
-  const { data: nps, isLoading: npsLoading } = useQuery({
-    queryKey: ['nps-history'],
-    queryFn: getNpsHistory,
-  });
   const { data: metricGroupDefs } = useQuery({
     queryKey: ['metric-group-defs'],
     queryFn: getMetricGroupDefs,
   });
-  const { data: metricDefinitions } = useQuery({
+  const { data: metricDefinitions, isLoading: metricsLoading } = useQuery({
     queryKey: ['metric-definitions'],
     queryFn: getMetricDefinitions,
   });
 
   const activeGroupId = metricGroupId || (metricGroupDefs?.[0]?.id ?? '');
+  const groupColor = metricGroupDefs?.find((g) => g.id === activeGroupId)?.color ?? token.colorPrimary;
 
   const breakdownRows: MetricDefinition[] =
     (metricDefinitions ?? []).filter((m) => m.groupId === activeGroupId);
 
-  const cur = activeUsers?.at(-1)?.value ?? 0;
-  const prev = activeUsers?.at(-8)?.value ?? 0;
-  const activeChange = prev ? ((cur - prev) / prev) * 100 : 0;
+  const activeMetric = breakdownRows.find((m) => m.id === selectedMetricId) ?? breakdownRows[0];
 
-  const curNew = newUsers?.at(-1)?.value ?? 0;
-  const prevNew = newUsers?.at(-8)?.value ?? 0;
-  const newChange = prevNew ? ((curNew - prevNew) / prevNew) * 100 : 0;
-
-  const curNps = nps?.at(-1)?.nps ?? 0;
-  const prevNps = nps?.at(-8)?.nps ?? 0;
-  const npsChange = prevNps ? ((curNps - prevNps) / Math.abs(prevNps)) * 100 : 0;
-
-  const weeklyActive = activeUsers?.slice(-7).reduce((s, d) => s + d.value, 0) ?? 0;
-
-  const chartData: MetricPoint[] =
-    selectedMetric === 'active'
-      ? (activeUsers ?? [])
-      : selectedMetric === 'new'
-        ? (newUsers ?? [])
-        : (nps ?? []).map((p) => ({ date: p.date, value: p.nps }));
-
-  const chartColor =
-    selectedMetric === 'active'
-      ? token.colorPrimary
-      : selectedMetric === 'new'
-        ? token.colorSuccess
-        : token.colorWarning;
-
-  const chartLoading = selectedMetric === 'active' ? activeLoading : selectedMetric === 'new' ? newLoading : npsLoading;
-
-  const chartLabel =
-    selectedMetric === 'active'
-      ? 'Все пользователи · Общий'
-      : selectedMetric === 'new'
-        ? 'Новые пользователи · Общий'
-        : 'NPS · Динамика';
-
-  const yAxisLabel =
-    selectedMetric === 'active' || selectedMetric === 'new' ? 'Уникальные' : 'Баллы';
+  const chartData: MetricPoint[] = activeMetric?.history ?? [];
+  const chartColor = groupColor;
+  const chartLoading = metricsLoading;
+  const chartLabel = activeMetric ? `${activeMetric.name} · ${activeMetric.unit || 'Значение'}` : '';
+  const yAxisLabel = activeMetric?.unit ?? '';
 
   const BDR = `1px solid ${token.colorBorderSecondary}`;
 
@@ -559,45 +510,26 @@ export default function DashboardPage() {
             overflowX: 'auto',
           }}
         >
-          <KpiTile
-            label="Активные пользователи"
-            sublabel="уникальные"
-            value={cur}
-            change={activeChange}
-            loading={activeLoading}
-            selected={selectedMetric === 'active'}
-            onClick={() => setSelectedMetric('active')}
-          />
-          <KpiTile
-            label="Новые пользователи"
-            sublabel="уникальные"
-            value={curNew}
-            change={newChange}
-            loading={newLoading}
-            selected={selectedMetric === 'new'}
-            onClick={() => setSelectedMetric('new')}
-          />
-          <KpiTile
-            label="Средняя длит. сессии"
-            value="—"
-          />
-          <KpiTile
-            label="Удержание на 7-й день"
-            value="—"
-          />
-          <KpiTile
-            label="Еженед. активные"
-            value={weeklyActive}
-            loading={activeLoading}
-          />
-          <KpiTile
-            label="NPS"
-            value={curNps}
-            change={npsChange}
-            loading={npsLoading}
-            selected={selectedMetric === 'nps'}
-            onClick={() => setSelectedMetric('nps')}
-          />
+          {metricsLoading
+            ? Array.from({ length: 5 }).map((_, i) => <KpiTile key={i} label="" value="" loading />)
+            : breakdownRows.map((m) => {
+                const raw = m.lastPeriodValue
+                  ? ((m.currentValue - m.lastPeriodValue) / Math.abs(m.lastPeriodValue)) * 100
+                  : 0;
+                const trend = m.lowerIsBetter ? -raw : raw;
+                return (
+                  <KpiTile
+                    key={m.id}
+                    label={m.name}
+                    sublabel={m.unit || undefined}
+                    value={fmtMetric(m.currentValue, m)}
+                    change={trend}
+                    selected={activeMetric?.id === m.id}
+                    onClick={() => setSelectedMetricId(m.id)}
+                  />
+                );
+              })
+          }
         </div>
 
         {/* Chart toolbar */}
