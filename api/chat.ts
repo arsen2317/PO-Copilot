@@ -1,9 +1,9 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { verifyToken } from './_lib/token';
 
 export const config = { runtime: 'edge' };
 
 const ALLOWED_MODELS = ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6'];
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
@@ -11,7 +11,7 @@ export default async function handler(req: Request): Promise<Response> {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
     });
   }
@@ -23,6 +23,7 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
+  // Verify session token
   const secret = process.env.APP_SESSION_SECRET;
   const authHeader = req.headers.get('Authorization');
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -42,9 +43,9 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   let body: {
-    messages: Anthropic.MessageParam[];
+    messages: unknown[];
     system?: string;
-    tools?: Anthropic.Tool[];
+    tools?: unknown[];
     model?: string;
   };
 
@@ -61,35 +62,34 @@ export default async function handler(req: Request): Promise<Response> {
     ? body.model!
     : 'claude-haiku-4-5-20251001';
 
-  const client = new Anthropic({ apiKey });
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder();
-      try {
-        const anthropicStream = await client.messages.stream({
-          model,
-          max_tokens: 4096,
-          system: body.system,
-          messages: body.messages,
-          tools: body.tools,
-        });
-
-        for await (const event of anthropicStream) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
-        }
-
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Stream error';
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', error: msg })}\n\n`));
-      } finally {
-        controller.close();
-      }
+  // Call Anthropic API with streaming, pipe response directly to client
+  const upstream = await fetch(ANTHROPIC_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
     },
+    body: JSON.stringify({
+      model,
+      max_tokens: 4096,
+      stream: true,
+      ...(body.system && { system: body.system }),
+      messages: body.messages,
+      ...(body.tools && body.tools.length > 0 && { tools: body.tools }),
+    }),
   });
 
-  return new Response(stream, {
+  if (!upstream.ok || !upstream.body) {
+    const text = await upstream.text().catch(() => 'Unknown error');
+    return new Response(JSON.stringify({ error: text }), {
+      status: upstream.status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Pipe Anthropic SSE stream directly to client
+  return new Response(upstream.body, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
