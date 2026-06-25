@@ -2,15 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Select,
   Skeleton,
-  Table,
   theme,
+  Tooltip,
   Typography,
 } from 'antd';
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
   ExpandAltOutlined,
+  FilterOutlined,
   LineChartOutlined,
+  LinkOutlined,
+  PlusOutlined,
+  QuestionCircleOutlined,
+  ReloadOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -19,64 +25,73 @@ import {
   getNpsHistory,
 } from '../../data/api/dashboard';
 import { getMetricGroups } from '../../data/api/metrics';
-import type { MetricPoint, MetricRow } from '../../data/types';
+import type { MetricPoint } from '../../data/types';
 
 const { useToken } = theme;
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Responsive SVG line chart
+// Fully-responsive SVG chart (ResizeObserver on both axes)
 // ────────────────────────────────────────────────────────────────────────────────
 
 interface LineChartProps {
   data: MetricPoint[];
   color: string;
+  label: string;
   forecastRatio?: number;
 }
 
-function LineChartSVG({ data, color, forecastRatio = 0.88 }: LineChartProps) {
+function LineChartSVG({ data, color, label, forecastRatio = 0.88 }: LineChartProps) {
   const { token } = useToken();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(700);
+  const [size, setSize] = useState({ w: 700, h: 300 });
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([entry]) => {
-      if (entry?.contentRect.width) setContainerWidth(entry.contentRect.width);
+      if (entry?.contentRect) {
+        setSize({ w: entry.contentRect.width, h: entry.contentRect.height });
+      }
     });
     ro.observe(el);
-    setContainerWidth(el.getBoundingClientRect().width);
+    const r = el.getBoundingClientRect();
+    setSize({ w: r.width, h: r.height });
     return () => ro.disconnect();
   }, []);
 
-  if (!data.length) return <div ref={containerRef} style={{ width: '100%', height: 220 }} />;
+  if (!data.length) {
+    return (
+      <div ref={containerRef} style={{ flex: 1, width: '100%' }}>
+        <Skeleton active paragraph={{ rows: 6 }} />
+      </div>
+    );
+  }
 
-  const W = containerWidth;
-  const H = 220;
-  const PAD = { top: 16, right: 24, bottom: 36, left: 44 };
-  const cW = W - PAD.left - PAD.right;
-  const cH = H - PAD.top - PAD.bottom;
+  const W = size.w;
+  const H = size.h;
+  const PAD = { top: 16, right: 24, bottom: 36, left: 52 };
+  const cW = Math.max(0, W - PAD.left - PAD.right);
+  const cH = Math.max(0, H - PAD.top - PAD.bottom);
 
   const values = data.map((d) => d.value);
   const maxV = Math.max(...values) * 1.15;
-  const minV = 0;
-  const range = maxV - minV || 1;
+  const range = maxV || 1;
 
   const toX = (i: number) => PAD.left + (i / (data.length - 1)) * cW;
-  const toY = (v: number) => PAD.top + cH - ((v - minV) / range) * cH;
+  const toY = (v: number) => PAD.top + cH - (v / range) * cH;
 
   const forecastIdx = Math.floor(data.length * forecastRatio);
 
-  const solidPoints = data
+  const solidPts = data
     .slice(0, forecastIdx + 1)
     .map((d, i) => `${toX(i)},${toY(d.value)}`)
     .join(' ');
-  const forecastPoints = data
+  const forecastPts = data
     .slice(forecastIdx)
     .map((d, i) => `${toX(forecastIdx + i)},${toY(d.value)}`)
     .join(' ');
 
-  const fillPath = [
+  const fillD = [
     `M${toX(0)},${toY(data[0]!.value)}`,
     ...data.slice(0, forecastIdx + 1).map((d, i) => `L${toX(i)},${toY(d.value)}`),
     `L${toX(forecastIdx)},${PAD.top + cH}`,
@@ -85,27 +100,48 @@ function LineChartSVG({ data, color, forecastRatio = 0.88 }: LineChartProps) {
   ].join(' ');
 
   const gridCount = 4;
-  const gridValues = Array.from({ length: gridCount + 1 }, (_, i) =>
+  const gridVals = Array.from({ length: gridCount + 1 }, (_, i) =>
     Math.round((maxV / gridCount) * i),
   );
 
-  const labelStep = Math.ceil(data.length / 7);
+  const labelStep = Math.max(1, Math.ceil(data.length / 7));
   const xLabels = data
     .map((d, i) => ({ d, i }))
     .filter(({ i }) => i % labelStep === 0 || i === data.length - 1);
 
+  const gradId = `grad-${color.replace('#', '')}`;
+
   return (
-    <div ref={containerRef} style={{ width: '100%' }}>
+    <div
+      ref={containerRef}
+      style={{ flex: 1, width: '100%', overflow: 'hidden', position: 'relative', minHeight: 0 }}
+    >
+      {/* Y-axis label */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 4,
+          top: '50%',
+          transform: 'translateY(-50%) rotate(-90deg)',
+          fontSize: 11,
+          color: token.colorTextTertiary,
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+        }}
+      >
+        {label}
+      </div>
+
       <svg width={W} height={H} style={{ display: 'block' }}>
         <defs>
-          <linearGradient id={`fill-grad-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity={0.2} />
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.18} />
             <stop offset="100%" stopColor={color} stopOpacity={0.01} />
           </linearGradient>
         </defs>
 
-        {/* Horizontal grid */}
-        {gridValues.map((v, i) => (
+        {/* Grid */}
+        {gridVals.map((v, i) => (
           <g key={i}>
             <line
               x1={PAD.left}
@@ -117,19 +153,19 @@ function LineChartSVG({ data, color, forecastRatio = 0.88 }: LineChartProps) {
               strokeDasharray={i === 0 ? '0' : '3,4'}
             />
             <text
-              x={PAD.left - 6}
+              x={PAD.left - 8}
               y={toY(v) + 4}
               textAnchor="end"
               fontSize={11}
               fill={token.colorTextTertiary}
               fontFamily="Inter, -apple-system, sans-serif"
             >
-              {v}
+              {v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
             </text>
           </g>
         ))}
 
-        {/* X axis labels */}
+        {/* X labels */}
         {xLabels.map(({ d, i }) => (
           <text
             key={i}
@@ -140,16 +176,16 @@ function LineChartSVG({ data, color, forecastRatio = 0.88 }: LineChartProps) {
             fill={token.colorTextTertiary}
             fontFamily="Inter, -apple-system, sans-serif"
           >
-            {d.date.slice(5).replace('-', ' ')}
+            {new Date(d.date).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
           </text>
         ))}
 
         {/* Fill */}
-        <path d={fillPath} fill={`url(#fill-grad-${color.replace('#', '')})`} />
+        <path d={fillD} fill={`url(#${gradId})`} />
 
         {/* Solid line */}
         <polyline
-          points={solidPoints}
+          points={solidPts}
           fill="none"
           stroke={color}
           strokeWidth={2}
@@ -157,9 +193,9 @@ function LineChartSVG({ data, color, forecastRatio = 0.88 }: LineChartProps) {
           strokeLinecap="round"
         />
 
-        {/* Forecast dashed */}
+        {/* Forecast */}
         <polyline
-          points={forecastPoints}
+          points={forecastPts}
           fill="none"
           stroke={color}
           strokeWidth={2}
@@ -174,7 +210,7 @@ function LineChartSVG({ data, color, forecastRatio = 0.88 }: LineChartProps) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────────
-// KPI Tile — matches Mixpanel reference
+// KPI Tile — inside chart card, separated by vertical dividers
 // ────────────────────────────────────────────────────────────────────────────────
 
 interface KpiTileProps {
@@ -185,68 +221,66 @@ interface KpiTileProps {
   loading?: boolean;
   selected?: boolean;
   onClick?: () => void;
+  isLast?: boolean;
 }
 
-function KpiTile({ label, sublabel, value, change, loading, selected, onClick }: KpiTileProps) {
+function KpiTile({ label, sublabel, value, change, loading, selected, onClick, isLast }: KpiTileProps) {
   const { token } = useToken();
+  const [hovered, setHovered] = useState(false);
   const isPositive = (change ?? 0) >= 0;
   const changeColor = isPositive ? token.colorSuccess : token.colorError;
 
   return (
     <div
       onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
-        background: selected ? 'rgba(74,130,247,0.12)' : 'transparent',
-        border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
-        borderRadius: token.borderRadiusLG,
-        padding: '12px 16px',
+        background: selected
+          ? 'rgba(74,130,247,0.15)'
+          : hovered && onClick
+            ? 'rgba(255,255,255,0.03)'
+            : 'transparent',
+        borderRight: isLast ? 'none' : `1px solid ${token.colorBorderSecondary}`,
+        padding: '14px 20px 12px',
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'border-color 0.15s, background 0.15s',
-        minWidth: 160,
+        transition: 'background 0.15s',
+        minWidth: 170,
         flexShrink: 0,
       }}
     >
       {loading ? (
-        <Skeleton active paragraph={{ rows: 1 }} title={{ width: 80 }} />
+        <Skeleton active title={false} paragraph={{ rows: 2, width: [100, 60] }} />
       ) : (
         <>
-          {/* Label row */}
           <div style={{ marginBottom: 6 }}>
             <span
               style={{
                 fontSize: 12,
                 fontWeight: 500,
-                color: selected ? token.colorPrimary : token.colorTextSecondary,
+                color: selected ? token.colorPrimary : token.colorText,
               }}
             >
               {label}
             </span>
             {sublabel && (
-              <span style={{ fontSize: 11, color: token.colorTextTertiary, marginLeft: 4 }}>
+              <span style={{ fontSize: 11, color: token.colorTextTertiary, marginLeft: 5 }}>
                 ({sublabel})
               </span>
             )}
           </div>
-
-          {/* Value + change */}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span
-              style={{
-                fontSize: 28,
-                fontWeight: 600,
-                lineHeight: 1,
-                color: token.colorText,
-              }}
-            >
+            <span style={{ fontSize: 28, fontWeight: 600, lineHeight: 1, color: token.colorText }}>
               {value}
             </span>
-            {change !== undefined && (
+            {change !== undefined ? (
               <span style={{ fontSize: 12, color: changeColor, display: 'flex', alignItems: 'center', gap: 2 }}>
-                {isPositive ? <ArrowUpOutlined style={{ fontSize: 10 }} /> : <ArrowDownOutlined style={{ fontSize: 10 }} />}
+                {isPositive
+                  ? <ArrowUpOutlined style={{ fontSize: 9 }} />
+                  : <ArrowDownOutlined style={{ fontSize: 9 }} />}
                 {Math.abs(change).toFixed(2)}%
               </span>
-            )}
-            {change === undefined && (
+            ) : (
               <span style={{ fontSize: 12, color: token.colorTextTertiary }}>—</span>
             )}
           </div>
@@ -257,19 +291,17 @@ function KpiTile({ label, sublabel, value, change, loading, selected, onClick }:
 }
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Dashboard
+// Dashboard Page
 // ────────────────────────────────────────────────────────────────────────────────
 
 type ChartMetric = 'active' | 'new' | 'nps';
-type BreakdownSegment = 'all' | 'site' | 'mobile';
 
 export default function DashboardPage() {
   const { token } = useToken();
   const [granularity, setGranularity] = useState('daily');
-  const [dateRange, setDateRange] = useState('30d');
+  const [dateRange, setDateRange] = useState('7d');
   const [selectedMetric, setSelectedMetric] = useState<ChartMetric>('active');
   const [metricGroupId, setMetricGroupId] = useState<string>('');
-  const [breakdownSegment, setBreakdownSegment] = useState<BreakdownSegment>('all');
 
   const { data: activeUsers, isLoading: activeLoading } = useQuery({
     queryKey: ['active-users-trend'],
@@ -290,21 +322,17 @@ export default function DashboardPage() {
 
   const activeGroupId = metricGroupId || (metricGroups?.[0]?.id ?? '');
 
-  const currentActiveUsers = activeUsers?.at(-1)?.value ?? 0;
-  const prevActiveUsers = activeUsers?.at(-8)?.value ?? 0;
-  const activeChange = prevActiveUsers
-    ? ((currentActiveUsers - prevActiveUsers) / prevActiveUsers) * 100
-    : 0;
+  const cur = activeUsers?.at(-1)?.value ?? 0;
+  const prev = activeUsers?.at(-8)?.value ?? 0;
+  const activeChange = prev ? ((cur - prev) / prev) * 100 : 0;
 
-  const currentNewUsers = newUsers?.at(-1)?.value ?? 0;
-  const prevNewUsers = newUsers?.at(-8)?.value ?? 0;
-  const newChange = prevNewUsers
-    ? ((currentNewUsers - prevNewUsers) / prevNewUsers) * 100
-    : 0;
+  const curNew = newUsers?.at(-1)?.value ?? 0;
+  const prevNew = newUsers?.at(-8)?.value ?? 0;
+  const newChange = prevNew ? ((curNew - prevNew) / prevNew) * 100 : 0;
 
-  const currentNps = nps?.at(-1)?.nps ?? 0;
+  const curNps = nps?.at(-1)?.nps ?? 0;
   const prevNps = nps?.at(-8)?.nps ?? 0;
-  const npsChange = prevNps ? ((currentNps - prevNps) / Math.abs(prevNps)) * 100 : 0;
+  const npsChange = prevNps ? ((curNps - prevNps) / Math.abs(prevNps)) * 100 : 0;
 
   const weeklyActive = activeUsers?.slice(-7).reduce((s, d) => s + d.value, 0) ?? 0;
 
@@ -322,12 +350,7 @@ export default function DashboardPage() {
         ? token.colorSuccess
         : token.colorWarning;
 
-  const chartLoading =
-    selectedMetric === 'active'
-      ? activeLoading
-      : selectedMetric === 'new'
-        ? newLoading
-        : npsLoading;
+  const chartLoading = selectedMetric === 'active' ? activeLoading : selectedMetric === 'new' ? newLoading : npsLoading;
 
   const chartLabel =
     selectedMetric === 'active'
@@ -336,78 +359,205 @@ export default function DashboardPage() {
         ? 'Новые пользователи · Общий'
         : 'NPS · Динамика';
 
-  // Current metric group rows for breakdown table
-  const currentGroup = metricGroups?.find((g) => g.id === activeGroupId);
-  const breakdownRows: MetricRow[] = currentGroup?.metrics ?? [];
+  const yAxisLabel =
+    selectedMetric === 'active' || selectedMetric === 'new' ? 'Уникальные' : 'Баллы';
 
-  const cardBorder = `1px solid ${token.colorBorderSecondary}`;
-  const cardBg = token.colorBgContainer;
-  const cardRadius = token.borderRadiusLG;
+  const BDR = `1px solid ${token.colorBorderSecondary}`;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 0, minHeight: 0 }}>
-      {/* ── KPI tiles row ── */}
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 0 }}>
+
+      {/* ── Page header ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, flexShrink: 0 }}>
+        <div>
+          <Typography.Title level={3} style={{ margin: 0, fontSize: 22, color: token.colorText }}>
+            Обзор продукта
+          </Typography.Title>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            Изменено сегодня · Арсен Аракелян
+          </Typography.Text>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Tooltip title="Помощь">
+            <div style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: token.colorTextTertiary }}>
+              <QuestionCircleOutlined style={{ fontSize: 16 }} />
+            </div>
+          </Tooltip>
+          <Tooltip title="Копировать ссылку">
+            <div style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: token.colorTextTertiary }}>
+              <LinkOutlined style={{ fontSize: 16 }} />
+            </div>
+          </Tooltip>
+          <button
+            style={{
+              padding: '5px 14px',
+              background: 'transparent',
+              border: BDR,
+              borderRadius: 6,
+              cursor: 'pointer',
+              color: token.colorText,
+              fontSize: 13,
+              fontFamily: 'inherit',
+            }}
+          >
+            Поделиться
+          </button>
+          <button
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '5px 14px',
+              background: token.colorPrimary,
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              color: '#fff',
+              fontSize: 13,
+              fontFamily: 'inherit',
+            }}
+          >
+            <span style={{ fontSize: 11 }}>⊞</span>
+            Настроить
+          </button>
+        </div>
+      </div>
+
+      {/* ── Filter bar ── */}
       <div
         style={{
           display: 'flex',
-          gap: 8,
-          overflowX: 'auto',
+          alignItems: 'center',
+          gap: 0,
+          padding: '0 0',
+          background: token.colorBgContainer,
+          border: BDR,
+          borderRadius: token.borderRadius,
+          marginBottom: 12,
           flexShrink: 0,
-          paddingBottom: 12,
+          overflow: 'hidden',
         }}
       >
-        <KpiTile
-          label="Активные пользователи"
-          sublabel="уникальные"
-          value={currentActiveUsers}
-          change={activeChange}
-          loading={activeLoading}
-          selected={selectedMetric === 'active'}
-          onClick={() => setSelectedMetric('active')}
-        />
-        <KpiTile
-          label="Новые пользователи"
-          sublabel="уникальные"
-          value={currentNewUsers}
-          change={newChange}
-          loading={newLoading}
-          selected={selectedMetric === 'new'}
-          onClick={() => setSelectedMetric('new')}
-        />
-        <KpiTile
-          label="Средняя сессия"
-          value="—"
-          loading={false}
-        />
-        <KpiTile
-          label="Удержание на 7-й день"
-          value="—"
-          loading={false}
-        />
-        <KpiTile
-          label="Еженедельно активные"
-          value={weeklyActive}
-          loading={activeLoading}
-        />
-        <KpiTile
-          label="NPS"
-          value={currentNps}
-          change={npsChange}
-          loading={npsLoading}
-          selected={selectedMetric === 'nps'}
-          onClick={() => setSelectedMetric('nps')}
-        />
+        {/* Left controls */}
+        <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+          <FilterBarBtn icon={<FilterOutlined />} label="Добавить фильтр" />
+          <div style={{ width: 1, height: 24, background: token.colorBorderSecondary }} />
+          <FilterBarBtn icon={<TeamOutlined />} label="Добавить сегмент" />
+          <div style={{ width: 1, height: 24, background: token.colorBorderSecondary }} />
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '0 14px',
+              height: 36,
+              color: token.colorTextTertiary,
+              fontSize: 12,
+            }}
+          >
+            <ReloadOutlined style={{ fontSize: 12 }} />
+            Данные от 22 мин назад
+          </div>
+        </div>
+
+        <div style={{ width: 1, height: 36, background: token.colorBorderSecondary }} />
+
+        {/* Right dropdowns */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <Select
+            value={granularity}
+            onChange={setGranularity}
+            variant="borderless"
+            size="small"
+            style={{ width: 110 }}
+            options={[
+              { value: 'hourly', label: 'По часам' },
+              { value: 'daily', label: 'По дням' },
+              { value: 'weekly', label: 'По неделям' },
+              { value: 'monthly', label: 'По месяцам' },
+            ]}
+          />
+          <div style={{ width: 1, height: 24, background: token.colorBorderSecondary }} />
+          <Select
+            value={dateRange}
+            onChange={setDateRange}
+            variant="borderless"
+            size="small"
+            style={{ width: 160 }}
+            options={[
+              { value: '7d', label: 'Последние 7 дней' },
+              { value: '30d', label: 'Последние 30 дней' },
+              { value: '90d', label: 'Последние 90 дней' },
+              { value: 'q', label: 'Текущий квартал' },
+            ]}
+          />
+        </div>
       </div>
 
-      {/* ── Chart card ── */}
+      {/* ── Main chart card (fills remaining height) ── */}
       <div
         style={{
-          background: cardBg,
-          borderRadius: cardRadius,
-          border: cardBorder,
-          flexShrink: 0,
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          background: token.colorBgContainer,
+          border: BDR,
+          borderRadius: token.borderRadiusLG,
+          overflow: 'hidden',
+          minHeight: 0,
         }}
       >
+        {/* KPI tiles row */}
+        <div
+          style={{
+            display: 'flex',
+            overflowX: 'auto',
+            borderBottom: BDR,
+            flexShrink: 0,
+          }}
+        >
+          <KpiTile
+            label="Активные пользователи"
+            sublabel="уникальные"
+            value={cur}
+            change={activeChange}
+            loading={activeLoading}
+            selected={selectedMetric === 'active'}
+            onClick={() => setSelectedMetric('active')}
+          />
+          <KpiTile
+            label="Новые пользователи"
+            sublabel="уникальные"
+            value={curNew}
+            change={newChange}
+            loading={newLoading}
+            selected={selectedMetric === 'new'}
+            onClick={() => setSelectedMetric('new')}
+          />
+          <KpiTile
+            label="Средняя длит. сессии"
+            value="—"
+          />
+          <KpiTile
+            label="Удержание на 7-й день"
+            value="—"
+          />
+          <KpiTile
+            label="Еженед. активные"
+            value={weeklyActive}
+            loading={activeLoading}
+          />
+          <KpiTile
+            label="NPS"
+            value={curNps}
+            change={npsChange}
+            loading={npsLoading}
+            selected={selectedMetric === 'nps'}
+            onClick={() => setSelectedMetric('nps')}
+            isLast
+          />
+        </div>
+
         {/* Chart toolbar */}
         <div
           style={{
@@ -415,9 +565,10 @@ export default function DashboardPage() {
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '8px 16px',
+            flexShrink: 0,
           }}
         >
-          {/* Left: metric group dropdown */}
+          {/* Metric group selector */}
           <Select
             value={activeGroupId || null}
             onChange={(v: string) => setMetricGroupId(v)}
@@ -427,39 +578,16 @@ export default function DashboardPage() {
             options={(metricGroups ?? []).map((g) => ({ value: g.id, label: g.name }))}
           />
 
-          {/* Right: granularity + date range + chart type */}
+          {/* Right controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Select
-              value={granularity}
-              onChange={setGranularity}
-              size="small"
-              style={{ width: 110 }}
-              options={[
-                { value: 'daily', label: 'По дням' },
-                { value: 'weekly', label: 'По неделям' },
-                { value: 'monthly', label: 'По месяцам' },
-              ]}
-            />
-            <Select
-              value={dateRange}
-              onChange={setDateRange}
-              size="small"
-              style={{ width: 155 }}
-              options={[
-                { value: '7d', label: 'Последние 7 дней' },
-                { value: '30d', label: 'Последние 30 дней' },
-                { value: '90d', label: 'Последние 90 дней' },
-                { value: 'q', label: 'Текущий квартал' },
-              ]}
-            />
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
-                padding: '3px 10px',
-                border: cardBorder,
-                borderRadius: token.borderRadius,
+                padding: '4px 10px',
+                border: BDR,
+                borderRadius: 6,
                 cursor: 'pointer',
                 fontSize: 12,
                 color: token.colorTextSecondary,
@@ -469,193 +597,118 @@ export default function DashboardPage() {
               <span>Линейный</span>
               <span style={{ fontSize: 10 }}>▾</span>
             </div>
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: cardBorder,
-                borderRadius: token.borderRadius,
-                cursor: 'pointer',
-                color: token.colorTextSecondary,
-              }}
-            >
-              <ExpandAltOutlined style={{ fontSize: 12 }} />
-            </div>
+            <Tooltip title="Развернуть">
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: BDR,
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  color: token.colorTextTertiary,
+                }}
+              >
+                <ExpandAltOutlined style={{ fontSize: 12 }} />
+              </div>
+            </Tooltip>
           </div>
         </div>
 
-        {/* Chart */}
-        <div style={{ padding: '0 8px 4px' }}>
-          {chartLoading ? (
-            <Skeleton active paragraph={{ rows: 5 }} title={false} style={{ padding: '16px 16px 8px' }} />
-          ) : (
-            <LineChartSVG data={chartData} color={chartColor} forecastRatio={0.88} />
-          )}
-        </div>
+        {/* Chart area — fills all remaining height */}
+        {chartLoading ? (
+          <div style={{ flex: 1, padding: '24px 24px 8px' }}>
+            <Skeleton active paragraph={{ rows: 8 }} title={false} />
+          </div>
+        ) : (
+          <LineChartSVG
+            data={chartData}
+            color={chartColor}
+            label={yAxisLabel}
+            forecastRatio={0.88}
+          />
+        )}
 
-        {/* Legend */}
+        {/* Legend + bottom controls */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 8,
-            paddingBottom: 12,
-          }}
-        >
-          <span
-            style={{
-              display: 'inline-block',
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              background: chartColor,
-            }}
-          />
-          <Typography.Text style={{ fontSize: 12, color: token.colorTextSecondary }}>
-            {chartLabel}
-          </Typography.Text>
-        </div>
-      </div>
-
-      {/* ── Breakdown ── */}
-      <div
-        style={{
-          marginTop: 12,
-          flex: 1,
-          background: cardBg,
-          borderRadius: cardRadius,
-          border: cardBorder,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-        }}
-      >
-        {/* Breakdown header */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0,
-            padding: '12px 16px 0',
+            padding: '10px 16px',
+            borderTop: BDR,
             flexShrink: 0,
+            position: 'relative',
           }}
         >
-          <Typography.Text
-            strong
-            style={{ fontSize: 13, marginRight: 20, color: token.colorTextSecondary }}
-          >
-            Разбивка по
-          </Typography.Text>
-          {(['all', 'site', 'mobile'] as BreakdownSegment[]).map((seg) => {
-            const labels: Record<BreakdownSegment, string> = {
-              all: 'Все',
-              site: 'Сайт',
-              mobile: 'Мобильное приложение',
-            };
-            const active = breakdownSegment === seg;
-            return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                display: 'inline-block',
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: chartColor,
+              }}
+            />
+            <Typography.Text style={{ fontSize: 12, color: token.colorTextSecondary }}>
+              {chartLabel}
+            </Typography.Text>
+          </div>
+
+          {/* Bottom-right: add series + settings */}
+          <div style={{ position: 'absolute', right: 16, display: 'flex', gap: 6 }}>
+            <Tooltip title="Добавить серию">
               <div
-                key={seg}
-                onClick={() => setBreakdownSegment(seg)}
                 style={{
-                  padding: '6px 14px',
-                  fontSize: 13,
+                  width: 24,
+                  height: 24,
+                  border: BDR,
+                  borderRadius: 5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   cursor: 'pointer',
-                  color: active ? token.colorText : token.colorTextSecondary,
-                  borderBottom: active ? `2px solid ${token.colorPrimary}` : '2px solid transparent',
-                  marginBottom: -1,
-                  transition: 'color 0.15s, border-color 0.15s',
+                  color: token.colorTextTertiary,
+                  fontSize: 12,
                 }}
               >
-                {labels[seg]}
+                <PlusOutlined />
               </div>
-            );
-          })}
-        </div>
-
-        <div style={{ height: 1, background: token.colorBorderSecondary }} />
-
-        {/* Table */}
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          <Table<MetricRow>
-            size="small"
-            pagination={false}
-            dataSource={breakdownRows}
-            rowKey="id"
-            style={{ fontSize: 12 }}
-            columns={[
-              {
-                title: 'Метрика',
-                dataIndex: 'name',
-                render: (name: string, row: MetricRow) => (
-                  <span>
-                    {name}
-                    {row.unit ? <span style={{ color: token.colorTextTertiary, marginLeft: 4, fontSize: 11 }}>{row.unit}</span> : null}
-                  </span>
-                ),
-              },
-              {
-                title: 'Текущий квартал',
-                dataIndex: 'currentQuarter',
-                align: 'right',
-                render: (v: number, row: MetricRow) =>
-                  row.unit === '₽'
-                    ? v.toLocaleString('ru') + ' ₽'
-                    : row.unit === '%'
-                      ? `${v}%`
-                      : v.toLocaleString('ru'),
-              },
-              {
-                title: 'План',
-                dataIndex: 'plan',
-                align: 'right',
-                render: (v: number, row: MetricRow) =>
-                  row.unit === '₽'
-                    ? v.toLocaleString('ru') + ' ₽'
-                    : row.unit === '%'
-                      ? `${v}%`
-                      : v.toLocaleString('ru'),
-              },
-              {
-                title: '% выполнения',
-                dataIndex: 'fulfillment',
-                align: 'right',
-                render: (v: number) => (
-                  <Typography.Text
-                    style={{
-                      color:
-                        v >= 90
-                          ? token.colorSuccess
-                          : v >= 70
-                            ? token.colorWarning
-                            : token.colorError,
-                    }}
-                  >
-                    {v}%
-                  </Typography.Text>
-                ),
-                sorter: (a, b) => a.fulfillment - b.fulfillment,
-              },
-              {
-                title: 'Прошлый квартал',
-                dataIndex: 'lastQuarter',
-                align: 'right',
-                render: (v: number, row: MetricRow) =>
-                  row.unit === '₽'
-                    ? v.toLocaleString('ru') + ' ₽'
-                    : row.unit === '%'
-                      ? `${v}%`
-                      : v.toLocaleString('ru'),
-              },
-            ]}
-          />
+            </Tooltip>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── helper ──────────────────────────────────────────────────────────────────────
+
+function FilterBarBtn({ icon, label }: { icon: React.ReactNode; label: string }) {
+  const { token } = useToken();
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '0 14px',
+        height: 36,
+        cursor: 'pointer',
+        color: token.colorPrimary,
+        fontSize: 13,
+        background: hovered ? 'rgba(74,130,247,0.06)' : 'transparent',
+        transition: 'background 0.15s',
+      }}
+    >
+      {icon}
+      {label}
     </div>
   );
 }
