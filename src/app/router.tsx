@@ -1,4 +1,5 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { useState } from 'react';
+import { createBrowserRouter, Outlet } from 'react-router-dom';
 import AppShell from '../components/layout/AppShell';
 import DashboardPage from '../features/dashboard/DashboardPage';
 import AssistantPage from '../features/assistant/AssistantPage';
@@ -17,29 +18,42 @@ import ArtifactDetailPage from '../features/knowledge-base/ArtifactDetailPage';
 import NotificationsPage from '../features/notifications/NotificationsPage';
 import ProfilePage from '../features/profile/ProfilePage';
 import MetricsPage from '../features/metrics/MetricsPage';
+import LoginPage from '../features/auth/LoginPage';
+import { isAuthenticated } from '../features/auth/auth';
+
+function AuthGuard() {
+  const [authed, setAuthed] = useState(isAuthenticated);
+  if (!authed) return <LoginPage onSuccess={() => setAuthed(true)} />;
+  return <Outlet />;
+}
 
 export const router = createBrowserRouter([
   {
-    path: '/',
-    element: <AppShell />,
+    element: <AuthGuard />,
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: 'metrics', element: <MetricsPage /> },
-      { path: 'assistant', element: <AssistantPage /> },
-      { path: 'assistant/:dialogId', element: <AssistantDialogPage /> },
-      { path: 'agents', element: <AgentsPage /> },
-      { path: 'agents/builder', element: <AgentBuilderPage /> },
-      { path: 'agents/:agentId', element: <AgentDetailPage /> },
-      { path: 'services', element: <AIServicesPage /> },
-      { path: 'services/:serviceId', element: <AIServiceDetailPage /> },
-      { path: 'tasks', element: <TasksPage /> },
-      { path: 'tasks/:taskId', element: <TaskDetailPage /> },
-      { path: 'rooms', element: <RoomsPage /> },
-      { path: 'rooms/:roomId', element: <RoomDetailPage /> },
-      { path: 'knowledge', element: <KnowledgeBasePage /> },
-      { path: 'knowledge/:artifactId', element: <ArtifactDetailPage /> },
-      { path: 'notifications', element: <NotificationsPage /> },
-      { path: 'profile', element: <ProfilePage /> },
+      {
+        path: '/',
+        element: <AppShell />,
+        children: [
+          { index: true, element: <DashboardPage /> },
+          { path: 'metrics', element: <MetricsPage /> },
+          { path: 'assistant', element: <AssistantPage /> },
+          { path: 'assistant/:dialogId', element: <AssistantDialogPage /> },
+          { path: 'agents', element: <AgentsPage /> },
+          { path: 'agents/builder', element: <AgentBuilderPage /> },
+          { path: 'agents/:agentId', element: <AgentDetailPage /> },
+          { path: 'services', element: <AIServicesPage /> },
+          { path: 'services/:serviceId', element: <AIServiceDetailPage /> },
+          { path: 'tasks', element: <TasksPage /> },
+          { path: 'tasks/:taskId', element: <TaskDetailPage /> },
+          { path: 'rooms', element: <RoomsPage /> },
+          { path: 'rooms/:roomId', element: <RoomDetailPage /> },
+          { path: 'knowledge', element: <KnowledgeBasePage /> },
+          { path: 'knowledge/:artifactId', element: <ArtifactDetailPage /> },
+          { path: 'notifications', element: <NotificationsPage /> },
+          { path: 'profile', element: <ProfilePage /> },
+        ],
+      },
     ],
   },
 ]);

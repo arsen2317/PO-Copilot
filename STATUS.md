@@ -93,6 +93,26 @@
 > **Дальше:** …
 > ```
 
+### Сессия 8 — 2026-06-25
+**Сделано:** полная интеграция Claude AI в AI-панель.
+- **Vercel Edge Function** `api/chat.ts` — прокси к Anthropic API, raw fetch без SDK (edge-совместимость), pipe SSE-стрима напрямую клиенту. Только `claude-haiku-4-5-20251001` и `claude-sonnet-4-6`.
+- **Vercel Edge Function** `api/auth.ts` — проверка логина/пароля из server env (`APP_LOGIN`/`APP_PASSWORD`), выдаёт HMAC-подписанный токен (24ч TTL, Web Crypto API).
+- **`api/_lib/token.ts`** — `signToken` / `verifyToken` на `crypto.subtle`, работает в Edge Runtime и Node.js.
+- **`src/features/auth/auth.ts`** — `login()`, `getToken()`, `isAuthenticated()`, `logout()`. Токен в `sessionStorage`.
+- **`src/features/auth/LoginPage.tsx`** — antd-форма логина (тёмная тема).
+- **`src/app/router.tsx`** — `AuthGuard`: показывает `LoginPage` если не аутентифицирован.
+- **`src/lib/claude.ts`** — `streamChat()`: SSE-стрим с `onTextDelta` колбэком, поддержка `tool_use` блоков, accumulation partial JSON.
+- **`src/lib/tools.ts`** — `TOOL_DEFINITIONS` (4 инструмента: get_metric_groups, get_metrics, get_tasks, get_agents) + `executeTool()`.
+- **`src/components/layout/AIPanelSider.tsx`** — полный tool-use loop в `handleSend`: user msg → streamChat → если tool_use: executeTool → добавить tool_result → повторить; streaming text через onTextDelta в реальном времени; `AssistantBubble` с ReactMarkdown; abort controller.
+- **`scripts/dev-api-server.ts`** — локальный Express на :3001 (не Edge), использует @anthropic-ai/sdk. Починен Express 5 wildcard (`/.*/)`.
+- **`vite.config.ts`** — proxy `/api` → `http://localhost:3001`.
+- **`.env.local`** — `ANTHROPIC_API_KEY`, `APP_LOGIN`, `APP_PASSWORD`, `APP_SESSION_SECRET` (НЕ VITE_, не в репо).
+- **`vercel.json`** — rewrite: `/api/(.*)` → `/api/$1` (до SPA-fallback).
+- **`src/styles/global.css`** — `body { background: #000; overscroll-behavior: none; }` (нет белого flash при trackpad-свайпе).
+- **Безопасность**: API ключ только на сервере. Пароль проверяется только на сервере. Никаких `VITE_`-секретов. Bearer токен на каждый `/api/chat` запрос.
+**Решения:** Edge Function вместо SDK для /api/chat (SDK тянет Node.js модули несовместимые с edge-light); HMAC токены вместо VITE_ пароля; raw fetch + pipe SSE вместо SDK в Edge.
+**Дальше:** пользователь тестирует. Ротировать API ключ (он был показан в чате — нужно создать новый в Anthropic Console). При необходимости: парсинг файлов (PDF/DOCX/XLSX через pdfjs/mammoth/xlsx), модель по умолчанию (сейчас haiku, можно sonnet).
+
 ### Сессия 7 — 2026-06-25
 **Сделано:** полная доводка дашборда — данные, фильтры, UX тайлов.
 - **KPI-тайлы**: переделаны в `TilesCarousel` — горизонтальный скролл без переноса, кнопки ← → при overflow. Каждый тайл — отдельная карточка с border (выбранный: синий, невыбранный: `colorBorderSecondary`).

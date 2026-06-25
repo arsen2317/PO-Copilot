@@ -9,8 +9,6 @@ import {
   Typography,
 } from 'antd';
 import {
-  ArrowDownOutlined,
-  ArrowUpOutlined,
   PlusOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
@@ -20,90 +18,14 @@ import type { MetricDefinition } from '../../data/types';
 
 const { useToken } = theme;
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatValue(m: MetricDefinition): string {
-  const v = m.currentValue;
-  switch (m.format) {
-    case 'currency':
-      return v >= 1_000_000
-        ? `${(v / 1_000_000).toFixed(1)} млн ₽`
-        : v >= 1_000
-          ? `${v.toLocaleString('ru')} ₽`
-          : `${v} ₽`;
-    case 'percent':
-      return `${v}%`;
-    case 'rate':
-      return `${v}%`;
-    case 'duration_h':
-      return m.unit === 'мин.' ? `${v} мин.` : `${v} ч.`;
-    case 'duration_ms':
-      return `${v} мс`;
-    case 'duration_d':
-      return `${v} дн.`;
-    case 'per_1000':
-      return `${v}`;
-    default:
-      return v >= 1_000 ? v.toLocaleString('ru') : String(v);
-  }
-}
-
-function getFulfillment(m: MetricDefinition): number {
-  if (m.planValue === 0) return 100;
-  if (m.lowerIsBetter) {
-    return Math.min(150, (m.planValue / m.currentValue) * 100);
-  }
-  return Math.min(150, (m.currentValue / m.planValue) * 100);
-}
-
-function getTrend(m: MetricDefinition): number {
-  if (m.lastPeriodValue === 0) return 0;
-  const raw = ((m.currentValue - m.lastPeriodValue) / Math.abs(m.lastPeriodValue)) * 100;
-  return m.lowerIsBetter ? -raw : raw;
-}
-
-// ── Mini sparkline ────────────────────────────────────────────────────────────
-
-function Sparkline({ data, color }: { data: number[]; color: string }) {
-  if (data.length < 2) return null;
-  const W = 60;
-  const H = 22;
-  const mn = Math.min(...data);
-  const mx = Math.max(...data);
-  const r = mx - mn || 1;
-  const pts = data
-    .map((v, i) => `${(i / (data.length - 1)) * W},${H - ((v - mn) / r) * (H - 4) - 2}`)
-    .join(' ');
+function ColTitle({ children }: { children: string }) {
+  const { token } = useToken();
   return (
-    <svg width={W} height={H} style={{ display: 'block', flexShrink: 0 }}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" />
-    </svg>
+    <span style={{ fontSize: 11, fontWeight: 500, color: token.colorTextTertiary, letterSpacing: '0.4px' }}>
+      {children}
+    </span>
   );
 }
-
-// ── Group color dot ───────────────────────────────────────────────────────────
-
-function GroupDot({ color }: { color: string }) {
-  return (
-    <div
-      style={{
-        width: 28,
-        height: 28,
-        borderRadius: '50%',
-        background: color + '22',
-        border: `1.5px solid ${color}`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-      }}
-    >
-      <div style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />
-    </div>
-  );
-}
-
-// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MetricsPage() {
   const { token } = useToken();
@@ -120,9 +42,6 @@ export default function MetricsPage() {
     queryFn: getMetricGroupDefs,
   });
 
-  const groupColorMap = Object.fromEntries(
-    (groupDefs ?? []).map((g) => [g.id, g.color]),
-  );
   const groupNameMap = Object.fromEntries(
     (groupDefs ?? []).map((g) => [g.id, g.name]),
   );
@@ -136,124 +55,73 @@ export default function MetricsPage() {
 
   const columns = [
     {
-      title: 'МЕТРИКА',
+      title: <ColTitle>МЕТРИКА</ColTitle>,
       key: 'name',
-      width: '38%',
+      ellipsis: true,
       render: (_: unknown, m: MetricDefinition) => {
-        const color = groupColorMap[m.groupId] ?? token.colorPrimary;
+        const pct = m.planValue === 0 ? 100
+          : m.lowerIsBetter
+            ? (m.planValue / m.currentValue) * 100
+            : (m.currentValue / m.planValue) * 100;
+        const dotColor = pct >= 90 ? token.colorSuccess : pct >= 70 ? token.colorWarning : token.colorError;
         return (
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <GroupDot color={color} />
-            <div style={{ minWidth: 0 }}>
-              <Typography.Text strong style={{ fontSize: 13, display: 'block', color: token.colorText }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, overflow: 'hidden' }}>
+            <div
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: dotColor,
+                flexShrink: 0,
+              }}
+            />
+            <div style={{ minWidth: 0, overflow: 'hidden' }}>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: token.colorText,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {m.name}
-              </Typography.Text>
-              <Typography.Text
-                type="secondary"
-                style={{ fontSize: 12, lineHeight: 1.4, display: 'block', marginTop: 2 }}
-                ellipsis={{ tooltip: m.description }}
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: token.colorTextTertiary,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  marginTop: 1,
+                }}
               >
                 {m.description}
-              </Typography.Text>
+              </div>
             </div>
           </div>
         );
       },
     },
     {
-      title: 'ГРУППА',
+      title: <ColTitle>ТИП</ColTitle>,
       key: 'group',
-      width: '14%',
+      width: 130,
       render: (_: unknown, m: MetricDefinition) => (
-        <Typography.Text style={{ fontSize: 12, color: token.colorTextSecondary }}>
+        <Typography.Text style={{ fontSize: 12, color: token.colorText }}>
           {groupNameMap[m.groupId] ?? m.groupId}
         </Typography.Text>
       ),
     },
     {
-      title: 'ЗНАЧЕНИЕ',
-      key: 'value',
-      width: '12%',
-      align: 'right' as const,
-      render: (_: unknown, m: MetricDefinition) => {
-        const color = groupColorMap[m.groupId] ?? token.colorPrimary;
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'flex-end' }}>
-            <Sparkline data={m.history.map((h) => h.value)} color={color} />
-            <Typography.Text strong style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
-              {formatValue(m)}
-            </Typography.Text>
-          </div>
-        );
-      },
-    },
-    {
-      title: '% ПЛАНА',
-      key: 'fulfillment',
-      width: '10%',
-      align: 'right' as const,
-      sorter: (_a: MetricDefinition, _b: MetricDefinition) =>
-        getFulfillment(_a) - getFulfillment(_b),
-      render: (_: unknown, m: MetricDefinition) => {
-        const pct = getFulfillment(m);
-        const color =
-          pct >= 90 ? token.colorSuccess : pct >= 70 ? token.colorWarning : token.colorError;
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-            <Typography.Text style={{ fontSize: 12, color, fontWeight: 600 }}>
-              {pct.toFixed(0)}%
-            </Typography.Text>
-            <div
-              style={{
-                width: 48,
-                height: 3,
-                background: token.colorFillSecondary,
-                borderRadius: 2,
-                overflow: 'hidden',
-              }}
-            >
-              <div
-                style={{
-                  width: `${Math.min(100, pct)}%`,
-                  height: '100%',
-                  background: color,
-                  borderRadius: 2,
-                  transition: 'width 0.3s',
-                }}
-              />
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      title: 'ИЗМЕНЕНИЕ',
-      key: 'trend',
-      width: '10%',
-      align: 'right' as const,
-      sorter: (_a: MetricDefinition, _b: MetricDefinition) =>
-        getTrend(_a) - getTrend(_b),
-      render: (_: unknown, m: MetricDefinition) => {
-        const t = getTrend(m);
-        const isUp = t >= 0;
-        const color = isUp ? token.colorSuccess : token.colorError;
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
-            {isUp
-              ? <ArrowUpOutlined style={{ fontSize: 10, color }} />
-              : <ArrowDownOutlined style={{ fontSize: 10, color }} />}
-            <Typography.Text style={{ fontSize: 12, color }}>
-              {Math.abs(t).toFixed(1)}%
-            </Typography.Text>
-          </div>
-        );
-      },
-    },
-    {
-      title: 'НА ДАШБОРДЕ',
+      title: <ColTitle>НА ДАШБОРДЕ</ColTitle>,
       key: 'dashboard',
-      width: '10%',
+      width: 130,
       align: 'center' as const,
+      sorter: (a: MetricDefinition, b: MetricDefinition) =>
+        Number(dashboardToggles[a.id] ?? a.onDashboard) - Number(dashboardToggles[b.id] ?? b.onDashboard),
       render: (_: unknown, m: MetricDefinition) => {
         const checked = dashboardToggles[m.id] ?? m.onDashboard;
         return (
@@ -319,9 +187,7 @@ export default function MetricsPage() {
           onChange={(v) => setGroupFilter(v ?? null)}
           size="small"
           style={{ width: 220 }}
-          options={[
-            ...(groupDefs ?? []).map((g) => ({ value: g.id, label: g.name })),
-          ]}
+          options={(groupDefs ?? []).map((g) => ({ value: g.id, label: g.name }))}
         />
         <Typography.Text
           type="secondary"
@@ -332,7 +198,7 @@ export default function MetricsPage() {
       </div>
 
       {/* ── Table ── */}
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div style={{ flex: 1, overflow: 'auto', border: `1px solid ${token.colorBorderSecondary}`, borderRadius: token.borderRadiusLG }}>
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 8 }} />
         ) : (
@@ -340,8 +206,9 @@ export default function MetricsPage() {
             dataSource={filtered}
             columns={columns}
             rowKey="id"
-            size="small"
+            size="middle"
             pagination={false}
+            tableLayout="fixed"
             style={{ fontSize: 12 }}
             onRow={() => ({
               style: { cursor: 'default' },
