@@ -98,7 +98,8 @@ export default function AppSidebar({
         width={220}
         collapsedWidth={56}
         style={{
-          borderRight: `1px solid ${token.colorBorderSecondary}`,
+          borderRight: 'none',
+          background: token.colorBgLayout,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
