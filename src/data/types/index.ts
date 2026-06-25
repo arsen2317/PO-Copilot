@@ -137,3 +137,47 @@ export interface AIService {
   hasCorpSubscription: boolean;
   url: string;
 }
+
+export interface MetricPoint {
+  date: string;
+  value: number;
+}
+
+export interface MetricRow {
+  id: string;
+  name: string;
+  currentQuarter: number;
+  plan: number;
+  fulfillment: number;
+  lastQuarter: number;
+  unit: string;
+}
+
+export interface MetricGroup {
+  id: string;
+  name: string;
+  metrics: MetricRow[];
+}
+
+export interface MetricGroupDef {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface MetricDefinition {
+  id: string;
+  name: string;
+  description: string;
+  groupId: string;
+  unit: string;
+  lowerIsBetter: boolean;
+  currentValue: number;
+  planValue: number;
+  lastPeriodValue: number;
+  format: 'number' | 'percent' | 'currency' | 'duration_h' | 'duration_ms' | 'duration_d' | 'per_1000' | 'rate';
+  owner: string;
+  updatedAt: string;
+  onDashboard: boolean;
+  history: MetricPoint[];
+}

@@ -16,6 +16,7 @@ import KnowledgeBasePage from '../features/knowledge-base/KnowledgeBasePage';
 import ArtifactDetailPage from '../features/knowledge-base/ArtifactDetailPage';
 import NotificationsPage from '../features/notifications/NotificationsPage';
 import ProfilePage from '../features/profile/ProfilePage';
+import MetricsPage from '../features/metrics/MetricsPage';
 
 export const router = createBrowserRouter([
   {
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'metrics', element: <MetricsPage /> },
       { path: 'assistant', element: <AssistantPage /> },
       { path: 'assistant/:dialogId', element: <AssistantDialogPage /> },
       { path: 'agents', element: <AgentsPage /> },

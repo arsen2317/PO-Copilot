@@ -1,7 +1,9 @@
-import type { FunnelStep, Incident, NpsPoint, Product, SprintMetric } from '../types';
+import type { FunnelStep, Incident, MetricPoint, NpsPoint, Product, SprintMetric } from '../types';
 import {
+  activeUsersFixture,
   funnelFixtures,
   incidentFixtures,
+  newUsersFixture,
   npsFixtures,
   productFixtures,
   sprintFixture,
@@ -32,4 +34,14 @@ export async function getSprintMetric(): Promise<SprintMetric> {
 export async function getIncidents(): Promise<Incident[]> {
   await delay(300);
   return incidentFixtures;
+}
+
+export async function getActiveUsersTrend(): Promise<MetricPoint[]> {
+  await delay(300);
+  return activeUsersFixture;
+}
+
+export async function getNewUsersTrend(): Promise<MetricPoint[]> {
+  await delay(300);
+  return newUsersFixture;
 }

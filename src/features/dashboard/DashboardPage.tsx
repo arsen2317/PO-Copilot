@@ -1,80 +1,860 @@
-import { Button, Col, Flex, Row, Select, Skeleton, theme, Typography } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Select,
+  Skeleton,
+  Table,
+  theme,
+  Tooltip,
+  Typography,
+} from 'antd';
+import {
+  ArrowDownOutlined,
+  ArrowUpOutlined,
+  ExpandAltOutlined,
+  LeftOutlined,
+  LineChartOutlined,
+  LinkOutlined,
+  PlusOutlined,
+  QuestionCircleOutlined,
+  ReloadOutlined,
+  RightOutlined,
+} from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { getProducts } from '../../data/api/dashboard';
-import ConversionFunnelWidget from './widgets/ConversionFunnelWidget';
-import IncidentsWidget from './widgets/IncidentsWidget';
-import NpsTrendWidget from './widgets/NpsTrendWidget';
-import RecentNotificationsWidget from './widgets/RecentNotificationsWidget';
-import TeamVelocityWidget from './widgets/TeamVelocityWidget';
+import { getMetricDefinitions, getMetricGroupDefs } from '../../data/api/metric-definitions';
+import type { MetricDefinition, MetricPoint } from '../../data/types';
 
 const { useToken } = theme;
 
-export default function DashboardPage() {
-  const { token } = useToken();
-  const [productId, setProductId] = useState('p1');
+// ────────────────────────────────────────────────────────────────────────────────
+// Fully-responsive SVG chart (ResizeObserver on both axes)
+// ────────────────────────────────────────────────────────────────────────────────
 
-  const { data: products, isLoading: productsLoading } = useQuery({
-    queryKey: ['products'],
-    queryFn: getProducts,
-  });
+interface LineChartProps {
+  data: MetricPoint[];
+  color: string;
+  label: string;
+  forecastRatio?: number;
+}
+
+function LineChartSVG({ data, color, label, forecastRatio = 0.88 }: LineChartProps) {
+  const { token } = useToken();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ w: 700, h: 300 });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry?.contentRect) {
+        setSize({ w: entry.contentRect.width, h: entry.contentRect.height });
+      }
+    });
+    ro.observe(el);
+    const r = el.getBoundingClientRect();
+    setSize({ w: r.width, h: r.height });
+    return () => ro.disconnect();
+  }, []);
+
+  if (!data.length) {
+    return (
+      <div ref={containerRef} style={{ flex: 1, width: '100%' }}>
+        <Skeleton active paragraph={{ rows: 6 }} />
+      </div>
+    );
+  }
+
+  const W = size.w;
+  const H = size.h;
+  const PAD = { top: 16, right: 24, bottom: 36, left: 52 };
+  const cW = Math.max(0, W - PAD.left - PAD.right);
+  const cH = Math.max(0, H - PAD.top - PAD.bottom);
+
+  const values = data.map((d) => d.value);
+  const maxV = Math.max(...values) * 1.15;
+  const range = maxV || 1;
+
+  const toX = (i: number) => PAD.left + (i / (data.length - 1)) * cW;
+  const toY = (v: number) => PAD.top + cH - (v / range) * cH;
+
+  const forecastIdx = Math.floor(data.length * forecastRatio);
+
+  const solidPts = data
+    .slice(0, forecastIdx + 1)
+    .map((d, i) => `${toX(i)},${toY(d.value)}`)
+    .join(' ');
+  const forecastPts = data
+    .slice(forecastIdx)
+    .map((d, i) => `${toX(forecastIdx + i)},${toY(d.value)}`)
+    .join(' ');
+
+  const fillD = [
+    `M${toX(0)},${toY(data[0]!.value)}`,
+    ...data.slice(0, forecastIdx + 1).map((d, i) => `L${toX(i)},${toY(d.value)}`),
+    `L${toX(forecastIdx)},${PAD.top + cH}`,
+    `L${PAD.left},${PAD.top + cH}`,
+    'Z',
+  ].join(' ');
+
+  const gridCount = 4;
+  const gridVals = Array.from({ length: gridCount + 1 }, (_, i) =>
+    Math.round((maxV / gridCount) * i),
+  );
+
+  const labelStep = Math.max(1, Math.ceil(data.length / 7));
+  const xLabels = data
+    .map((d, i) => ({ d, i }))
+    .filter(({ i }) => i % labelStep === 0 || i === data.length - 1);
+
+  const gradId = `grad-${color.replace('#', '')}`;
 
   return (
-    <Flex vertical gap={20}>
-      {/* Шапка: переключатель продукта + кнопка добавления виджета */}
-      <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
-        <Flex align="center" gap={12}>
-          <Typography.Text type="secondary" style={{ whiteSpace: 'nowrap' }}>
-            Продукт:
-          </Typography.Text>
-          {productsLoading ? (
-            <Skeleton.Input active style={{ width: 200 }} size="small" />
-          ) : (
-            <Select
-              value={productId}
-              onChange={setProductId}
-              style={{ minWidth: 220 }}
-              options={(products ?? []).map((p) => ({
-                value: p.id,
-                label: (
-                  <Flex vertical gap={0}>
-                    <span>{p.name}</span>
-                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                      {p.team}
-                    </Typography.Text>
-                  </Flex>
-                ),
-              }))}
-            />
-          )}
-        </Flex>
-        <Button
-          icon={<PlusOutlined />}
-          style={{ color: token.colorTextSecondary }}
-        >
-          Добавить виджет
-        </Button>
-      </Flex>
+    <div
+      ref={containerRef}
+      style={{ flex: 1, width: '100%', overflow: 'hidden', position: 'relative', minHeight: 0 }}
+    >
+      {/* Y-axis label */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 4,
+          top: '50%',
+          transform: 'translateY(-50%) rotate(-90deg)',
+          fontSize: 11,
+          color: token.colorTextTertiary,
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+        }}
+      >
+        {label}
+      </div>
 
-      {/* Сетка виджетов */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} lg={12}>
-          <ConversionFunnelWidget />
-        </Col>
-        <Col xs={24} lg={12}>
-          <NpsTrendWidget />
-        </Col>
-        <Col xs={24} lg={12}>
-          <TeamVelocityWidget />
-        </Col>
-        <Col xs={24} lg={12}>
-          <IncidentsWidget />
-        </Col>
-        <Col xs={24}>
-          <RecentNotificationsWidget />
-        </Col>
-      </Row>
-    </Flex>
+      <svg width={W} height={H} style={{ display: 'block' }}>
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.18} />
+            <stop offset="100%" stopColor={color} stopOpacity={0.01} />
+          </linearGradient>
+        </defs>
+
+        {/* Grid */}
+        {gridVals.map((v, i) => (
+          <g key={i}>
+            <line
+              x1={PAD.left}
+              y1={toY(v)}
+              x2={W - PAD.right}
+              y2={toY(v)}
+              stroke={token.colorBorderSecondary}
+              strokeWidth={0.8}
+              strokeDasharray={i === 0 ? '0' : '3,4'}
+            />
+            <text
+              x={PAD.left - 8}
+              y={toY(v) + 4}
+              textAnchor="end"
+              fontSize={11}
+              fill={token.colorTextTertiary}
+              fontFamily="Inter, -apple-system, sans-serif"
+            >
+              {v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
+            </text>
+          </g>
+        ))}
+
+        {/* X labels */}
+        {xLabels.map(({ d, i }) => (
+          <text
+            key={i}
+            x={toX(i)}
+            y={H - 8}
+            textAnchor="middle"
+            fontSize={11}
+            fill={token.colorTextTertiary}
+            fontFamily="Inter, -apple-system, sans-serif"
+          >
+            {new Date(d.date).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
+          </text>
+        ))}
+
+        {/* Fill */}
+        <path d={fillD} fill={`url(#${gradId})`} />
+
+        {/* Solid line */}
+        <polyline
+          points={solidPts}
+          fill="none"
+          stroke={color}
+          strokeWidth={2}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+
+        {/* Forecast */}
+        <polyline
+          points={forecastPts}
+          fill="none"
+          stroke={color}
+          strokeWidth={2}
+          strokeDasharray="5,4"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          opacity={0.5}
+        />
+      </svg>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────────
+// KPI Tile — inside chart card, separated by vertical dividers
+// ────────────────────────────────────────────────────────────────────────────────
+
+interface KpiTileProps {
+  label: string;
+  sublabel?: string | undefined;
+  value: string | number;
+  change?: number | undefined;
+  loading?: boolean | undefined;
+  selected?: boolean | undefined;
+  onClick?: (() => void) | undefined;
+}
+
+function KpiTile({ label, sublabel, value, change, loading, selected, onClick }: KpiTileProps) {
+  const { token } = useToken();
+  const [hovered, setHovered] = useState(false);
+  const isPositive = (change ?? 0) >= 0;
+  const changeColor = isPositive ? token.colorSuccess : token.colorError;
+
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: selected
+          ? 'rgba(74,130,247,0.12)'
+          : hovered && onClick
+            ? 'rgba(255,255,255,0.03)'
+            : 'transparent',
+        border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
+        borderRadius: token.borderRadius,
+        padding: '14px 16px 12px',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'background 0.15s, border-color 0.15s',
+        minWidth: 160,
+        flexShrink: 0,
+      }}
+    >
+      {loading ? (
+        <Skeleton active title={false} paragraph={{ rows: 2, width: [100, 60] }} />
+      ) : (
+        <>
+          <div style={{ marginBottom: 6 }}>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: selected ? token.colorPrimary : token.colorText,
+              }}
+            >
+              {label}
+            </span>
+            {sublabel && (
+              <span style={{ fontSize: 11, color: token.colorTextTertiary, marginLeft: 5 }}>
+                ({sublabel})
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ fontSize: 28, fontWeight: 600, lineHeight: 1, color: token.colorText }}>
+              {value}
+            </span>
+            {change !== undefined ? (
+              <span style={{ fontSize: 12, color: changeColor, display: 'flex', alignItems: 'center', gap: 2 }}>
+                {isPositive
+                  ? <ArrowUpOutlined style={{ fontSize: 9 }} />
+                  : <ArrowDownOutlined style={{ fontSize: 9 }} />}
+                {Math.abs(change).toFixed(2)}%
+              </span>
+            ) : (
+              <span style={{ fontSize: 12, color: token.colorTextTertiary }}>—</span>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────────
+// Dashboard Page
+// ────────────────────────────────────────────────────────────────────────────────
+
+// ────────────────────────────────────────────────────────────────────────────────
+// Tiles scroll carousel with left/right nav buttons
+// ────────────────────────────────────────────────────────────────────────────────
+
+function CarouselNavBtn({ dir, bdr, onClick }: { dir: 1 | -1; bdr: string; onClick: () => void }) {
+  const { token } = useToken();
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        position: 'absolute',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        [dir === -1 ? 'left' : 'right']: 4,
+        zIndex: 2,
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        border: bdr,
+        background: token.colorBgContainer,
+        color: token.colorText,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        padding: 0,
+      }}
+    >
+      {dir === -1 ? <LeftOutlined style={{ fontSize: 11 }} /> : <RightOutlined style={{ fontSize: 11 }} />}
+    </button>
+  );
+}
+
+function TilesCarousel({
+  rows, activeId, loading, onSelect, bdr,
+}: {
+  rows: MetricDefinition[];
+  activeId: string;
+  loading: boolean;
+  onSelect: (id: string) => void;
+  bdr: string;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+
+  const syncButtons = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 1);
+    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    syncButtons();
+    const el = scrollRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(syncButtons);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [rows, syncButtons]);
+
+  const scroll = (dir: 1 | -1) => {
+    scrollRef.current?.scrollBy({ left: dir * 220, behavior: 'smooth' });
+  };
+
+  return (
+    <div style={{ position: 'relative', flexShrink: 0, padding: '12px 16px 0' }}>
+      {canLeft && <CarouselNavBtn dir={-1} bdr={bdr} onClick={() => scroll(-1)} />}
+      {canRight && <CarouselNavBtn dir={1} bdr={bdr} onClick={() => scroll(1)} />}
+      <div
+        ref={scrollRef}
+        onScroll={syncButtons}
+        style={{
+          display: 'flex',
+          gap: 8,
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+        }}
+      >
+        {loading
+          ? Array.from({ length: 5 }).map((_, i) => <KpiTile key={i} label="" value="" loading />)
+          : rows.map((m) => {
+              const raw = m.lastPeriodValue
+                ? ((m.currentValue - m.lastPeriodValue) / Math.abs(m.lastPeriodValue)) * 100
+                : 0;
+              const trend = m.lowerIsBetter ? -raw : raw;
+              return (
+                <KpiTile
+                  key={m.id}
+                  label={m.name}
+                  sublabel={m.unit || undefined}
+                  value={fmtMetric(m.currentValue, m)}
+                  change={trend}
+                  selected={activeId === m.id}
+                  onClick={() => onSelect(m.id)}
+                />
+              );
+            })
+        }
+      </div>
+    </div>
+  );
+}
+
+type BreakdownSegment = 'all' | 'site' | 'mobile';
+
+// segment multipliers for mock data (channel split)
+const SEGMENT_FACTOR: Record<BreakdownSegment, number> = { all: 1, site: 0.62, mobile: 0.38 };
+
+// days to keep based on date range selection
+const DATE_RANGE_DAYS: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90, q: 91 };
+
+function filterByDateRange(history: MetricPoint[], range: string): MetricPoint[] {
+  const days = DATE_RANGE_DAYS[range] ?? 30;
+  return history.slice(-days);
+}
+
+function aggregateByGranularity(points: MetricPoint[], granularity: string): MetricPoint[] {
+  if (granularity === 'daily' || points.length === 0) return points;
+  const bucketSize = granularity === 'weekly' ? 7 : granularity === 'monthly' ? 30 : 1;
+  const result: MetricPoint[] = [];
+  for (let i = 0; i < points.length; i += bucketSize) {
+    const slice = points.slice(i, i + bucketSize);
+    const avg = slice.reduce((s, p) => s + p.value, 0) / slice.length;
+    result.push({ date: slice[0]!.date, value: Math.round(avg * 10) / 10 });
+  }
+  return result;
+}
+
+function fmtMetric(v: number, m: MetricDefinition): string {
+  switch (m.format) {
+    case 'currency':
+      return v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)} млн ₽` : `${v.toLocaleString('ru')} ₽`;
+    case 'percent':
+    case 'rate':
+      return `${v}%`;
+    case 'duration_h':
+      return m.unit === 'мин.' ? `${v} мин.` : `${v} ч.`;
+    case 'duration_ms':
+      return `${v} мс`;
+    case 'duration_d':
+      return `${v} дн.`;
+    default:
+      return v >= 1_000 ? v.toLocaleString('ru') : String(v);
+  }
+}
+
+function calcFulfillment(m: MetricDefinition): number {
+  if (m.planValue === 0) return 100;
+  return Math.min(150, m.lowerIsBetter
+    ? (m.planValue / m.currentValue) * 100
+    : (m.currentValue / m.planValue) * 100);
+}
+
+export default function DashboardPage() {
+  const { token } = useToken();
+  const [granularity, setGranularity] = useState('daily');
+  const [dateRange, setDateRange] = useState('7d');
+  const [selectedMetricId, setSelectedMetricId] = useState<string>('');
+  const [metricGroupId, setMetricGroupId] = useState<string>('');
+  const [breakdownSegment, setBreakdownSegment] = useState<BreakdownSegment>('all');
+
+  const { data: metricGroupDefs } = useQuery({
+    queryKey: ['metric-group-defs'],
+    queryFn: getMetricGroupDefs,
+  });
+  const { data: metricDefinitions, isLoading: metricsLoading } = useQuery({
+    queryKey: ['metric-definitions'],
+    queryFn: getMetricDefinitions,
+  });
+
+  const activeGroupId = metricGroupId || (metricGroupDefs?.[0]?.id ?? '');
+  const groupColor = metricGroupDefs?.find((g) => g.id === activeGroupId)?.color ?? token.colorPrimary;
+
+  const breakdownRows: MetricDefinition[] =
+    (metricDefinitions ?? []).filter((m) => m.groupId === activeGroupId);
+
+  const activeMetric = breakdownRows.find((m) => m.id === selectedMetricId) ?? breakdownRows[0];
+
+  const rawHistory = activeMetric?.history ?? [];
+  const chartData: MetricPoint[] = aggregateByGranularity(
+    filterByDateRange(rawHistory, dateRange),
+    granularity,
+  );
+  const chartColor = groupColor;
+  const chartLoading = metricsLoading;
+  const chartLabel = activeMetric ? `${activeMetric.name} · ${activeMetric.unit || 'Значение'}` : '';
+  const yAxisLabel = activeMetric?.unit ?? '';
+
+  const segFactor = SEGMENT_FACTOR[breakdownSegment];
+
+  const BDR = `1px solid ${token.colorBorderSecondary}`;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, gap: 0 }}>
+
+      {/* ── Page header ── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, flexShrink: 0 }}>
+        <div>
+          <Typography.Title level={3} style={{ margin: 0, fontSize: 22, color: token.colorText }}>
+            Обзор продукта
+          </Typography.Title>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            Изменено сегодня · Арсен Аракелян
+          </Typography.Text>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Tooltip title="Помощь">
+            <div style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: token.colorTextTertiary }}>
+              <QuestionCircleOutlined style={{ fontSize: 16 }} />
+            </div>
+          </Tooltip>
+          <Tooltip title="Копировать ссылку">
+            <div style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: token.colorTextTertiary }}>
+              <LinkOutlined style={{ fontSize: 16 }} />
+            </div>
+          </Tooltip>
+          <button
+            style={{
+              padding: '5px 14px',
+              background: 'transparent',
+              border: BDR,
+              borderRadius: 6,
+              cursor: 'pointer',
+              color: token.colorText,
+              fontSize: 13,
+              fontFamily: 'inherit',
+            }}
+          >
+            Поделиться
+          </button>
+          <button
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '5px 14px',
+              background: token.colorPrimary,
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              color: '#fff',
+              fontSize: 13,
+              fontFamily: 'inherit',
+            }}
+          >
+            <span style={{ fontSize: 11 }}>⊞</span>
+            Настроить
+          </button>
+        </div>
+      </div>
+
+      {/* ── Filter bar ── */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0,
+          padding: '0 0',
+          background: token.colorBgContainer,
+          border: BDR,
+          borderRadius: token.borderRadius,
+          marginBottom: 12,
+          flexShrink: 0,
+          overflow: 'hidden',
+        }}
+      >
+        {/* Left controls */}
+        <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+          <div style={{ padding: '0 12px' }}>
+            <Select
+              value={activeGroupId || null}
+              onChange={(v: string) => setMetricGroupId(v)}
+              variant="borderless"
+              size="small"
+              style={{ width: 200 }}
+              placeholder="Группа метрик"
+              options={(metricGroupDefs ?? []).map((g) => ({ value: g.id, label: g.name }))}
+            />
+          </div>
+          <div style={{ width: 1, height: 24, background: token.colorBorderSecondary }} />
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '0 14px',
+              height: 36,
+              color: token.colorTextTertiary,
+              fontSize: 12,
+            }}
+          >
+            <ReloadOutlined style={{ fontSize: 12 }} />
+            Данные от 22 мин назад
+          </div>
+        </div>
+
+        <div style={{ width: 1, height: 36, background: token.colorBorderSecondary }} />
+
+        {/* Right dropdowns */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <Select
+            value={granularity}
+            onChange={setGranularity}
+            variant="borderless"
+            size="small"
+            style={{ width: 110 }}
+            options={[
+              { value: 'hourly', label: 'По часам' },
+              { value: 'daily', label: 'По дням' },
+              { value: 'weekly', label: 'По неделям' },
+              { value: 'monthly', label: 'По месяцам' },
+            ]}
+          />
+          <div style={{ width: 1, height: 24, background: token.colorBorderSecondary }} />
+          <Select
+            value={dateRange}
+            onChange={setDateRange}
+            variant="borderless"
+            size="small"
+            style={{ width: 160 }}
+            options={[
+              { value: '7d', label: 'Последние 7 дней' },
+              { value: '30d', label: 'Последние 30 дней' },
+              { value: '90d', label: 'Последние 90 дней' },
+              { value: 'q', label: 'Текущий квартал' },
+            ]}
+          />
+        </div>
+      </div>
+
+      {/* ── Main chart card (fills remaining height) ── */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          background: token.colorBgContainer,
+          border: BDR,
+          borderRadius: token.borderRadiusLG,
+          overflow: 'hidden',
+          minHeight: 0,
+        }}
+      >
+        {/* KPI tiles row — horizontal scroll carousel */}
+        <TilesCarousel
+          rows={breakdownRows}
+          activeId={activeMetric?.id ?? ''}
+          loading={metricsLoading}
+          onSelect={setSelectedMetricId}
+          bdr={BDR}
+        />
+
+        {/* Chart toolbar */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px 16px',
+            flexShrink: 0,
+          }}
+        >
+          {/* Right controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '4px 10px',
+                border: BDR,
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontSize: 12,
+                color: token.colorTextSecondary,
+              }}
+            >
+              <LineChartOutlined style={{ fontSize: 12 }} />
+              <span>Линейный</span>
+              <span style={{ fontSize: 10 }}>▾</span>
+            </div>
+            <Tooltip title="Развернуть">
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: BDR,
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  color: token.colorTextTertiary,
+                }}
+              >
+                <ExpandAltOutlined style={{ fontSize: 12 }} />
+              </div>
+            </Tooltip>
+          </div>
+        </div>
+
+        {/* Chart area — fills all remaining height */}
+        {chartLoading ? (
+          <div style={{ flex: 1, padding: '24px 24px 8px' }}>
+            <Skeleton active paragraph={{ rows: 8 }} title={false} />
+          </div>
+        ) : (
+          <LineChartSVG
+            data={chartData}
+            color={chartColor}
+            label={yAxisLabel}
+            forecastRatio={0.88}
+          />
+        )}
+
+        {/* Legend + bottom controls */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '10px 16px',
+            borderTop: BDR,
+            flexShrink: 0,
+            position: 'relative',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                display: 'inline-block',
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: chartColor,
+              }}
+            />
+            <Typography.Text style={{ fontSize: 12, color: token.colorTextSecondary }}>
+              {chartLabel}
+            </Typography.Text>
+          </div>
+
+          {/* Bottom-right: add series + settings */}
+          <div style={{ position: 'absolute', right: 16, display: 'flex', gap: 6 }}>
+            <Tooltip title="Добавить серию">
+              <div
+                style={{
+                  width: 24,
+                  height: 24,
+                  border: BDR,
+                  borderRadius: 5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: token.colorTextTertiary,
+                  fontSize: 12,
+                }}
+              >
+                <PlusOutlined />
+              </div>
+            </Tooltip>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Breakdown table (hug height) ── */}
+      <div
+        style={{
+          flexShrink: 0,
+          background: token.colorBgContainer,
+          border: BDR,
+          borderRadius: token.borderRadiusLG,
+          marginTop: 12,
+          overflow: 'hidden',
+        }}
+      >
+        {/* Tab bar */}
+        <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: BDR }}>
+          <Typography.Text strong style={{ fontSize: 13, color: token.colorTextSecondary, marginRight: 20 }}>
+            Разбивка по
+          </Typography.Text>
+          {(['all', 'site', 'mobile'] as BreakdownSegment[]).map((seg) => {
+            const labels: Record<BreakdownSegment, string> = { all: 'Все', site: 'Сайт', mobile: 'Мобильное приложение' };
+            const active = breakdownSegment === seg;
+            return (
+              <div
+                key={seg}
+                onClick={() => setBreakdownSegment(seg)}
+                style={{
+                  padding: '10px 14px',
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  color: active ? token.colorText : token.colorTextSecondary,
+                  borderBottom: active ? `2px solid ${token.colorPrimary}` : '2px solid transparent',
+                  marginBottom: -1,
+                  transition: 'color 0.15s, border-color 0.15s',
+                }}
+              >
+                {labels[seg]}
+              </div>
+            );
+          })}
+        </div>
+
+        <Table<MetricDefinition>
+          size="small"
+          pagination={false}
+          dataSource={breakdownRows}
+          rowKey="id"
+          style={{ fontSize: 12 }}
+          columns={[
+            {
+              title: 'Метрика',
+              dataIndex: 'name',
+              render: (_: string, row: MetricDefinition) => (
+                <span>
+                  {row.name}
+                  {row.unit
+                    ? <span style={{ color: token.colorTextTertiary, marginLeft: 4, fontSize: 11 }}>{row.unit}</span>
+                    : null}
+                </span>
+              ),
+            },
+            {
+              title: 'Текущий квартал',
+              dataIndex: 'currentValue',
+              align: 'right',
+              render: (_: number, row: MetricDefinition) => fmtMetric(Math.round(row.currentValue * segFactor), row),
+            },
+            {
+              title: 'План',
+              dataIndex: 'planValue',
+              align: 'right',
+              render: (_: number, row: MetricDefinition) => fmtMetric(Math.round(row.planValue * segFactor), row),
+            },
+            {
+              title: '% выполнения',
+              key: 'fulfillment',
+              align: 'right',
+              sorter: (a: MetricDefinition, b: MetricDefinition) => calcFulfillment(a) - calcFulfillment(b),
+              render: (_: unknown, row: MetricDefinition) => {
+                const pct = calcFulfillment(row);
+                return (
+                  <Typography.Text
+                    style={{
+                      color: pct >= 90 ? token.colorSuccess : pct >= 70 ? token.colorWarning : token.colorError,
+                    }}
+                  >
+                    {pct.toFixed(0)}%
+                  </Typography.Text>
+                );
+              },
+            },
+            {
+              title: 'Прошлый квартал',
+              dataIndex: 'lastPeriodValue',
+              align: 'right',
+              render: (_: number, row: MetricDefinition) => fmtMetric(Math.round(row.lastPeriodValue * segFactor), row),
+            },
+          ]}
+        />
+      </div>
+    </div>
   );
 }
