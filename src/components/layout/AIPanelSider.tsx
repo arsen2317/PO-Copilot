@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
+import { streamChat } from '../../lib/claude';
+import { TOOL_DEFINITIONS, executeTool } from '../../lib/tools';
+import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
 import {
   ApiOutlined,
   AudioOutlined,
@@ -50,7 +54,12 @@ interface LocalMessage {
   role: 'user' | 'assistant';
   content: string;
   images?: string[];
+  streaming?: boolean;
 }
+
+const SYSTEM_PROMPT = `Ты ИИ-ассистент встроенный в «Барометр» — платформу продуктовой аналитики для команды дебетовых карт. Помогаешь продуктовым менеджерам анализировать метрики, находить аномалии, приоритизировать задачи и принимать решения на основе данных.
+
+Используй инструменты для получения актуальных данных перед ответом. Отвечай кратко и по делу. Всегда отвечай на русском языке. Форматируй ответы с помощью markdown: заголовки, списки, выделение жирным.`;
 
 const SUGGESTIONS = [
   'Найти аномалии и исследовать причину',
@@ -146,6 +155,42 @@ function UserBubble({ msg }: { msg: LocalMessage }) {
   );
 }
 
+// ── Assistant message bubble ─────────────────────────────────────────────────
+function AssistantBubble({ msg }: { msg: LocalMessage }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12 }}>
+      <div style={{
+        width: 24, height: 24, borderRadius: '50%', background: ACCENT,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2,
+      }}>
+        <RobotOutlined style={{ fontSize: 12, color: '#fff' }} />
+      </div>
+      <div style={{
+        background: '#1C1D1F', border: `1px solid ${BORDER_COLOR}`,
+        borderRadius: '3px 12px 12px 12px',
+        padding: '10px 14px',
+        fontSize: 13, color: TEXT_PRIMARY, lineHeight: 1.6,
+        maxWidth: '90%', wordBreak: 'break-word',
+      }}>
+        <ReactMarkdown
+          components={{
+            p: ({ children }) => <p style={{ margin: '0 0 6px' }}>{children}</p>,
+            ul: ({ children }) => <ul style={{ margin: '4px 0', paddingLeft: 18 }}>{children}</ul>,
+            ol: ({ children }) => <ol style={{ margin: '4px 0', paddingLeft: 18 }}>{children}</ol>,
+            li: ({ children }) => <li style={{ marginBottom: 2 }}>{children}</li>,
+            strong: ({ children }) => <strong style={{ color: '#fff' }}>{children}</strong>,
+            h3: ({ children }) => <div style={{ fontWeight: 600, color: '#fff', marginBottom: 4, marginTop: 8 }}>{children}</div>,
+            h4: ({ children }) => <div style={{ fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 2, marginTop: 6 }}>{children}</div>,
+            code: ({ children }) => <code style={{ background: '#2D2E30', borderRadius: 4, padding: '1px 5px', fontSize: 12, color: '#A8C7FA' }}>{children}</code>,
+          }}
+        >
+          {msg.content || (msg.streaming ? '▍' : '')}
+        </ReactMarkdown>
+      </div>
+    </div>
+  );
+}
+
 // ── Assistant typing dots ────────────────────────────────────────────────────
 function AssistantTyping() {
   return (
@@ -190,27 +235,112 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isThinking]);
 
   // ── Send message ────────────────────────────────────────────────────────
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = inputValue.trim();
     if (!text && attachedImages.length === 0) return;
+    if (isThinking) return;
+
     const newMsg: LocalMessage = {
       id: Date.now().toString(),
       role: 'user',
       content: text,
       ...(attachedImages.length > 0 && { images: [...attachedImages] }),
     };
+
+    // Snapshot current messages before state update (closure capture)
+    const prevMessages = messages;
     setMessages((prev) => [...prev, newMsg]);
     setInputValue('');
     setAttachedImages([]);
-    // Placeholder: show thinking until AI integration
     setIsThinking(true);
-    setTimeout(() => setIsThinking(false), 1200);
+
+    const abort = new AbortController();
+    abortControllerRef.current = abort;
+
+    // Convert a local message to Anthropic API content
+    const toApiContent = (m: LocalMessage): string | object[] => {
+      if (m.role === 'user' && m.images && m.images.length > 0) {
+        const parts: object[] = m.images.flatMap((img) => {
+          const match = img.match(/^data:([^;]+);base64,(.+)$/);
+          return match
+            ? [{ type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } }]
+            : [];
+        });
+        if (m.content) parts.push({ type: 'text', text: m.content });
+        return parts;
+      }
+      return m.content;
+    };
+
+    // Build initial API messages from all local messages + the new one
+    let apiMessages: { role: 'user' | 'assistant'; content: string | object[] }[] =
+      [...prevMessages, newMsg].map((m) => ({ role: m.role, content: toApiContent(m) }));
+
+    try {
+      while (true) {
+        const assistantId = `ast-${Date.now()}-${Math.random()}`;
+
+        setMessages((prev) => [...prev, { id: assistantId, role: 'assistant', content: '', streaming: true }]);
+        setIsThinking(false);
+
+        const result = await streamChat({
+          messages: apiMessages as ChatMessage[],
+          system: SYSTEM_PROMPT,
+          tools: TOOL_DEFINITIONS as unknown as object[],
+          signal: abort.signal,
+          onTextDelta: (delta) => {
+            setMessages((prev) => prev.map((m) =>
+              m.id === assistantId ? { ...m, content: m.content + delta } : m,
+            ));
+          },
+        });
+
+        const fullText = result.blocks
+          .filter((b) => b.type === 'text')
+          .map((b) => (b as { type: 'text'; text: string }).text)
+          .join('');
+
+        setMessages((prev) => prev.map((m) =>
+          m.id === assistantId ? { ...m, content: fullText, streaming: false } : m,
+        ));
+
+        if (result.stopReason !== 'tool_use') break;
+
+        const toolUseBlocks = result.blocks.filter((b): b is ToolUseBlock => b.type === 'tool_use');
+
+        apiMessages = [...apiMessages, { role: 'assistant', content: result.blocks }];
+
+        setIsThinking(true);
+        const toolResults = await Promise.all(
+          toolUseBlocks.map(async (tb) => ({
+            type: 'tool_result' as const,
+            tool_use_id: tb.id,
+            content: JSON.stringify(await executeTool(tb.name, tb.input)),
+          })),
+        );
+
+        apiMessages = [...apiMessages, { role: 'user', content: toolResults }];
+      }
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        setMessages((prev) => prev.map((m) => m.streaming ? { ...m, streaming: false } : m));
+      } else {
+        setMessages((prev) => {
+          const without = prev.filter((m) => !m.streaming);
+          return [...without, { id: `err-${Date.now()}`, role: 'assistant', content: 'Ошибка при обращении к ИИ. Попробуйте ещё раз.' }];
+        });
+      }
+    } finally {
+      setIsThinking(false);
+      abortControllerRef.current = null;
+    }
   };
 
   // ── Image attachment ────────────────────────────────────────────────────
@@ -361,7 +491,9 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
           /* Message list */
           <div style={{ flex: 1, padding: '16px 14px 8px', overflowY: 'auto' }}>
             {messages.map((msg) =>
-              msg.role === 'user' ? <UserBubble key={msg.id} msg={msg} /> : null,
+              msg.role === 'user'
+                ? <UserBubble key={msg.id} msg={msg} />
+                : <AssistantBubble key={msg.id} msg={msg} />,
             )}
             {isThinking && <AssistantTyping />}
             <div ref={messagesEndRef} />

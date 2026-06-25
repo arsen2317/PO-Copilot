@@ -1,22 +1,8 @@
-import type Anthropic from '@anthropic-ai/sdk';
 import { getToken } from '../features/auth/auth';
 
-export type ChatMessage = Anthropic.MessageParam;
-export type Tool = Anthropic.Tool;
-export type ContentBlock = Anthropic.ContentBlock;
-
-export interface StreamEvent {
-  type: string;
-  [key: string]: unknown;
-}
-
-export interface ChatOptions {
-  messages: ChatMessage[];
-  system?: string;
-  tools?: Tool[];
-  model?: string;
-  onEvent?: (event: StreamEvent) => void;
-  signal?: AbortSignal;
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string | ContentBlock[];
 }
 
 export interface ToolUseBlock {
@@ -26,18 +12,35 @@ export interface ToolUseBlock {
   input: Record<string, unknown>;
 }
 
-export interface TextDelta {
-  type: 'text_delta';
+export interface TextBlock {
+  type: 'text';
   text: string;
 }
 
-/**
- * Stream a chat completion through our /api/chat proxy.
- * Calls onEvent for each SSE event; resolves with the full assistant content
- * after any tool-use rounds are complete.
- */
-export async function streamChat(options: ChatOptions): Promise<ContentBlock[]> {
-  const { messages, system, tools, model, onEvent, signal } = options;
+export interface ToolResultBlock {
+  type: 'tool_result';
+  tool_use_id: string;
+  content: string;
+}
+
+export type ContentBlock = TextBlock | ToolUseBlock;
+
+export interface ChatOptions {
+  messages: ChatMessage[];
+  system?: string;
+  tools?: object[];
+  model?: string;
+  onTextDelta?: (text: string) => void;
+  signal?: AbortSignal;
+}
+
+export interface ChatResult {
+  blocks: ContentBlock[];
+  stopReason: string;
+}
+
+export async function streamChat(options: ChatOptions): Promise<ChatResult> {
+  const { messages, system, tools, model, onTextDelta, signal } = options;
 
   const token = getToken();
   const response = await fetch('/api/chat', {
@@ -58,9 +61,11 @@ export async function streamChat(options: ChatOptions): Promise<ContentBlock[]> 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
-  const contentBlocks: ContentBlock[] = [];
-  let currentText = '';
-  let stopReason: string | null = null;
+
+  // Track blocks by index
+  const blocks: ContentBlock[] = [];
+  const partialJson: Record<number, string> = {};
+  let stopReason = 'end_turn';
 
   while (true) {
     const { done, value } = await reader.read();
@@ -71,50 +76,70 @@ export async function streamChat(options: ChatOptions): Promise<ContentBlock[]> 
     buffer = lines.pop() ?? '';
 
     for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const data = line.slice(6).trim();
-      if (data === '[DONE]') break;
+      if (!line.startsWith('data:')) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === '[DONE]') continue;
 
-      let event: StreamEvent;
+      let event: Record<string, unknown>;
       try {
-        event = JSON.parse(data) as StreamEvent;
+        event = JSON.parse(data) as Record<string, unknown>;
       } catch {
         continue;
       }
 
-      onEvent?.(event);
+      const type = event.type as string;
 
-      if (event.type === 'content_block_start') {
-        const block = (event as unknown as { content_block: ContentBlock }).content_block;
-        if (block.type === 'tool_use') contentBlocks.push(block);
-        if (block.type === 'text') currentText = '';
+      if (type === 'content_block_start') {
+        const idx = event.index as number;
+        const block = event.content_block as { type: string; id?: string; name?: string };
+        if (block.type === 'tool_use') {
+          blocks[idx] = { type: 'tool_use', id: block.id!, name: block.name!, input: {} };
+          partialJson[idx] = '';
+        } else if (block.type === 'text') {
+          blocks[idx] = { type: 'text', text: '' };
+        }
       }
 
-      if (event.type === 'content_block_delta') {
-        const delta = (event as unknown as { delta: TextDelta }).delta;
-        if (delta.type === 'text_delta') currentText += delta.text;
+      if (type === 'content_block_delta') {
+        const idx = event.index as number;
+        const delta = event.delta as { type: string; text?: string; partial_json?: string };
+
+        if (delta.type === 'text_delta' && delta.text) {
+          const b = blocks[idx] as TextBlock | undefined;
+          if (b?.type === 'text') {
+            b.text += delta.text;
+            onTextDelta?.(delta.text);
+          }
+        }
+
+        if (delta.type === 'input_json_delta' && delta.partial_json) {
+          partialJson[idx] = (partialJson[idx] ?? '') + delta.partial_json;
+        }
       }
 
-      if (event.type === 'content_block_stop' && currentText) {
-        contentBlocks.push({ type: 'text', text: currentText } as ContentBlock);
-        currentText = '';
+      if (type === 'content_block_stop') {
+        const idx = event.index as number;
+        const b = blocks[idx] as ToolUseBlock | undefined;
+        if (b?.type === 'tool_use' && partialJson[idx]) {
+          try {
+            b.input = JSON.parse(partialJson[idx]!) as Record<string, unknown>;
+          } catch {
+            // malformed JSON — leave input as {}
+          }
+        }
       }
 
-      if (event.type === 'message_delta') {
-        const d = event as unknown as { delta: { stop_reason?: string } };
-        stopReason = d.delta.stop_reason ?? null;
+      if (type === 'message_delta') {
+        const delta = event.delta as { stop_reason?: string };
+        if (delta.stop_reason) stopReason = delta.stop_reason;
       }
 
-      if (event.type === 'error') {
-        throw new Error((event as unknown as { error: string }).error);
+      if (type === 'error') {
+        const err = event.error as { message?: string } | string;
+        throw new Error(typeof err === 'string' ? err : (err.message ?? 'Stream error'));
       }
     }
   }
 
-  if (currentText) {
-    contentBlocks.push({ type: 'text', text: currentText } as ContentBlock);
-  }
-
-  void stopReason;
-  return contentBlocks;
+  return { blocks: blocks.filter(Boolean), stopReason };
 }

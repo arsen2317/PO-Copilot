@@ -24,7 +24,7 @@ app.use((_req, res, next) => {
   next();
 });
 
-app.options('*', (_req, res) => res.sendStatus(204));
+app.options(/.*/, (_req, res) => res.sendStatus(204));
 
 // ── Auth endpoint ────────────────────────────────────────────────────────────
 app.post('/api/auth', async (req, res) => {
