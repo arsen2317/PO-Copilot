@@ -396,7 +396,14 @@ export default function DashboardPage() {
     rawHistory.slice(Q2_START_IDX),
     granularity,
   );
-  const chartColor = groupColor;
+  const chartColor = (() => {
+    if (!activeMetric) return groupColor;
+    const pct = activeMetric.planValue === 0 ? 100
+      : activeMetric.lowerIsBetter
+        ? (activeMetric.planValue / activeMetric.currentValue) * 100
+        : (activeMetric.currentValue / activeMetric.planValue) * 100;
+    return pct >= 90 ? token.colorSuccess : pct >= 70 ? token.colorWarning : token.colorError;
+  })();
   const chartLoading = metricsLoading;
 const yAxisLabel = activeMetric?.unit ?? '';
 
