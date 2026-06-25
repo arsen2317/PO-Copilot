@@ -23,8 +23,8 @@ import {
   getNewUsersTrend,
   getNpsHistory,
 } from '../../data/api/dashboard';
-import { getMetricGroups } from '../../data/api/metrics';
-import type { MetricPoint, MetricRow } from '../../data/types';
+import { getMetricDefinitions, getMetricGroupDefs } from '../../data/api/metric-definitions';
+import type { MetricDefinition, MetricPoint } from '../../data/types';
 
 const { useToken } = theme;
 
@@ -296,6 +296,31 @@ function KpiTile({ label, sublabel, value, change, loading, selected, onClick }:
 type ChartMetric = 'active' | 'new' | 'nps';
 type BreakdownSegment = 'all' | 'site' | 'mobile';
 
+function fmtMetric(v: number, m: MetricDefinition): string {
+  switch (m.format) {
+    case 'currency':
+      return v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)} млн ₽` : `${v.toLocaleString('ru')} ₽`;
+    case 'percent':
+    case 'rate':
+      return `${v}%`;
+    case 'duration_h':
+      return m.unit === 'мин.' ? `${v} мин.` : `${v} ч.`;
+    case 'duration_ms':
+      return `${v} мс`;
+    case 'duration_d':
+      return `${v} дн.`;
+    default:
+      return v >= 1_000 ? v.toLocaleString('ru') : String(v);
+  }
+}
+
+function calcFulfillment(m: MetricDefinition): number {
+  if (m.planValue === 0) return 100;
+  return Math.min(150, m.lowerIsBetter
+    ? (m.planValue / m.currentValue) * 100
+    : (m.currentValue / m.planValue) * 100);
+}
+
 export default function DashboardPage() {
   const { token } = useToken();
   const [granularity, setGranularity] = useState('daily');
@@ -316,14 +341,19 @@ export default function DashboardPage() {
     queryKey: ['nps-history'],
     queryFn: getNpsHistory,
   });
-  const { data: metricGroups } = useQuery({
-    queryKey: ['metric-groups'],
-    queryFn: getMetricGroups,
+  const { data: metricGroupDefs } = useQuery({
+    queryKey: ['metric-group-defs'],
+    queryFn: getMetricGroupDefs,
   });
-  const activeGroupId = metricGroupId || (metricGroups?.[0]?.id ?? '');
+  const { data: metricDefinitions } = useQuery({
+    queryKey: ['metric-definitions'],
+    queryFn: getMetricDefinitions,
+  });
 
-  const currentGroup = metricGroups?.find((g) => g.id === activeGroupId);
-  const breakdownRows: MetricRow[] = currentGroup?.metrics ?? [];
+  const activeGroupId = metricGroupId || (metricGroupDefs?.[0]?.id ?? '');
+
+  const breakdownRows: MetricDefinition[] =
+    (metricDefinitions ?? []).filter((m) => m.groupId === activeGroupId);
 
   const cur = activeUsers?.at(-1)?.value ?? 0;
   const prev = activeUsers?.at(-8)?.value ?? 0;
@@ -451,7 +481,7 @@ export default function DashboardPage() {
               size="small"
               style={{ width: 200 }}
               placeholder="Группа метрик"
-              options={(metricGroups ?? []).map((g) => ({ value: g.id, label: g.name }))}
+              options={(metricGroupDefs ?? []).map((g) => ({ value: g.id, label: g.name }))}
             />
           </div>
           <div style={{ width: 1, height: 24, background: token.colorBorderSecondary }} />
@@ -723,7 +753,7 @@ export default function DashboardPage() {
           })}
         </div>
 
-        <Table<MetricRow>
+        <Table<MetricDefinition>
           size="small"
           pagination={false}
           dataSource={breakdownRows}
@@ -733,9 +763,9 @@ export default function DashboardPage() {
             {
               title: 'Метрика',
               dataIndex: 'name',
-              render: (name: string, row: MetricRow) => (
+              render: (_: string, row: MetricDefinition) => (
                 <span>
-                  {name}
+                  {row.name}
                   {row.unit
                     ? <span style={{ color: token.colorTextTertiary, marginLeft: 4, fontSize: 11 }}>{row.unit}</span>
                     : null}
@@ -743,40 +773,40 @@ export default function DashboardPage() {
               ),
             },
             {
-              title: 'Текущий квартал',
-              dataIndex: 'currentQuarter',
+              title: 'Текущий период',
+              dataIndex: 'currentValue',
               align: 'right',
-              render: (v: number, row: MetricRow) =>
-                row.unit === '₽' ? v.toLocaleString('ru') + ' ₽' : row.unit === '%' ? `${v}%` : v.toLocaleString('ru'),
+              render: (_: number, row: MetricDefinition) => fmtMetric(row.currentValue, row),
             },
             {
               title: 'План',
-              dataIndex: 'plan',
+              dataIndex: 'planValue',
               align: 'right',
-              render: (v: number, row: MetricRow) =>
-                row.unit === '₽' ? v.toLocaleString('ru') + ' ₽' : row.unit === '%' ? `${v}%` : v.toLocaleString('ru'),
+              render: (_: number, row: MetricDefinition) => fmtMetric(row.planValue, row),
             },
             {
               title: '% выполнения',
-              dataIndex: 'fulfillment',
+              key: 'fulfillment',
               align: 'right',
-              sorter: (a, b) => a.fulfillment - b.fulfillment,
-              render: (v: number) => (
-                <Typography.Text
-                  style={{
-                    color: v >= 90 ? token.colorSuccess : v >= 70 ? token.colorWarning : token.colorError,
-                  }}
-                >
-                  {v}%
-                </Typography.Text>
-              ),
+              sorter: (a: MetricDefinition, b: MetricDefinition) => calcFulfillment(a) - calcFulfillment(b),
+              render: (_: unknown, row: MetricDefinition) => {
+                const pct = calcFulfillment(row);
+                return (
+                  <Typography.Text
+                    style={{
+                      color: pct >= 90 ? token.colorSuccess : pct >= 70 ? token.colorWarning : token.colorError,
+                    }}
+                  >
+                    {pct.toFixed(0)}%
+                  </Typography.Text>
+                );
+              },
             },
             {
-              title: 'Прошлый квартал',
-              dataIndex: 'lastQuarter',
+              title: 'Прошлый период',
+              dataIndex: 'lastPeriodValue',
               align: 'right',
-              render: (v: number, row: MetricRow) =>
-                row.unit === '₽' ? v.toLocaleString('ru') + ' ₽' : row.unit === '%' ? `${v}%` : v.toLocaleString('ru'),
+              render: (_: number, row: MetricDefinition) => fmtMetric(row.lastPeriodValue, row),
             },
           ]}
         />
