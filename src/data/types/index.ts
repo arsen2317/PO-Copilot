@@ -158,3 +158,26 @@ export interface MetricGroup {
   name: string;
   metrics: MetricRow[];
 }
+
+export interface MetricGroupDef {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface MetricDefinition {
+  id: string;
+  name: string;
+  description: string;
+  groupId: string;
+  unit: string;
+  lowerIsBetter: boolean;
+  currentValue: number;
+  planValue: number;
+  lastPeriodValue: number;
+  format: 'number' | 'percent' | 'currency' | 'duration_h' | 'duration_ms' | 'duration_d' | 'per_1000' | 'rate';
+  owner: string;
+  updatedAt: string;
+  onDashboard: boolean;
+  history: MetricPoint[];
+}
