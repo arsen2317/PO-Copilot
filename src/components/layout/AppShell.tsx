@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Layout, theme } from 'antd';
 import { Outlet } from 'react-router-dom';
-import AppHeader from './AppHeader';
 import AppSidebar from './AppSidebar';
 import AIPanelSider from './AIPanelSider';
 
@@ -16,13 +15,14 @@ export default function AppShell() {
 
   return (
     <Layout style={{ minHeight: '100vh', maxHeight: '100vh', overflow: 'hidden' }}>
-      <AppHeader
+      <AppSidebar
+        collapsed={collapsed}
+        onCollapse={setCollapsed}
         unreadCount={MOCK_UNREAD_COUNT}
         aiPanelOpen={aiPanelOpen}
         onToggleAiPanel={() => setAiPanelOpen((v) => !v)}
       />
       <Layout style={{ flex: 1, overflow: 'hidden' }}>
-        <AppSidebar collapsed={collapsed} onCollapse={setCollapsed} />
         <Layout.Content
           style={{
             padding: 24,
