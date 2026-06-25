@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'motion/react';
 import { Button, Flex, Input, theme, Tooltip, Typography } from 'antd';
 import {
   AppstoreOutlined,
@@ -27,22 +28,28 @@ const SUGGESTIONS = [
   'Сравнить этот период с предыдущим',
 ];
 
-function DecorativeDots({ color }: { color: string }) {
-  const dots = [
-    { cx: 10, cy: 22, r: 3.5, op: 0.35 },
-    { cx: 22, cy: 10, r: 2.8, op: 0.55 },
-    { cx: 35, cy: 26, r: 5, op: 1 },
-    { cx: 50, cy: 12, r: 3, op: 0.5 },
-    { cx: 62, cy: 24, r: 3.2, op: 0.65 },
-    { cx: 16, cy: 36, r: 2.2, op: 0.28 },
-    { cx: 52, cy: 38, r: 2, op: 0.38 },
-  ];
+function JumpingDots({ color }: { color: string }) {
   return (
-    <svg width="72" height="48" viewBox="0 0 72 48" style={{ display: 'block' }}>
-      {dots.map((d, i) => (
-        <circle key={i} cx={d.cx} cy={d.cy} r={d.r} fill={color} opacity={d.op} />
+    <Flex align="center" gap={6} style={{ height: 32 }}>
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            background: color,
+          }}
+          animate={{ y: [0, -14, 0] }}
+          transition={{
+            duration: 0.7,
+            repeat: Infinity,
+            delay: i * 0.15,
+            ease: 'easeInOut',
+          }}
+        />
       ))}
-    </svg>
+    </Flex>
   );
 }
 
@@ -103,7 +110,7 @@ function PanelContent({
         gap={16}
         style={{ flex: 1, padding: '24px 20px', overflow: 'auto' }}
       >
-        <DecorativeDots color={token.colorPrimary} />
+        <JumpingDots color={token.colorPrimary} />
 
         <Typography.Title
           level={4}
