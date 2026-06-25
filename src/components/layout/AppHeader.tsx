@@ -2,6 +2,7 @@ import { Avatar, Badge, Button, Dropdown, Input, Layout, Space, theme, Typograph
 import {
   BellOutlined,
   LogoutOutlined,
+  RobotOutlined,
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -11,6 +12,8 @@ const { useToken } = theme;
 
 interface AppHeaderProps {
   unreadCount: number;
+  aiPanelOpen: boolean;
+  onToggleAiPanel: () => void;
 }
 
 const userMenuItems: ItemType<MenuItemType>[] = [
@@ -33,7 +36,7 @@ const userMenuItems: ItemType<MenuItemType>[] = [
   },
 ];
 
-export default function AppHeader({ unreadCount }: AppHeaderProps) {
+export default function AppHeader({ unreadCount, aiPanelOpen, onToggleAiPanel }: AppHeaderProps) {
   const { token } = useToken();
 
   return (
@@ -63,7 +66,7 @@ export default function AppHeader({ unreadCount }: AppHeaderProps) {
         variant="filled"
       />
 
-      <Space size={16} style={{ marginLeft: 'auto' }}>
+      <Space size={12} style={{ marginLeft: 'auto' }}>
         <Badge count={unreadCount} size="small">
           <Button
             type="text"
@@ -71,6 +74,16 @@ export default function AppHeader({ unreadCount }: AppHeaderProps) {
             aria-label="Уведомления"
           />
         </Badge>
+
+        <Button
+          type={aiPanelOpen ? 'primary' : 'default'}
+          icon={<RobotOutlined />}
+          onClick={onToggleAiPanel}
+          size="small"
+          style={{ fontSize: 13 }}
+        >
+          ИИ-помощник
+        </Button>
 
         <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
           <Avatar

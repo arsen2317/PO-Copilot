@@ -137,3 +137,8 @@ export interface AIService {
   hasCorpSubscription: boolean;
   url: string;
 }
+
+export interface MetricPoint {
+  date: string;
+  value: number;
+}

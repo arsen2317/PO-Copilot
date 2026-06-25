@@ -1,4 +1,4 @@
-import type { FunnelStep, Incident, NpsPoint, Product, SprintMetric } from '../types';
+import type { FunnelStep, Incident, MetricPoint, NpsPoint, Product, SprintMetric } from '../types';
 
 export const productFixtures: Product[] = [
   { id: 'p1', name: 'Мобильное приложение', team: 'Team Alpha' },
@@ -34,6 +34,22 @@ export const sprintFixture: SprintMetric = {
   daysElapsed: 10,
   forecastDate: '2026-06-24',
 };
+
+function daysAgoFrom(base: string, n: number): string {
+  const d = new Date(base);
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+export const activeUsersFixture: MetricPoint[] = Array.from({ length: 30 }, (_, i) => ({
+  date: daysAgoFrom('2026-06-25', 29 - i),
+  value: 22 + Math.round(Math.sin(i * 0.35) * 8) + Math.round(i * 0.55),
+}));
+
+export const newUsersFixture: MetricPoint[] = Array.from({ length: 30 }, (_, i) => ({
+  date: daysAgoFrom('2026-06-25', 29 - i),
+  value: 10 + Math.round(Math.sin(i * 0.4 + 1) * 4) + Math.round(i * 0.25),
+}));
 
 export const incidentFixtures: Incident[] = [
   {
