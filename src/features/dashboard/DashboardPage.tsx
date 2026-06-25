@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import {
   Select,
   Skeleton,
+  Table,
   theme,
   Tooltip,
   Typography,
@@ -362,6 +363,13 @@ function fmtMetric(v: number, m: MetricDefinition): string {
   }
 }
 
+function calcFulfillment(m: MetricDefinition): number {
+  if (m.planValue === 0) return 100;
+  return Math.min(150, m.lowerIsBetter
+    ? (m.planValue / m.currentValue) * 100
+    : (m.currentValue / m.planValue) * 100);
+}
+
 export default function DashboardPage() {
   const { token } = useToken();
   const [granularity, setGranularity] = useState('weekly');
@@ -559,6 +567,76 @@ export default function DashboardPage() {
           />
         )}
 
+      </div>
+
+      {/* ── Breakdown table ── */}
+      <div
+        style={{
+          flexShrink: 0,
+          background: token.colorBgContainer,
+          border: BDR,
+          borderRadius: token.borderRadiusLG,
+          marginTop: 12,
+          overflow: 'hidden',
+        }}
+      >
+        <Table<MetricDefinition>
+          size="small"
+          pagination={false}
+          dataSource={breakdownRows}
+          rowKey="id"
+          style={{ fontSize: 12 }}
+          columns={[
+            {
+              title: 'Метрика',
+              dataIndex: 'name',
+              render: (_: string, row: MetricDefinition) => (
+                <span>
+                  {row.name}
+                  {row.unit
+                    ? <span style={{ color: token.colorTextTertiary, marginLeft: 4, fontSize: 11 }}>{row.unit}</span>
+                    : null}
+                </span>
+              ),
+            },
+            {
+              title: 'Текущий квартал',
+              dataIndex: 'currentValue',
+              align: 'right',
+              render: (_: number, row: MetricDefinition) => fmtMetric(row.currentValue, row),
+            },
+            {
+              title: 'План',
+              dataIndex: 'planValue',
+              align: 'right',
+              render: (_: number, row: MetricDefinition) => fmtMetric(row.planValue, row),
+            },
+            {
+              title: '% выполнения',
+              key: 'fulfillment',
+              align: 'right',
+              sorter: (a: MetricDefinition, b: MetricDefinition) => calcFulfillment(a) - calcFulfillment(b),
+              render: (_: unknown, row: MetricDefinition) => {
+                const pct = calcFulfillment(row);
+                return (
+                  <Typography.Text
+                    style={{
+                      color: pct >= 90 ? token.colorSuccess : pct >= 70 ? token.colorWarning : token.colorError,
+                    }}
+                  >
+                    {pct.toFixed(0)}%
+                  </Typography.Text>
+                );
+              },
+            },
+            {
+              title: 'Прошлый квартал',
+              dataIndex: 'lastPeriodValue',
+              align: 'right',
+              render: (_: number, row: MetricDefinition) => fmtMetric(row.lastPeriodValue, row),
+            },
+          ]}
+        />
       </div>
 
     </div>
