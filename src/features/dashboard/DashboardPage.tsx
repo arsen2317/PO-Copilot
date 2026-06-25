@@ -817,7 +817,7 @@ export default function DashboardPage() {
               ),
             },
             {
-              title: 'Текущий период',
+              title: 'Текущий квартал',
               dataIndex: 'currentValue',
               align: 'right',
               render: (_: number, row: MetricDefinition) => fmtMetric(Math.round(row.currentValue * segFactor), row),
@@ -847,7 +847,7 @@ export default function DashboardPage() {
               },
             },
             {
-              title: 'Прошлый период',
+              title: 'Прошлый квартал',
               dataIndex: 'lastPeriodValue',
               align: 'right',
               render: (_: number, row: MetricDefinition) => fmtMetric(Math.round(row.lastPeriodValue * segFactor), row),
