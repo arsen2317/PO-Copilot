@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { streamChat } from '../../lib/claude';
 import { TOOL_DEFINITIONS, executeTool } from '../../lib/tools';
 import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
@@ -59,7 +60,13 @@ interface LocalMessage {
 
 const SYSTEM_PROMPT = `Ты ИИ-ассистент встроенный в «Барометр» — платформу продуктовой аналитики для команды дебетовых карт. Помогаешь продуктовым менеджерам анализировать метрики, находить аномалии, приоритизировать задачи и принимать решения на основе данных.
 
-Используй инструменты для получения актуальных данных перед ответом. Отвечай кратко и по делу. Всегда отвечай на русском языке. Форматируй ответы с помощью markdown: заголовки, списки, выделение жирным.`;
+Правила форматирования:
+- Используй инструменты для получения данных перед ответом.
+- Отвечай кратко и по делу. Всегда на русском языке.
+- Markdown: заголовки (###), жирный (**текст**), списки, таблицы для сравнений.
+- Никаких эмодзи, никаких декоративных символов (❌ ✅ 🔴 и т.д.).
+- Никаких горизонтальных разделителей (---) между абзацами без необходимости.
+- Числа и метрики — конкретно, с единицами измерения.`;
 
 const SUGGESTIONS = [
   'Найти аномалии и исследовать причину',
@@ -158,30 +165,96 @@ function UserBubble({ msg }: { msg: LocalMessage }) {
 // ── Assistant message bubble ─────────────────────────────────────────────────
 function AssistantBubble({ msg }: { msg: LocalMessage }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12 }}>
+    <div style={{ marginBottom: 16, minWidth: 0 }}>
       <div style={{
-        width: 24, height: 24, borderRadius: '50%', background: ACCENT,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2,
-      }}>
-        <RobotOutlined style={{ fontSize: 12, color: '#fff' }} />
-      </div>
-      <div style={{
-        background: '#1C1D1F', border: `1px solid ${BORDER_COLOR}`,
-        borderRadius: '3px 12px 12px 12px',
-        padding: '10px 14px',
-        fontSize: 13, color: TEXT_PRIMARY, lineHeight: 1.6,
-        maxWidth: '90%', wordBreak: 'break-word',
+        fontSize: 13, color: TEXT_PRIMARY, lineHeight: 1.65,
+        wordBreak: 'break-word', overflowWrap: 'break-word', minWidth: 0,
       }}>
         <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
           components={{
-            p: ({ children }) => <p style={{ margin: '0 0 6px' }}>{children}</p>,
-            ul: ({ children }) => <ul style={{ margin: '4px 0', paddingLeft: 18 }}>{children}</ul>,
-            ol: ({ children }) => <ol style={{ margin: '4px 0', paddingLeft: 18 }}>{children}</ol>,
-            li: ({ children }) => <li style={{ marginBottom: 2 }}>{children}</li>,
-            strong: ({ children }) => <strong style={{ color: '#fff' }}>{children}</strong>,
-            h3: ({ children }) => <div style={{ fontWeight: 600, color: '#fff', marginBottom: 4, marginTop: 8 }}>{children}</div>,
-            h4: ({ children }) => <div style={{ fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 2, marginTop: 6 }}>{children}</div>,
-            code: ({ children }) => <code style={{ background: '#2D2E30', borderRadius: 4, padding: '1px 5px', fontSize: 12, color: '#A8C7FA' }}>{children}</code>,
+            p: ({ children }) => (
+              <p style={{ margin: '0 0 8px', lineHeight: 1.65 }}>{children}</p>
+            ),
+            ul: ({ children }) => (
+              <ul style={{ margin: '4px 0 8px', paddingLeft: 20, listStyleType: 'disc' }}>{children}</ul>
+            ),
+            ol: ({ children }) => (
+              <ol style={{ margin: '4px 0 8px', paddingLeft: 20 }}>{children}</ol>
+            ),
+            li: ({ children }) => (
+              <li style={{ marginBottom: 3, color: TEXT_PRIMARY }}>{children}</li>
+            ),
+            strong: ({ children }) => (
+              <strong style={{ color: '#fff', fontWeight: 600 }}>{children}</strong>
+            ),
+            h1: ({ children }) => (
+              <div style={{ fontWeight: 700, fontSize: 15, color: '#fff', margin: '12px 0 6px' }}>{children}</div>
+            ),
+            h2: ({ children }) => (
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#fff', margin: '10px 0 5px' }}>{children}</div>
+            ),
+            h3: ({ children }) => (
+              <div style={{ fontWeight: 600, fontSize: 13, color: '#fff', margin: '8px 0 4px' }}>{children}</div>
+            ),
+            h4: ({ children }) => (
+              <div style={{ fontWeight: 600, fontSize: 13, color: TEXT_PRIMARY, margin: '6px 0 3px' }}>{children}</div>
+            ),
+            code: ({ children, className }) => {
+              const isBlock = className?.startsWith('language-');
+              return isBlock ? (
+                <pre style={{
+                  background: '#1C1D1F', border: `1px solid ${BORDER_COLOR}`,
+                  borderRadius: 6, padding: '10px 12px', overflowX: 'auto',
+                  fontSize: 12, lineHeight: 1.5, margin: '6px 0',
+                }}>
+                  <code style={{ color: '#A8C7FA', fontFamily: 'monospace' }}>{children}</code>
+                </pre>
+              ) : (
+                <code style={{
+                  background: '#2A2B2D', borderRadius: 4, padding: '1px 5px',
+                  fontSize: 12, color: '#A8C7FA', fontFamily: 'monospace',
+                }}>{children}</code>
+              );
+            },
+            pre: ({ children }) => <>{children}</>,
+            table: ({ children }) => (
+              <div style={{ overflowX: 'auto', margin: '8px 0' }}>
+                <table style={{
+                  borderCollapse: 'collapse', width: '100%',
+                  fontSize: 12, color: TEXT_PRIMARY,
+                }}>
+                  {children}
+                </table>
+              </div>
+            ),
+            thead: ({ children }) => (
+              <thead style={{ background: '#1C1D1F', borderBottom: `1px solid ${BORDER_COLOR}` }}>
+                {children}
+              </thead>
+            ),
+            tbody: ({ children }) => <tbody>{children}</tbody>,
+            tr: ({ children }) => (
+              <tr style={{ borderBottom: `1px solid #232325` }}>{children}</tr>
+            ),
+            th: ({ children }) => (
+              <th style={{
+                padding: '7px 10px', textAlign: 'left', fontWeight: 600,
+                color: TEXT_SECONDARY, whiteSpace: 'nowrap',
+              }}>{children}</th>
+            ),
+            td: ({ children }) => (
+              <td style={{ padding: '6px 10px', verticalAlign: 'top' }}>{children}</td>
+            ),
+            hr: () => (
+              <hr style={{ border: 'none', borderTop: `1px solid ${BORDER_COLOR}`, margin: '10px 0' }} />
+            ),
+            blockquote: ({ children }) => (
+              <blockquote style={{
+                borderLeft: `3px solid ${ACCENT}`, margin: '6px 0',
+                paddingLeft: 12, color: TEXT_SECONDARY,
+              }}>{children}</blockquote>
+            ),
           }}
         >
           {msg.content || (msg.streaming ? '▍' : '')}
@@ -194,28 +267,15 @@ function AssistantBubble({ msg }: { msg: LocalMessage }) {
 // ── Assistant typing dots ────────────────────────────────────────────────────
 function AssistantTyping() {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12 }}>
-      <div style={{
-        width: 24, height: 24, borderRadius: '50%', background: ACCENT,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-      }}>
-        <RobotOutlined style={{ fontSize: 12, color: '#fff' }} />
-      </div>
-      <div style={{
-        background: '#1C1D1F', border: `1px solid ${BORDER_COLOR}`,
-        borderRadius: '3px 12px 12px 12px',
-        padding: '10px 14px',
-        display: 'flex', gap: 5, alignItems: 'center',
-      }}>
-        {[0, 1, 2].map((i) => (
-          <motion.div
-            key={i}
-            style={{ width: 6, height: 6, borderRadius: '50%', background: TEXT_SECONDARY }}
-            animate={{ opacity: [0.3, 1, 0.3] }}
-            transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
-          />
-        ))}
-      </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 16, height: 20 }}>
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          style={{ width: 6, height: 6, borderRadius: '50%', background: TEXT_SECONDARY }}
+          animate={{ opacity: [0.3, 1, 0.3] }}
+          transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+        />
+      ))}
     </div>
   );
 }
@@ -489,7 +549,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
           </div>
         ) : (
           /* Message list */
-          <div style={{ flex: 1, padding: '16px 14px 8px', overflowY: 'auto' }}>
+          <div style={{ flex: 1, padding: '16px 14px 8px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
             {messages.map((msg) =>
               msg.role === 'user'
                 ? <UserBubble key={msg.id} msg={msg} />
