@@ -11,13 +11,11 @@ import {
   ArrowDownOutlined,
   ArrowUpOutlined,
   ExpandAltOutlined,
-  FilterOutlined,
   LineChartOutlined,
   LinkOutlined,
   PlusOutlined,
   QuestionCircleOutlined,
   ReloadOutlined,
-  TeamOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -445,9 +443,17 @@ export default function DashboardPage() {
       >
         {/* Left controls */}
         <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-          <FilterBarBtn icon={<FilterOutlined />} label="Добавить фильтр" />
-          <div style={{ width: 1, height: 24, background: token.colorBorderSecondary }} />
-          <FilterBarBtn icon={<TeamOutlined />} label="Добавить сегмент" />
+          <div style={{ padding: '0 12px' }}>
+            <Select
+              value={activeGroupId || null}
+              onChange={(v: string) => setMetricGroupId(v)}
+              variant="borderless"
+              size="small"
+              style={{ width: 200 }}
+              placeholder="Группа метрик"
+              options={(metricGroups ?? []).map((g) => ({ value: g.id, label: g.name }))}
+            />
+          </div>
           <div style={{ width: 1, height: 24, background: token.colorBorderSecondary }} />
           <div
             style={{
@@ -574,18 +580,8 @@ export default function DashboardPage() {
             flexShrink: 0,
           }}
         >
-          {/* Metric group selector */}
-          <Select
-            value={activeGroupId || null}
-            onChange={(v: string) => setMetricGroupId(v)}
-            size="small"
-            style={{ width: 200 }}
-            placeholder="Группа метрик"
-            options={(metricGroups ?? []).map((g) => ({ value: g.id, label: g.name }))}
-          />
-
           {/* Right controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
             <div
               style={{
                 display: 'flex',
@@ -785,34 +781,6 @@ export default function DashboardPage() {
           ]}
         />
       </div>
-    </div>
-  );
-}
-
-// ── helper ──────────────────────────────────────────────────────────────────────
-
-function FilterBarBtn({ icon, label }: { icon: React.ReactNode; label: string }) {
-  const { token } = useToken();
-  const [hovered, setHovered] = useState(false);
-  return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '0 14px',
-        height: 36,
-        cursor: 'pointer',
-        color: token.colorPrimary,
-        fontSize: 13,
-        background: hovered ? 'rgba(74,130,247,0.06)' : 'transparent',
-        transition: 'background 0.15s',
-      }}
-    >
-      {icon}
-      {label}
     </div>
   );
 }
