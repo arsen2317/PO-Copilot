@@ -2,7 +2,6 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import {
   Select,
   Skeleton,
-  Table,
   theme,
   Tooltip,
   Typography,
@@ -330,11 +329,6 @@ function TilesCarousel({
   );
 }
 
-type BreakdownSegment = 'all' | 'site' | 'mobile';
-
-// segment multipliers for mock data (channel split)
-const SEGMENT_FACTOR: Record<BreakdownSegment, number> = { all: 1, site: 0.62, mobile: 0.38 };
-
 // История всегда охватывает Jan–Jun; Q2 начинается с индекса 90 (1 апреля)
 const Q2_START_IDX = 90;
 
@@ -368,19 +362,11 @@ function fmtMetric(v: number, m: MetricDefinition): string {
   }
 }
 
-function calcFulfillment(m: MetricDefinition): number {
-  if (m.planValue === 0) return 100;
-  return Math.min(150, m.lowerIsBetter
-    ? (m.planValue / m.currentValue) * 100
-    : (m.currentValue / m.planValue) * 100);
-}
-
 export default function DashboardPage() {
   const { token } = useToken();
-  const [granularity, setGranularity] = useState('daily');
+  const [granularity, setGranularity] = useState('weekly');
   const [selectedMetricId, setSelectedMetricId] = useState<string>('');
   const [metricGroupId, setMetricGroupId] = useState<string>('');
-  const [breakdownSegment, setBreakdownSegment] = useState<BreakdownSegment>('all');
 
   const { data: metricGroupDefs } = useQuery({
     queryKey: ['metric-group-defs'],
@@ -394,7 +380,7 @@ export default function DashboardPage() {
   const activeGroupId = metricGroupId || (metricGroupDefs?.[0]?.id ?? '');
   const groupColor = metricGroupDefs?.find((g) => g.id === activeGroupId)?.color ?? token.colorPrimary;
 
-  const breakdownRows: MetricDefinition[] =
+  const breakdownRows =
     (metricDefinitions ?? []).filter((m) => m.groupId === activeGroupId);
 
   const activeMetric = breakdownRows.find((m) => m.id === selectedMetricId) ?? breakdownRows[0];
@@ -413,9 +399,7 @@ export default function DashboardPage() {
     return pct >= 90 ? token.colorSuccess : pct >= 70 ? token.colorWarning : token.colorError;
   })();
   const chartLoading = metricsLoading;
-const yAxisLabel = activeMetric?.unit ?? '';
-
-  const segFactor = SEGMENT_FACTOR[breakdownSegment];
+  const yAxisLabel = activeMetric?.unit ?? '';
 
   const BDR = `1px solid ${token.colorBorderSecondary}`;
 
@@ -577,103 +561,6 @@ const yAxisLabel = activeMetric?.unit ?? '';
 
       </div>
 
-      {/* ── Breakdown table (hug height) ── */}
-      <div
-        style={{
-          flexShrink: 0,
-          background: token.colorBgContainer,
-          border: BDR,
-          borderRadius: token.borderRadiusLG,
-          marginTop: 12,
-          overflow: 'hidden',
-        }}
-      >
-        {/* Tab bar */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: BDR }}>
-          <Typography.Text strong style={{ fontSize: 13, color: token.colorTextSecondary, marginRight: 20 }}>
-            Разбивка по
-          </Typography.Text>
-          {(['all', 'site', 'mobile'] as BreakdownSegment[]).map((seg) => {
-            const labels: Record<BreakdownSegment, string> = { all: 'Все', site: 'Сайт', mobile: 'Мобильное приложение' };
-            const active = breakdownSegment === seg;
-            return (
-              <div
-                key={seg}
-                onClick={() => setBreakdownSegment(seg)}
-                style={{
-                  padding: '10px 14px',
-                  fontSize: 13,
-                  cursor: 'pointer',
-                  color: active ? token.colorText : token.colorTextSecondary,
-                  borderBottom: active ? `2px solid ${token.colorPrimary}` : '2px solid transparent',
-                  marginBottom: -1,
-                  transition: 'color 0.15s, border-color 0.15s',
-                }}
-              >
-                {labels[seg]}
-              </div>
-            );
-          })}
-        </div>
-
-        <Table<MetricDefinition>
-          size="small"
-          pagination={false}
-          dataSource={breakdownRows}
-          rowKey="id"
-          style={{ fontSize: 12 }}
-          columns={[
-            {
-              title: 'Метрика',
-              dataIndex: 'name',
-              render: (_: string, row: MetricDefinition) => (
-                <span>
-                  {row.name}
-                  {row.unit
-                    ? <span style={{ color: token.colorTextTertiary, marginLeft: 4, fontSize: 11 }}>{row.unit}</span>
-                    : null}
-                </span>
-              ),
-            },
-            {
-              title: 'Текущий квартал',
-              dataIndex: 'currentValue',
-              align: 'right',
-              render: (_: number, row: MetricDefinition) => fmtMetric(Math.round(row.currentValue * segFactor), row),
-            },
-            {
-              title: 'План',
-              dataIndex: 'planValue',
-              align: 'right',
-              render: (_: number, row: MetricDefinition) => fmtMetric(Math.round(row.planValue * segFactor), row),
-            },
-            {
-              title: '% выполнения',
-              key: 'fulfillment',
-              align: 'right',
-              sorter: (a: MetricDefinition, b: MetricDefinition) => calcFulfillment(a) - calcFulfillment(b),
-              render: (_: unknown, row: MetricDefinition) => {
-                const pct = calcFulfillment(row);
-                return (
-                  <Typography.Text
-                    style={{
-                      color: pct >= 90 ? token.colorSuccess : pct >= 70 ? token.colorWarning : token.colorError,
-                    }}
-                  >
-                    {pct.toFixed(0)}%
-                  </Typography.Text>
-                );
-              },
-            },
-            {
-              title: 'Прошлый квартал',
-              dataIndex: 'lastPeriodValue',
-              align: 'right',
-              render: (_: number, row: MetricDefinition) => fmtMetric(Math.round(row.lastPeriodValue * segFactor), row),
-            },
-          ]}
-        />
-      </div>
     </div>
   );
 }
