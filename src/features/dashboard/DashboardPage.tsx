@@ -20,6 +20,7 @@ import { Line } from '@ant-design/plots';
 import { useQuery } from '@tanstack/react-query';
 import { getMetricDefinitions, getMetricGroupDefs } from '../../data/api/metric-definitions';
 import type { MetricDefinition, MetricPoint } from '../../data/types';
+import { useUIStore } from '../../store/uiStore';
 
 const { useToken } = theme;
 
@@ -384,6 +385,18 @@ export default function DashboardPage() {
     queryKey: ['metric-definitions'],
     queryFn: getMetricDefinitions,
   });
+
+  // Respond to metric focus from AI panel
+  const focusedMetricId = useUIStore((s) => s.focusedMetricId);
+  const clearFocusedMetric = useUIStore((s) => s.setFocusedMetric);
+  useEffect(() => {
+    if (!focusedMetricId || !metricDefinitions) return;
+    const metric = metricDefinitions.find((m) => m.id === focusedMetricId);
+    if (!metric) return;
+    setMetricGroupId(metric.groupId);
+    setSelectedMetricId(metric.id);
+    clearFocusedMetric(null);
+  }, [focusedMetricId, metricDefinitions, clearFocusedMetric]);
 
   const activeGroupId = metricGroupId || (metricGroupDefs?.[0]?.id ?? '');
   const groupColor = metricGroupDefs?.find((g) => g.id === activeGroupId)?.color ?? token.colorPrimary;

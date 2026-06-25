@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useQuery } from '@tanstack/react-query';
 import { streamChat } from '../../lib/claude';
 import { TOOL_DEFINITIONS, executeTool } from '../../lib/tools';
 import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
+import { getMetricDefinitions } from '../../data/api/metric-definitions';
+import { useUIStore } from '../../store/uiStore';
 import {
   ApiOutlined,
   AudioOutlined,
@@ -66,7 +70,13 @@ const SYSTEM_PROMPT = `Ты ИИ-ассистент встроенный в «Б
 - Markdown: заголовки (###), жирный (**текст**), списки, таблицы для сравнений.
 - Никаких эмодзи, никаких декоративных символов (❌ ✅ 🔴 и т.д.).
 - Никаких горизонтальных разделителей (---) между абзацами без необходимости.
-- Числа и метрики — конкретно, с единицами измерения.`;
+- Числа и метрики — конкретно, с единицами измерения.
+
+Интерактивные ссылки на метрики:
+Когда ссылаешься на конкретную метрику из данных, оборачивай её id в backticks.
+Например: \`active_cards\`, \`nps_general\`, \`churn_rate\`.
+Это создаёт кликабельный чип — пользователь нажимает и попадает на эту метрику в дашборде.
+Используй id именно так, как он пришёл из инструмента get_metrics (поле id).`;
 
 const SUGGESTIONS = [
   'Найти аномалии и исследовать причину',
@@ -163,7 +173,11 @@ function UserBubble({ msg }: { msg: LocalMessage }) {
 }
 
 // ── Assistant message bubble ─────────────────────────────────────────────────
-function AssistantBubble({ msg }: { msg: LocalMessage }) {
+function AssistantBubble({ msg, metricMap, onMetricClick }: {
+  msg: LocalMessage;
+  metricMap: Map<string, string>;
+  onMetricClick: (id: string) => void;
+}) {
   return (
     <div style={{ marginBottom: 16, minWidth: 0 }}>
       <div style={{
@@ -202,15 +216,52 @@ function AssistantBubble({ msg }: { msg: LocalMessage }) {
             ),
             code: ({ children, className }) => {
               const isBlock = className?.startsWith('language-');
-              return isBlock ? (
-                <pre style={{
-                  background: '#1C1D1F', border: `1px solid ${BORDER_COLOR}`,
-                  borderRadius: 6, padding: '10px 12px', overflowX: 'auto',
-                  fontSize: 12, lineHeight: 1.5, margin: '6px 0',
-                }}>
-                  <code style={{ color: '#A8C7FA', fontFamily: 'monospace' }}>{children}</code>
-                </pre>
-              ) : (
+              if (isBlock) {
+                return (
+                  <pre style={{
+                    background: '#1C1D1F', border: `1px solid ${BORDER_COLOR}`,
+                    borderRadius: 6, padding: '10px 12px', overflowX: 'auto',
+                    fontSize: 12, lineHeight: 1.5, margin: '6px 0',
+                  }}>
+                    <code style={{ color: '#A8C7FA', fontFamily: 'monospace' }}>{children}</code>
+                  </pre>
+                );
+              }
+              const id = String(children).trim();
+              const metricName = metricMap.get(id);
+              if (metricName) {
+                return (
+                  <span
+                    onClick={() => onMetricClick(id)}
+                    title="Открыть на дашборде"
+                    style={{
+                      display: 'inline-block',
+                      background: '#242526',
+                      border: `1px solid #3A3B3D`,
+                      borderRadius: 5,
+                      padding: '0px 6px',
+                      fontSize: 12,
+                      color: TEXT_PRIMARY,
+                      fontFamily: 'inherit',
+                      cursor: 'pointer',
+                      lineHeight: '20px',
+                      verticalAlign: 'middle',
+                      transition: 'background 0.15s, border-color 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLSpanElement).style.background = '#2D2E30';
+                      (e.currentTarget as HTMLSpanElement).style.borderColor = ACCENT;
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLSpanElement).style.background = '#242526';
+                      (e.currentTarget as HTMLSpanElement).style.borderColor = '#3A3B3D';
+                    }}
+                  >
+                    {metricName}
+                  </span>
+                );
+              }
+              return (
                 <code style={{
                   background: '#2A2B2D', borderRadius: 4, padding: '1px 5px',
                   fontSize: 12, color: '#A8C7FA', fontFamily: 'monospace',
@@ -286,6 +337,9 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
   mode: 'sidebar' | 'floating';
   onDragBarMouseDown?: (e: React.MouseEvent) => void;
 }) {
+  const navigate = useNavigate();
+  const setFocusedMetric = useUIStore((s) => s.setFocusedMetric);
+
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState<LocalMessage[]>([]);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
@@ -296,6 +350,19 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const { data: metricDefinitions } = useQuery({
+    queryKey: ['metric-definitions'],
+    queryFn: getMetricDefinitions,
+  });
+  const metricMap = new Map(
+    (metricDefinitions ?? []).map((m) => [m.id, m.name]),
+  );
+
+  const handleMetricClick = (id: string) => {
+    setFocusedMetric(id);
+    navigate('/');
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -553,7 +620,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
             {messages.map((msg) =>
               msg.role === 'user'
                 ? <UserBubble key={msg.id} msg={msg} />
-                : <AssistantBubble key={msg.id} msg={msg} />,
+                : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} />,
             )}
             {isThinking && <AssistantTyping />}
             <div ref={messagesEndRef} />
