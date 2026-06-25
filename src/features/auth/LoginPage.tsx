@@ -11,17 +11,16 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleFinish = ({ username, password }: { username: string; password: string }) => {
+  const handleFinish = async ({ username, password }: { username: string; password: string }) => {
     setLoading(true);
     setError(false);
-    setTimeout(() => {
-      if (login(username, password)) {
-        onSuccess();
-      } else {
-        setError(true);
-        setLoading(false);
-      }
-    }, 400);
+    const ok = await login(username, password);
+    if (ok) {
+      onSuccess();
+    } else {
+      setError(true);
+      setLoading(false);
+    }
   };
 
   return (

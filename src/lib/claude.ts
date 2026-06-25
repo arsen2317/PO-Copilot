@@ -1,4 +1,5 @@
 import type Anthropic from '@anthropic-ai/sdk';
+import { getToken } from '../features/auth/auth';
 
 export type ChatMessage = Anthropic.MessageParam;
 export type Tool = Anthropic.Tool;
@@ -38,9 +39,13 @@ export interface TextDelta {
 export async function streamChat(options: ChatOptions): Promise<ContentBlock[]> {
   const { messages, system, tools, model, onEvent, signal } = options;
 
+  const token = getToken();
   const response = await fetch('/api/chat', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
     body: JSON.stringify({ messages, system, tools, model }),
     ...(signal != null && { signal }),
   });

@@ -2,6 +2,7 @@ import express from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import fs from 'fs';
 import path from 'path';
+import { signToken, verifyToken } from '../api/_lib/token';
 
 // Load .env.local manually
 const envPath = path.resolve(process.cwd(), '.env.local');
@@ -19,13 +20,45 @@ app.use(express.json({ limit: '10mb' }));
 app.use((_req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   next();
 });
 
-app.options('/api/chat', (_req, res) => res.sendStatus(204));
+app.options('*', (_req, res) => res.sendStatus(204));
 
+// ── Auth endpoint ────────────────────────────────────────────────────────────
+app.post('/api/auth', async (req, res) => {
+  const { username, password } = req.body as { username?: string; password?: string };
+  const validLogin = process.env.APP_LOGIN;
+  const validPassword = process.env.APP_PASSWORD;
+  const secret = process.env.APP_SESSION_SECRET;
+
+  if (!validLogin || !validPassword || !secret) {
+    res.status(500).json({ error: 'Server not configured' });
+    return;
+  }
+
+  if (username !== validLogin || password !== validPassword) {
+    await new Promise((r) => setTimeout(r, 300));
+    res.status(401).json({ error: 'Invalid credentials' });
+    return;
+  }
+
+  const token = await signToken(username, secret);
+  res.json({ token });
+});
+
+// ── Chat endpoint ────────────────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
+  const secret = process.env.APP_SESSION_SECRET;
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!secret || !token || !(await verifyToken(token, secret))) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     res.status(500).json({ error: 'ANTHROPIC_API_KEY not set in .env.local' });
