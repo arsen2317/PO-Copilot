@@ -141,16 +141,17 @@ interface KpiTileProps {
   sublabel?: string | undefined;
   value: string | number;
   change?: number | undefined;
+  statusColor?: string | undefined;
   loading?: boolean | undefined;
   selected?: boolean | undefined;
   onClick?: (() => void) | undefined;
 }
 
-function KpiTile({ label, sublabel, value, change, loading, selected, onClick }: KpiTileProps) {
+function KpiTile({ label, sublabel, value, change, statusColor, loading, selected, onClick }: KpiTileProps) {
   const { token } = useToken();
   const [hovered, setHovered] = useState(false);
   const isPositive = (change ?? 0) >= 0;
-  const changeColor = isPositive ? token.colorSuccess : token.colorError;
+  const changeColor = statusColor ?? (isPositive ? token.colorSuccess : token.colorError);
 
   return (
     <div
@@ -259,6 +260,7 @@ function TilesCarousel({
   onSelect: (id: string) => void;
   bdr: string;
 }) {
+  const { token } = useToken();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
@@ -304,6 +306,11 @@ function TilesCarousel({
                 ? ((m.currentValue - m.lastPeriodValue) / Math.abs(m.lastPeriodValue)) * 100
                 : 0;
               const trend = m.lowerIsBetter ? -raw : raw;
+              const pct = m.planValue === 0 ? 100
+                : m.lowerIsBetter
+                  ? (m.planValue / m.currentValue) * 100
+                  : (m.currentValue / m.planValue) * 100;
+              const statusColor = pct >= 90 ? token.colorSuccess : pct >= 70 ? token.colorWarning : token.colorError;
               return (
                 <KpiTile
                   key={m.id}
@@ -311,6 +318,7 @@ function TilesCarousel({
                   sublabel={m.unit || undefined}
                   value={fmtMetric(m.currentValue, m)}
                   change={trend}
+                  statusColor={statusColor}
                   selected={activeId === m.id}
                   onClick={() => onSelect(m.id)}
                 />
