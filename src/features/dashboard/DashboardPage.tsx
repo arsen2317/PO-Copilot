@@ -10,11 +10,8 @@ import {
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
-  ExpandAltOutlined,
   LeftOutlined,
-  LineChartOutlined,
   LinkOutlined,
-  PlusOutlined,
   QuestionCircleOutlined,
   ReloadOutlined,
   RightOutlined,
@@ -401,8 +398,7 @@ export default function DashboardPage() {
   );
   const chartColor = groupColor;
   const chartLoading = metricsLoading;
-  const chartLabel = activeMetric ? `${activeMetric.name} · ${activeMetric.unit || 'Значение'}` : '';
-  const yAxisLabel = activeMetric?.unit ?? '';
+const yAxisLabel = activeMetric?.unit ?? '';
 
   const segFactor = SEGMENT_FACTOR[breakdownSegment];
 
@@ -417,9 +413,6 @@ export default function DashboardPage() {
           <Typography.Title level={3} style={{ margin: 0, fontSize: 22, color: token.colorText }}>
             Обзор продукта
           </Typography.Title>
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Изменено сегодня · Арсен Аракелян
-          </Typography.Text>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Tooltip title="Помощь">
@@ -553,55 +546,6 @@ export default function DashboardPage() {
           bdr={BDR}
         />
 
-        {/* Chart toolbar */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '8px 16px',
-            flexShrink: 0,
-          }}
-        >
-          {/* Right controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '4px 10px',
-                border: BDR,
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontSize: 12,
-                color: token.colorTextSecondary,
-              }}
-            >
-              <LineChartOutlined style={{ fontSize: 12 }} />
-              <span>Линейный</span>
-              <span style={{ fontSize: 10 }}>▾</span>
-            </div>
-            <Tooltip title="Развернуть">
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: BDR,
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  color: token.colorTextTertiary,
-                }}
-              >
-                <ExpandAltOutlined style={{ fontSize: 12 }} />
-              </div>
-            </Tooltip>
-          </div>
-        </div>
-
         {/* Chart area — fills all remaining height */}
         {chartLoading ? (
           <div style={{ flex: 1, padding: '24px 24px 8px' }}>
@@ -616,55 +560,6 @@ export default function DashboardPage() {
           />
         )}
 
-        {/* Legend + bottom controls */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '10px 16px',
-            borderTop: BDR,
-            flexShrink: 0,
-            position: 'relative',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span
-              style={{
-                display: 'inline-block',
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                background: chartColor,
-              }}
-            />
-            <Typography.Text style={{ fontSize: 12, color: token.colorTextSecondary }}>
-              {chartLabel}
-            </Typography.Text>
-          </div>
-
-          {/* Bottom-right: add series + settings */}
-          <div style={{ position: 'absolute', right: 16, display: 'flex', gap: 6 }}>
-            <Tooltip title="Добавить серию">
-              <div
-                style={{
-                  width: 24,
-                  height: 24,
-                  border: BDR,
-                  borderRadius: 5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: token.colorTextTertiary,
-                  fontSize: 12,
-                }}
-              >
-                <PlusOutlined />
-              </div>
-            </Tooltip>
-          </div>
-        </div>
       </div>
 
       {/* ── Breakdown table (hug height) ── */}
