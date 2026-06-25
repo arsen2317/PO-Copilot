@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Select,
   Skeleton,
@@ -40,14 +40,21 @@ interface MetricLineChartProps {
 
 function MetricLineChart({ data, color, granularity, label, forecastRatio = 0.88 }: MetricLineChartProps) {
   const { token } = useToken();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
 
-  if (!data.length) {
-    return (
-      <div style={{ flex: 1, padding: '24px 24px 8px' }}>
-        <Skeleton active paragraph={{ rows: 8 }} title={false} />
-      </div>
-    );
-  }
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) setSize({ w: Math.floor(r.width), h: Math.floor(r.height) });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const forecastIdx = Math.floor(data.length * forecastRatio);
   const solidData = data.slice(0, forecastIdx + 1);
@@ -70,14 +77,23 @@ function MetricLineChart({ data, color, granularity, label, forecastRatio = 0.88
   };
 
   return (
-    <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-      <div style={{ position: 'absolute', inset: '4px 8px 8px' }}>
+    <div ref={containerRef} style={{ flex: 1, minHeight: 0 }}>
+      {!data.length ? (
+        <div style={{ padding: '24px 24px 8px' }}>
+          <Skeleton active paragraph={{ rows: 8 }} title={false} />
+        </div>
+      ) : size ? (
         <Line
           data={solidData}
           xField="date"
           yField="value"
-          autoFit
+          width={size.w}
+          height={size.h}
           theme="classicDark"
+          paddingBottom={40}
+          paddingLeft={56}
+          paddingTop={12}
+          paddingRight={16}
           style={{ stroke: color, lineWidth: 2 }}
           point={{
             style: {
@@ -114,7 +130,7 @@ function MetricLineChart({ data, color, granularity, label, forecastRatio = 0.88
           }}
           legend={false}
         />
-      </div>
+      ) : null}
     </div>
   );
 }
