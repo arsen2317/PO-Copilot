@@ -9,6 +9,7 @@ import { TOOL_DEFINITIONS, executeTool } from '../../lib/tools';
 import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
 import { getMetricDefinitions } from '../../data/api/metric-definitions';
 import { useUIStore } from '../../store/uiStore';
+import type { ChatMessage as StoredChatMessage, ChatSession } from '../../store/uiStore';
 import {
   ApiOutlined,
   AudioOutlined,
@@ -54,13 +55,7 @@ interface AIPanelSiderProps {
   onChangeMode: (mode: AIPanelMode) => void;
 }
 
-interface LocalMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  images?: string[];
-  streaming?: boolean;
-}
+type LocalMessage = StoredChatMessage;
 
 const SYSTEM_PROMPT = `Ты ИИ-ассистент встроенный в «Барометр» — платформу продуктовой аналитики для команды дебетовых карт. Помогаешь продуктовым менеджерам анализировать метрики, находить аномалии, приоритизировать задачи и принимать решения на основе данных.
 
@@ -331,6 +326,52 @@ function AssistantTyping() {
   );
 }
 
+// ── History panel ────────────────────────────────────────────────────────────
+function HistoryPanel({ sessions, activeSessionId, onSelect }: {
+  sessions: ChatSession[];
+  activeSessionId: string;
+  onSelect: (id: string) => void;
+}) {
+  const fmt = (ts: number) =>
+    new Date(ts).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '4px 10px 8px' }}>
+      <div style={{ fontSize: 11, color: TEXT_SECONDARY, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '6px 4px 8px' }}>
+        История чатов
+      </div>
+      {sessions.map((s) => {
+        const active = s.id === activeSessionId;
+        return (
+          <div
+            key={s.id}
+            onClick={() => onSelect(s.id)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+              padding: '7px 8px', borderRadius: 7, marginBottom: 2, cursor: 'pointer',
+              background: active ? 'rgba(74,130,247,0.12)' : 'transparent',
+              border: `1px solid ${active ? 'rgba(74,130,247,0.25)' : 'transparent'}`,
+              transition: 'background 0.12s',
+            }}
+            onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
+            onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+          >
+            <span style={{
+              fontSize: 13, color: active ? TEXT_PRIMARY : TEXT_SECONDARY,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
+            }}>
+              {s.title}
+            </span>
+            <span style={{ fontSize: 11, color: TEXT_PLACEHOLDER, flexShrink: 0 }}>
+              {fmt(s.createdAt)}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Main panel content ───────────────────────────────────────────────────────
 function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
   onChangeMode: (m: AIPanelMode) => void;
@@ -339,9 +380,16 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
 }) {
   const navigate = useNavigate();
   const setFocusedMetric = useUIStore((s) => s.setFocusedMetric);
+  const sessions = useUIStore((s) => s.sessions);
+  const activeSessionId = useUIStore((s) => s.activeSessionId);
+  const createSession = useUIStore((s) => s.createSession);
+  const switchSession = useUIStore((s) => s.switchSession);
+  const setMessages = useUIStore((s) => s.setChatMessages);
+  const setSessionTitle = useUIStore((s) => s.setSessionTitle);
+  const messages = sessions.find((s) => s.id === activeSessionId)?.messages ?? [];
 
+  const [view, setView] = useState<'chat' | 'history'>('chat');
   const [inputValue, setInputValue] = useState('');
-  const [messages, setMessages] = useState<LocalMessage[]>([]);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -380,6 +428,11 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
       content: text,
       ...(attachedImages.length > 0 && { images: [...attachedImages] }),
     };
+
+    // Auto-title the session from the first user message
+    if (messages.length === 0 && text) {
+      setSessionTitle(activeSessionId, text.length > 42 ? text.slice(0, 42) + '…' : text);
+    }
 
     // Snapshot current messages before state update (closure capture)
     const prevMessages = messages;
@@ -557,9 +610,9 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
           userSelect: 'none',
         }}
       >
-        <div data-no-drag><IconBtn icon={<FormOutlined />} tooltip="Новый чат" onClick={() => { setMessages([]); setAttachedImages([]); setInputValue(''); }} /></div>
+        <div data-no-drag><IconBtn icon={<FormOutlined />} tooltip="Новый чат" onClick={() => { createSession(); setAttachedImages([]); setInputValue(''); setView('chat'); }} /></div>
         <div data-no-drag style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <IconBtn icon={<HistoryOutlined />} tooltip="История чатов" onClick={() => {}} />
+          <IconBtn icon={<HistoryOutlined />} tooltip="История чатов" active={view === 'history'} onClick={() => setView((v) => v === 'history' ? 'chat' : 'history')} />
           <IconBtn
             icon={<LayoutOutlined />}
             tooltip={mode === 'sidebar' ? 'Открыть как окно' : 'Прикрепить справа'}
@@ -569,12 +622,18 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
         </div>
       </div>
 
-      {/* ── Center: empty state or message list ── */}
+      {/* ── Center: history / empty state / message list ── */}
       <div style={{
         flex: 1, overflow: 'auto', position: 'relative',
         display: 'flex', flexDirection: 'column',
       }}>
-        {!hasMessages ? (
+        {view === 'history' ? (
+          <HistoryPanel
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            onSelect={(id) => { switchSession(id); setView('chat'); }}
+          />
+        ) : !hasMessages ? (
           /* Empty state */
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
@@ -627,6 +686,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
           </div>
         )}
       </div>
+
 
       {/* ── Bottom section ── */}
       <div style={{ padding: '0 14px 12px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
