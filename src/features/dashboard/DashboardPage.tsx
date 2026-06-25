@@ -222,10 +222,9 @@ interface KpiTileProps {
   loading?: boolean;
   selected?: boolean;
   onClick?: () => void;
-  isLast?: boolean;
 }
 
-function KpiTile({ label, sublabel, value, change, loading, selected, onClick, isLast }: KpiTileProps) {
+function KpiTile({ label, sublabel, value, change, loading, selected, onClick }: KpiTileProps) {
   const { token } = useToken();
   const [hovered, setHovered] = useState(false);
   const isPositive = (change ?? 0) >= 0;
@@ -238,15 +237,16 @@ function KpiTile({ label, sublabel, value, change, loading, selected, onClick, i
       onMouseLeave={() => setHovered(false)}
       style={{
         background: selected
-          ? 'rgba(74,130,247,0.15)'
+          ? 'rgba(74,130,247,0.12)'
           : hovered && onClick
             ? 'rgba(255,255,255,0.03)'
             : 'transparent',
-        borderRight: isLast ? 'none' : `1px solid ${token.colorBorderSecondary}`,
-        padding: '14px 20px 12px',
+        border: `1px solid ${selected ? token.colorPrimary : 'transparent'}`,
+        borderRadius: token.borderRadius,
+        padding: '14px 16px 12px',
         cursor: onClick ? 'pointer' : 'default',
-        transition: 'background 0.15s',
-        minWidth: 170,
+        transition: 'background 0.15s, border-color 0.15s',
+        minWidth: 160,
         flexShrink: 0,
       }}
     >
@@ -516,9 +516,11 @@ export default function DashboardPage() {
         <div
           style={{
             display: 'flex',
-            overflowX: 'auto',
-            borderBottom: BDR,
+            flexWrap: 'wrap',
+            gap: 8,
+            padding: '12px 16px 0',
             flexShrink: 0,
+            overflowX: 'auto',
           }}
         >
           <KpiTile
@@ -559,7 +561,6 @@ export default function DashboardPage() {
             loading={npsLoading}
             selected={selectedMetric === 'nps'}
             onClick={() => setSelectedMetric('nps')}
-            isLast
           />
         </div>
 
