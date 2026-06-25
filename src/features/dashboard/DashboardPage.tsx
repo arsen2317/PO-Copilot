@@ -19,6 +19,7 @@ import {
   ReloadOutlined,
   RightOutlined,
 } from '@ant-design/icons';
+import { Line } from '@ant-design/plots';
 import { useQuery } from '@tanstack/react-query';
 import { getMetricDefinitions, getMetricGroupDefs } from '../../data/api/metric-definitions';
 import type { MetricDefinition, MetricPoint } from '../../data/types';
@@ -26,181 +27,94 @@ import type { MetricDefinition, MetricPoint } from '../../data/types';
 const { useToken } = theme;
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Fully-responsive SVG chart (ResizeObserver on both axes)
+// Metric line chart — @ant-design/plots v2 (G2 v5)
 // ────────────────────────────────────────────────────────────────────────────────
 
-interface LineChartProps {
+interface MetricLineChartProps {
   data: MetricPoint[];
   color: string;
+  granularity: string;
   label: string;
   forecastRatio?: number;
 }
 
-function LineChartSVG({ data, color, label, forecastRatio = 0.88 }: LineChartProps) {
+function MetricLineChart({ data, color, granularity, label, forecastRatio = 0.88 }: MetricLineChartProps) {
   const { token } = useToken();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ w: 700, h: 300 });
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([entry]) => {
-      if (entry?.contentRect) {
-        setSize({ w: entry.contentRect.width, h: entry.contentRect.height });
-      }
-    });
-    ro.observe(el);
-    const r = el.getBoundingClientRect();
-    setSize({ w: r.width, h: r.height });
-    return () => ro.disconnect();
-  }, []);
 
   if (!data.length) {
     return (
-      <div ref={containerRef} style={{ flex: 1, width: '100%' }}>
-        <Skeleton active paragraph={{ rows: 6 }} />
+      <div style={{ flex: 1, padding: '24px 24px 8px' }}>
+        <Skeleton active paragraph={{ rows: 8 }} title={false} />
       </div>
     );
   }
 
-  const W = size.w;
-  const H = size.h;
-  const PAD = { top: 16, right: 24, bottom: 36, left: 52 };
-  const cW = Math.max(0, W - PAD.left - PAD.right);
-  const cH = Math.max(0, H - PAD.top - PAD.bottom);
-
-  const values = data.map((d) => d.value);
-  const maxV = Math.max(...values) * 1.15;
-  const range = maxV || 1;
-
-  const toX = (i: number) => PAD.left + (i / (data.length - 1)) * cW;
-  const toY = (v: number) => PAD.top + cH - (v / range) * cH;
-
   const forecastIdx = Math.floor(data.length * forecastRatio);
+  const solidData = data.slice(0, forecastIdx + 1);
+  const forecastData = data.slice(forecastIdx);
 
-  const solidPts = data
-    .slice(0, forecastIdx + 1)
-    .map((d, i) => `${toX(i)},${toY(d.value)}`)
-    .join(' ');
-  const forecastPts = data
-    .slice(forecastIdx)
-    .map((d, i) => `${toX(forecastIdx + i)},${toY(d.value)}`)
-    .join(' ');
+  const fmtXLabel = (val: unknown): string => {
+    const d = new Date(String(val));
+    if (granularity === 'monthly') return d.toLocaleDateString('ru', { month: 'short' });
+    if (granularity === 'weekly') {
+      const end = new Date(d);
+      end.setDate(d.getDate() + 6);
+      return `${d.toLocaleDateString('ru', { day: 'numeric', month: 'short' })}–${end.toLocaleDateString('ru', { day: 'numeric', month: 'short' })}`;
+    }
+    return d.toLocaleDateString('ru', { day: 'numeric', month: 'short' });
+  };
 
-  const fillD = [
-    `M${toX(0)},${toY(data[0]!.value)}`,
-    ...data.slice(0, forecastIdx + 1).map((d, i) => `L${toX(i)},${toY(d.value)}`),
-    `L${toX(forecastIdx)},${PAD.top + cH}`,
-    `L${PAD.left},${PAD.top + cH}`,
-    'Z',
-  ].join(' ');
-
-  const gridCount = 4;
-  const gridVals = Array.from({ length: gridCount + 1 }, (_, i) =>
-    Math.round((maxV / gridCount) * i),
-  );
-
-  const labelStep = Math.max(1, Math.ceil(data.length / 7));
-  const xLabels = data
-    .map((d, i) => ({ d, i }))
-    .filter(({ i }) => i % labelStep === 0 || i === data.length - 1);
-
-  const gradId = `grad-${color.replace('#', '')}`;
+  const fmtYLabel = (val: unknown): string => {
+    const n = Number(val);
+    return n >= 1000 ? `${(n / 1000).toFixed(0)}k` : String(val);
+  };
 
   return (
-    <div
-      ref={containerRef}
-      style={{ flex: 1, width: '100%', overflow: 'hidden', position: 'relative', minHeight: 0 }}
-    >
-      {/* Y-axis label */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 4,
-          top: '50%',
-          transform: 'translateY(-50%) rotate(-90deg)',
-          fontSize: 11,
-          color: token.colorTextTertiary,
-          whiteSpace: 'nowrap',
-          pointerEvents: 'none',
-        }}
-      >
-        {label}
+    <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+      <div style={{ position: 'absolute', inset: '4px 8px 8px' }}>
+        <Line
+          data={solidData}
+          xField="date"
+          yField="value"
+          autoFit
+          theme="classicDark"
+          style={{ stroke: color, lineWidth: 2 }}
+          point={{
+            style: {
+              fill: color,
+              r: 3,
+              stroke: token.colorBgContainer,
+              lineWidth: 1.5,
+            },
+          }}
+          area={{
+            style: {
+              fill: color,
+              fillOpacity: 0.1,
+            },
+          }}
+          axis={{
+            x: { labelFormatter: fmtXLabel },
+            y: {
+              labelFormatter: fmtYLabel,
+              title: label,
+            },
+          }}
+          annotations={[
+            {
+              type: 'line',
+              data: forecastData,
+              encode: { x: 'date', y: 'value' },
+              style: { stroke: color, lineWidth: 2, lineDash: [5, 4], opacity: 0.5 },
+            },
+          ]}
+          tooltip={{
+            title: (d: MetricPoint) => fmtXLabel(d.date),
+            items: [(d: MetricPoint) => ({ name: label, value: d.value, color })],
+          }}
+          legend={false}
+        />
       </div>
-
-      <svg width={W} height={H} style={{ display: 'block' }}>
-        <defs>
-          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity={0.18} />
-            <stop offset="100%" stopColor={color} stopOpacity={0.01} />
-          </linearGradient>
-        </defs>
-
-        {/* Grid */}
-        {gridVals.map((v, i) => (
-          <g key={i}>
-            <line
-              x1={PAD.left}
-              y1={toY(v)}
-              x2={W - PAD.right}
-              y2={toY(v)}
-              stroke={token.colorBorderSecondary}
-              strokeWidth={0.8}
-              strokeDasharray={i === 0 ? '0' : '3,4'}
-            />
-            <text
-              x={PAD.left - 8}
-              y={toY(v) + 4}
-              textAnchor="end"
-              fontSize={11}
-              fill={token.colorTextTertiary}
-              fontFamily="Inter, -apple-system, sans-serif"
-            >
-              {v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
-            </text>
-          </g>
-        ))}
-
-        {/* X labels */}
-        {xLabels.map(({ d, i }) => (
-          <text
-            key={i}
-            x={toX(i)}
-            y={H - 8}
-            textAnchor="middle"
-            fontSize={11}
-            fill={token.colorTextTertiary}
-            fontFamily="Inter, -apple-system, sans-serif"
-          >
-            {new Date(d.date).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
-          </text>
-        ))}
-
-        {/* Fill */}
-        <path d={fillD} fill={`url(#${gradId})`} />
-
-        {/* Solid line */}
-        <polyline
-          points={solidPts}
-          fill="none"
-          stroke={color}
-          strokeWidth={2}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-
-        {/* Forecast */}
-        <polyline
-          points={forecastPts}
-          fill="none"
-          stroke={color}
-          strokeWidth={2}
-          strokeDasharray="5,4"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          opacity={0.5}
-        />
-      </svg>
     </div>
   );
 }
@@ -678,11 +592,11 @@ export default function DashboardPage() {
             <Skeleton active paragraph={{ rows: 8 }} title={false} />
           </div>
         ) : (
-          <LineChartSVG
+          <MetricLineChart
             data={chartData}
             color={chartColor}
+            granularity={granularity}
             label={yAxisLabel}
-            forecastRatio={0.88}
           />
         )}
 
