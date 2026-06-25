@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import {
   AudioOutlined,
+  BarChartOutlined,
   CloseOutlined,
   FormOutlined,
   HistoryOutlined,
@@ -48,6 +49,7 @@ function JumpingDots() {
           transition={{
             duration: 0.7,
             repeat: Infinity,
+            repeatDelay: 3,
             delay: i * 0.15,
             ease: 'easeInOut',
           }}
@@ -104,7 +106,7 @@ function PanelContent({
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* ── Top bar ── */}
+      {/* ── Top bar (no bottom border) ── */}
       <div
         style={{
           display: 'flex',
@@ -112,7 +114,6 @@ function PanelContent({
           alignItems: 'center',
           padding: '10px 12px',
           flexShrink: 0,
-          borderBottom: `1px solid ${BORDER_COLOR}`,
         }}
       >
         <IconBtn icon={<FormOutlined />} tooltip="Новый чат" onClick={() => {}} />
@@ -156,7 +157,16 @@ function PanelContent({
           }}
         />
 
-        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, width: '100%' }}>
+        <div
+          style={{
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 16,
+            width: '100%',
+          }}
+        >
           <JumpingDots />
 
           <span
@@ -205,138 +215,138 @@ function PanelContent({
         </div>
       </div>
 
-      {/* ── Bottom section ── */}
+      {/* ── Bottom section (no top border) ── */}
       <div
         style={{
-          padding: '10px 14px 12px',
+          padding: '0 14px 12px',
           flexShrink: 0,
-          borderTop: `1px solid ${BORDER_COLOR}`,
           display: 'flex',
           flexDirection: 'column',
           gap: 8,
         }}
       >
-        {/* Automate row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <StarFilled style={{ color: ACCENT, fontSize: 12 }} />
-            <span style={{ fontSize: 12, color: TEXT_SECONDARY }}>
-              Автоматизировать повторяющиеся задачи
-            </span>
-          </div>
-          <span
-            style={{ fontSize: 12, color: ACCENT, cursor: 'pointer', whiteSpace: 'nowrap' }}
-          >
-            Попробовать
-          </span>
-        </div>
-
-        {/* Input card */}
+        {/* Unified input card: automate row + divider + input */}
         <div
           style={{
             background: BG,
             borderRadius: 18,
             outline: `1px solid ${BORDER_COLOR}`,
-            paddingLeft: 16,
-            paddingRight: 16,
-            paddingTop: 20,
-            paddingBottom: 20,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 0,
+            overflow: 'hidden',
           }}
         >
-          {/* Context chip */}
+          {/* Automate row */}
           <div
             style={{
-              display: 'inline-flex',
+              display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              height: 32,
-              padding: '0 8px',
-              background: '#1C1D1F',
-              borderRadius: 8,
-              marginBottom: 10,
-              alignSelf: 'flex-start',
+              justifyContent: 'space-between',
+              padding: '10px 16px',
             }}
           >
-            <div
-              style={{
-                width: 14,
-                height: 14,
-                background: ACCENT,
-                borderRadius: 3,
-                flexShrink: 0,
-              }}
-            />
-            <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, whiteSpace: 'nowrap' }}>
-              Продуктовая аналитика
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <StarFilled style={{ color: ACCENT, fontSize: 12 }} />
+              <span style={{ fontSize: 12, color: TEXT_SECONDARY }}>
+                Автоматизировать повторяющиеся задачи
+              </span>
+            </div>
+            <span style={{ fontSize: 12, color: ACCENT, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              Попробовать
             </span>
           </div>
 
-          {/* Textarea */}
-          <textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Analyze, build, or type / for commands"
-            rows={2}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                setInputValue('');
-              }
-            }}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              resize: 'none',
-              fontSize: 13,
-              color: TEXT_PRIMARY,
-              fontFamily: 'inherit',
-              lineHeight: 1.5,
-              width: '100%',
-              padding: 0,
-            }}
-          />
+          {/* Inner divider */}
+          <div style={{ height: 1, background: BORDER_COLOR }} />
 
-          {/* Input footer */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+          {/* Input area */}
+          <div style={{ padding: '14px 16px 14px' }}>
+            {/* Context chip */}
             <div
               style={{
-                width: 24,
-                height: 24,
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: TEXT_SECONDARY,
-                fontSize: 14,
+                gap: 6,
+                height: 32,
+                padding: '0 8px',
+                background: '#1C1D1F',
+                borderRadius: 8,
+                marginBottom: 10,
               }}
             >
-              <PlusOutlined />
+              <BarChartOutlined style={{ color: ACCENT, fontSize: 13 }} />
+              <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                Продуктовая аналитика
+              </span>
             </div>
+
+            {/* Textarea */}
+            <textarea
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Напишите сообщение или введите / для выбора команд"
+              rows={2}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  setInputValue('');
+                }
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                resize: 'none',
+                fontSize: 13,
+                color: TEXT_PRIMARY,
+                fontFamily: 'inherit',
+                lineHeight: 1.5,
+                width: '100%',
+                padding: 0,
+              }}
+            />
+
+            {/* Footer */}
             <div
               style={{
-                width: 24,
-                height: 24,
                 display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: TEXT_SECONDARY,
-                fontSize: 14,
+                marginTop: 8,
               }}
             >
-              <AudioOutlined />
+              <div
+                style={{
+                  width: 24,
+                  height: 24,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: TEXT_SECONDARY,
+                  fontSize: 14,
+                }}
+              >
+                <PlusOutlined />
+              </div>
+              <div
+                style={{
+                  width: 24,
+                  height: 24,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: TEXT_SECONDARY,
+                  fontSize: 14,
+                }}
+              >
+                <AudioOutlined />
+              </div>
             </div>
           </div>
         </div>
 
         {/* Disclaimer */}
-        <span
-          style={{ fontSize: 11, color: TEXT_PLACEHOLDER, textAlign: 'center' }}
-        >
+        <span style={{ fontSize: 11, color: TEXT_PLACEHOLDER, textAlign: 'center' }}>
           ИИ может ошибаться. Проверяйте важные данные.
         </span>
       </div>

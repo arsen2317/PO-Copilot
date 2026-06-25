@@ -142,3 +142,19 @@ export interface MetricPoint {
   date: string;
   value: number;
 }
+
+export interface MetricRow {
+  id: string;
+  name: string;
+  currentQuarter: number;
+  plan: number;
+  fulfillment: number;
+  lastQuarter: number;
+  unit: string;
+}
+
+export interface MetricGroup {
+  id: string;
+  name: string;
+  metrics: MetricRow[];
+}

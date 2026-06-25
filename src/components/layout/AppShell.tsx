@@ -33,12 +33,15 @@ export default function AppShell() {
             background: '#121214',
             borderRadius: 12,
             border: '1px solid #2D2E30',
-            overflow: 'auto',
-            padding: 24,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
             minWidth: 0,
           }}
         >
-          <Outlet />
+          <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column' }}>
+            <Outlet />
+          </div>
         </div>
 
         {/* AI panel — sidebar mode */}

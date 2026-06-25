@@ -4,7 +4,9 @@ import {
   BellOutlined,
   BookOutlined,
   CheckSquareOutlined,
+  CreditCardOutlined,
   DashboardOutlined,
+  LineChartOutlined,
   MessageOutlined,
   QuestionCircleOutlined,
   SearchOutlined,
@@ -23,6 +25,7 @@ const NAV_ITEMS = [
   { key: '__search__', icon: SearchOutlined, label: 'Поиск' },
   { key: '/assistant', icon: MessageOutlined, label: 'Ассистент' },
   { key: '/', icon: DashboardOutlined, label: 'Дашборд' },
+  { key: '/metrics', icon: LineChartOutlined, label: 'Метрики' },
   { key: '/services', icon: AppstoreOutlined, label: 'ИИ-сервисы' },
   { key: '/tasks', icon: CheckSquareOutlined, label: 'Задачи' },
   { key: '/rooms', icon: TeamOutlined, label: 'Комнаты' },
@@ -129,15 +132,9 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
               padding: '20px 9.57px 16px',
             }}
           >
-            <div
-              style={{
-                width: 20,
-                height: 20,
-                background: '#4A82F7',
-                borderRadius: 4,
-                flexShrink: 0,
-              }}
-            />
+            <span style={{ fontSize: 18, color: '#4A82F7', flexShrink: 0, lineHeight: 1 }}>
+              <CreditCardOutlined />
+            </span>
             <span
               style={{
                 color: '#D7D8DA',
@@ -146,7 +143,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
                 whiteSpace: 'nowrap',
               }}
             >
-              PO Copilot
+              Дебетовые карты
             </span>
           </div>
 
