@@ -400,13 +400,8 @@ type BreakdownSegment = 'all' | 'site' | 'mobile';
 // segment multipliers for mock data (channel split)
 const SEGMENT_FACTOR: Record<BreakdownSegment, number> = { all: 1, site: 0.62, mobile: 0.38 };
 
-// days to keep based on date range selection
-const DATE_RANGE_DAYS: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90, q: 91 };
-
-function filterByDateRange(history: MetricPoint[], range: string): MetricPoint[] {
-  const days = DATE_RANGE_DAYS[range] ?? 30;
-  return history.slice(-days);
-}
+// История всегда охватывает Jan–Jun; Q2 начинается с индекса 90 (1 апреля)
+const Q2_START_IDX = 90;
 
 function aggregateByGranularity(points: MetricPoint[], granularity: string): MetricPoint[] {
   if (granularity === 'daily' || points.length === 0) return points;
@@ -448,7 +443,6 @@ function calcFulfillment(m: MetricDefinition): number {
 export default function DashboardPage() {
   const { token } = useToken();
   const [granularity, setGranularity] = useState('daily');
-  const [dateRange, setDateRange] = useState('7d');
   const [selectedMetricId, setSelectedMetricId] = useState<string>('');
   const [metricGroupId, setMetricGroupId] = useState<string>('');
   const [breakdownSegment, setBreakdownSegment] = useState<BreakdownSegment>('all');
@@ -472,7 +466,7 @@ export default function DashboardPage() {
 
   const rawHistory = activeMetric?.history ?? [];
   const chartData: MetricPoint[] = aggregateByGranularity(
-    filterByDateRange(rawHistory, dateRange),
+    rawHistory.slice(Q2_START_IDX),
     granularity,
   );
   const chartColor = groupColor;
@@ -597,26 +591,11 @@ export default function DashboardPage() {
             onChange={setGranularity}
             variant="borderless"
             size="small"
-            style={{ width: 110 }}
+            style={{ width: 130 }}
             options={[
-              { value: 'hourly', label: 'По часам' },
               { value: 'daily', label: 'По дням' },
               { value: 'weekly', label: 'По неделям' },
               { value: 'monthly', label: 'По месяцам' },
-            ]}
-          />
-          <div style={{ width: 1, height: 24, background: token.colorBorderSecondary }} />
-          <Select
-            value={dateRange}
-            onChange={setDateRange}
-            variant="borderless"
-            size="small"
-            style={{ width: 160 }}
-            options={[
-              { value: '7d', label: 'Последние 7 дней' },
-              { value: '30d', label: 'Последние 30 дней' },
-              { value: '90d', label: 'Последние 90 дней' },
-              { value: 'q', label: 'Текущий квартал' },
             ]}
           />
         </div>
