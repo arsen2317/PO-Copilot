@@ -19,8 +19,6 @@ export default function AppShell() {
         collapsed={collapsed}
         onCollapse={setCollapsed}
         unreadCount={MOCK_UNREAD_COUNT}
-        aiPanelOpen={aiPanelOpen}
-        onToggleAiPanel={() => setAiPanelOpen((v) => !v)}
       />
       <Layout style={{ flex: 1, overflow: 'hidden' }}>
         <Layout.Content

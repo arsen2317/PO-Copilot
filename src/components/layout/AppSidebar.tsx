@@ -10,7 +10,6 @@ import {
   LogoutOutlined,
   MessageOutlined,
   PlusOutlined,
-  RobotOutlined,
   SearchOutlined,
   SettingOutlined,
   TeamOutlined,
@@ -26,8 +25,6 @@ interface AppSidebarProps {
   collapsed: boolean;
   onCollapse: (collapsed: boolean) => void;
   unreadCount: number;
-  aiPanelOpen: boolean;
-  onToggleAiPanel: () => void;
 }
 
 const NAV_ITEMS: ItemType<MenuItemType>[] = [
@@ -51,8 +48,6 @@ export default function AppSidebar({
   collapsed,
   onCollapse,
   unreadCount,
-  aiPanelOpen,
-  onToggleAiPanel,
 }: AppSidebarProps) {
   const { token } = useToken();
   const location = useLocation();
@@ -221,13 +216,6 @@ export default function AppSidebar({
           >
             {/* Left icons */}
             <Flex align="center" gap={0} wrap="wrap">
-              {iconBtn(
-                <RobotOutlined />,
-                'ИИ-помощник',
-                onToggleAiPanel,
-                aiPanelOpen,
-              )}
-
               <Badge count={unreadCount} size="small" offset={[-4, 4]}>
                 {iconBtn(
                   <BellOutlined />,
