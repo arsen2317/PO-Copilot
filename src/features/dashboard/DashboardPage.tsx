@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Select,
   Skeleton,
@@ -11,11 +11,13 @@ import {
   ArrowDownOutlined,
   ArrowUpOutlined,
   ExpandAltOutlined,
+  LeftOutlined,
   LineChartOutlined,
   LinkOutlined,
   PlusOutlined,
   QuestionCircleOutlined,
   ReloadOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { getMetricDefinitions, getMetricGroupDefs } from '../../data/api/metric-definitions';
@@ -288,7 +290,135 @@ function KpiTile({ label, sublabel, value, change, loading, selected, onClick }:
 // Dashboard Page
 // ────────────────────────────────────────────────────────────────────────────────
 
+// ────────────────────────────────────────────────────────────────────────────────
+// Tiles scroll carousel with left/right nav buttons
+// ────────────────────────────────────────────────────────────────────────────────
+
+function CarouselNavBtn({ dir, bdr, onClick }: { dir: 1 | -1; bdr: string; onClick: () => void }) {
+  const { token } = useToken();
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        position: 'absolute',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        [dir === -1 ? 'left' : 'right']: 4,
+        zIndex: 2,
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        border: bdr,
+        background: token.colorBgContainer,
+        color: token.colorText,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        padding: 0,
+      }}
+    >
+      {dir === -1 ? <LeftOutlined style={{ fontSize: 11 }} /> : <RightOutlined style={{ fontSize: 11 }} />}
+    </button>
+  );
+}
+
+function TilesCarousel({
+  rows, activeId, loading, onSelect, bdr,
+}: {
+  rows: MetricDefinition[];
+  activeId: string;
+  loading: boolean;
+  onSelect: (id: string) => void;
+  bdr: string;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+
+  const syncButtons = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 1);
+    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    syncButtons();
+    const el = scrollRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(syncButtons);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [rows, syncButtons]);
+
+  const scroll = (dir: 1 | -1) => {
+    scrollRef.current?.scrollBy({ left: dir * 220, behavior: 'smooth' });
+  };
+
+  return (
+    <div style={{ position: 'relative', flexShrink: 0, padding: '12px 16px 0' }}>
+      {canLeft && <CarouselNavBtn dir={-1} bdr={bdr} onClick={() => scroll(-1)} />}
+      {canRight && <CarouselNavBtn dir={1} bdr={bdr} onClick={() => scroll(1)} />}
+      <div
+        ref={scrollRef}
+        onScroll={syncButtons}
+        style={{
+          display: 'flex',
+          gap: 8,
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+        }}
+      >
+        {loading
+          ? Array.from({ length: 5 }).map((_, i) => <KpiTile key={i} label="" value="" loading />)
+          : rows.map((m) => {
+              const raw = m.lastPeriodValue
+                ? ((m.currentValue - m.lastPeriodValue) / Math.abs(m.lastPeriodValue)) * 100
+                : 0;
+              const trend = m.lowerIsBetter ? -raw : raw;
+              return (
+                <KpiTile
+                  key={m.id}
+                  label={m.name}
+                  sublabel={m.unit || undefined}
+                  value={fmtMetric(m.currentValue, m)}
+                  change={trend}
+                  selected={activeId === m.id}
+                  onClick={() => onSelect(m.id)}
+                />
+              );
+            })
+        }
+      </div>
+    </div>
+  );
+}
+
 type BreakdownSegment = 'all' | 'site' | 'mobile';
+
+// segment multipliers for mock data (channel split)
+const SEGMENT_FACTOR: Record<BreakdownSegment, number> = { all: 1, site: 0.62, mobile: 0.38 };
+
+// days to keep based on date range selection
+const DATE_RANGE_DAYS: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90, q: 91 };
+
+function filterByDateRange(history: MetricPoint[], range: string): MetricPoint[] {
+  const days = DATE_RANGE_DAYS[range] ?? 30;
+  return history.slice(-days);
+}
+
+function aggregateByGranularity(points: MetricPoint[], granularity: string): MetricPoint[] {
+  if (granularity === 'daily' || points.length === 0) return points;
+  const bucketSize = granularity === 'weekly' ? 7 : granularity === 'monthly' ? 30 : 1;
+  const result: MetricPoint[] = [];
+  for (let i = 0; i < points.length; i += bucketSize) {
+    const slice = points.slice(i, i + bucketSize);
+    const avg = slice.reduce((s, p) => s + p.value, 0) / slice.length;
+    result.push({ date: slice[0]!.date, value: Math.round(avg * 10) / 10 });
+  }
+  return result;
+}
 
 function fmtMetric(v: number, m: MetricDefinition): string {
   switch (m.format) {
@@ -340,11 +470,17 @@ export default function DashboardPage() {
 
   const activeMetric = breakdownRows.find((m) => m.id === selectedMetricId) ?? breakdownRows[0];
 
-  const chartData: MetricPoint[] = activeMetric?.history ?? [];
+  const rawHistory = activeMetric?.history ?? [];
+  const chartData: MetricPoint[] = aggregateByGranularity(
+    filterByDateRange(rawHistory, dateRange),
+    granularity,
+  );
   const chartColor = groupColor;
   const chartLoading = metricsLoading;
   const chartLabel = activeMetric ? `${activeMetric.name} · ${activeMetric.unit || 'Значение'}` : '';
   const yAxisLabel = activeMetric?.unit ?? '';
+
+  const segFactor = SEGMENT_FACTOR[breakdownSegment];
 
   const BDR = `1px solid ${token.colorBorderSecondary}`;
 
@@ -499,38 +635,14 @@ export default function DashboardPage() {
           minHeight: 0,
         }}
       >
-        {/* KPI tiles row */}
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 8,
-            padding: '12px 16px 0',
-            flexShrink: 0,
-            overflowX: 'auto',
-          }}
-        >
-          {metricsLoading
-            ? Array.from({ length: 5 }).map((_, i) => <KpiTile key={i} label="" value="" loading />)
-            : breakdownRows.map((m) => {
-                const raw = m.lastPeriodValue
-                  ? ((m.currentValue - m.lastPeriodValue) / Math.abs(m.lastPeriodValue)) * 100
-                  : 0;
-                const trend = m.lowerIsBetter ? -raw : raw;
-                return (
-                  <KpiTile
-                    key={m.id}
-                    label={m.name}
-                    sublabel={m.unit || undefined}
-                    value={fmtMetric(m.currentValue, m)}
-                    change={trend}
-                    selected={activeMetric?.id === m.id}
-                    onClick={() => setSelectedMetricId(m.id)}
-                  />
-                );
-              })
-          }
-        </div>
+        {/* KPI tiles row — horizontal scroll carousel */}
+        <TilesCarousel
+          rows={breakdownRows}
+          activeId={activeMetric?.id ?? ''}
+          loading={metricsLoading}
+          onSelect={setSelectedMetricId}
+          bdr={BDR}
+        />
 
         {/* Chart toolbar */}
         <div
@@ -708,13 +820,13 @@ export default function DashboardPage() {
               title: 'Текущий период',
               dataIndex: 'currentValue',
               align: 'right',
-              render: (_: number, row: MetricDefinition) => fmtMetric(row.currentValue, row),
+              render: (_: number, row: MetricDefinition) => fmtMetric(Math.round(row.currentValue * segFactor), row),
             },
             {
               title: 'План',
               dataIndex: 'planValue',
               align: 'right',
-              render: (_: number, row: MetricDefinition) => fmtMetric(row.planValue, row),
+              render: (_: number, row: MetricDefinition) => fmtMetric(Math.round(row.planValue * segFactor), row),
             },
             {
               title: '% выполнения',
@@ -738,7 +850,7 @@ export default function DashboardPage() {
               title: 'Прошлый период',
               dataIndex: 'lastPeriodValue',
               align: 'right',
-              render: (_: number, row: MetricDefinition) => fmtMetric(row.lastPeriodValue, row),
+              render: (_: number, row: MetricDefinition) => fmtMetric(Math.round(row.lastPeriodValue * segFactor), row),
             },
           ]}
         />
