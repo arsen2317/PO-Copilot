@@ -239,7 +239,7 @@ function KpiTile({ label, sublabel, value, change, loading, selected, onClick }:
           : hovered && onClick
             ? 'rgba(255,255,255,0.03)'
             : 'transparent',
-        border: `1px solid ${selected ? token.colorPrimary : 'transparent'}`,
+        border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
         borderRadius: token.borderRadius,
         padding: '14px 16px 12px',
         cursor: onClick ? 'pointer' : 'default',
