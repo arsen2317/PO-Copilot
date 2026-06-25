@@ -9,6 +9,7 @@ import { TOOL_DEFINITIONS, executeTool } from '../../lib/tools';
 import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
 import { getMetricDefinitions } from '../../data/api/metric-definitions';
 import { useUIStore } from '../../store/uiStore';
+import type { ChatMessage as StoredChatMessage } from '../../store/uiStore';
 import {
   ApiOutlined,
   AudioOutlined,
@@ -54,13 +55,7 @@ interface AIPanelSiderProps {
   onChangeMode: (mode: AIPanelMode) => void;
 }
 
-interface LocalMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  images?: string[];
-  streaming?: boolean;
-}
+type LocalMessage = StoredChatMessage;
 
 const SYSTEM_PROMPT = `Ты ИИ-ассистент встроенный в «Барометр» — платформу продуктовой аналитики для команды дебетовых карт. Помогаешь продуктовым менеджерам анализировать метрики, находить аномалии, приоритизировать задачи и принимать решения на основе данных.
 
@@ -339,9 +334,11 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
 }) {
   const navigate = useNavigate();
   const setFocusedMetric = useUIStore((s) => s.setFocusedMetric);
+  const messages = useUIStore((s) => s.chatMessages);
+  const setMessages = useUIStore((s) => s.setChatMessages);
+  const clearChat = useUIStore((s) => s.clearChat);
 
   const [inputValue, setInputValue] = useState('');
-  const [messages, setMessages] = useState<LocalMessage[]>([]);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
@@ -557,7 +554,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
           userSelect: 'none',
         }}
       >
-        <div data-no-drag><IconBtn icon={<FormOutlined />} tooltip="Новый чат" onClick={() => { setMessages([]); setAttachedImages([]); setInputValue(''); }} /></div>
+        <div data-no-drag><IconBtn icon={<FormOutlined />} tooltip="Новый чат" onClick={() => { clearChat(); setAttachedImages([]); setInputValue(''); }} /></div>
         <div data-no-drag style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconBtn icon={<HistoryOutlined />} tooltip="История чатов" onClick={() => {}} />
           <IconBtn
