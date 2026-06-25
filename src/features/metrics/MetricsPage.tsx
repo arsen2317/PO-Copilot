@@ -18,11 +18,6 @@ import type { MetricDefinition } from '../../data/types';
 
 const { useToken } = theme;
 
-function fmtDate(s: string): string {
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? '–' : d.toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
 function ColTitle({ children }: { children: string }) {
   const { token } = useToken();
   return (
@@ -116,28 +111,6 @@ export default function MetricsPage() {
       render: (_: unknown, m: MetricDefinition) => (
         <Typography.Text style={{ fontSize: 12, color: token.colorText }}>
           {groupNameMap[m.groupId] ?? m.groupId}
-        </Typography.Text>
-      ),
-    },
-    {
-      title: <ColTitle>СОЗДАНО</ColTitle>,
-      key: 'owner',
-      width: 130,
-      render: (_: unknown, m: MetricDefinition) => (
-        <Typography.Text style={{ fontSize: 12, color: token.colorTextSecondary }}>
-          {m.owner}
-        </Typography.Text>
-      ),
-    },
-    {
-      title: <ColTitle>ИЗМЕНЕНО</ColTitle>,
-      key: 'updatedAt',
-      width: 140,
-      sorter: (a: MetricDefinition, b: MetricDefinition) =>
-        new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
-      render: (_: unknown, m: MetricDefinition) => (
-        <Typography.Text style={{ fontSize: 12, color: token.colorTextSecondary }}>
-          {fmtDate(m.updatedAt)}
         </Typography.Text>
       ),
     },
