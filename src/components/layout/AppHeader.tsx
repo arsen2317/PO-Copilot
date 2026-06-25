@@ -1,4 +1,4 @@
-import { Avatar, Badge, Button, Dropdown, Input, Layout, Space, theme, Typography } from 'antd';
+import { Avatar, Badge, Button, Dropdown, Layout, Space, theme, Typography } from 'antd';
 import {
   BellOutlined,
   LogoutOutlined,
@@ -59,12 +59,6 @@ export default function AppHeader({ unreadCount, aiPanelOpen, onToggleAiPanel }:
       >
         ⬡ Барометр
       </Typography.Text>
-
-      <Input.Search
-        placeholder="Поиск задач, документов, метрик..."
-        style={{ flex: 1, maxWidth: 480 }}
-        variant="filled"
-      />
 
       <Space size={12} style={{ marginLeft: 'auto' }}>
         <Badge count={unreadCount} size="small">
