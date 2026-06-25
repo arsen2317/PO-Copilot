@@ -74,7 +74,7 @@ function MetricLineChart({ data, color, granularity, label, forecastRatio = 0.88
   };
 
   return (
-    <div ref={containerRef} style={{ flex: 1, minHeight: 0 }}>
+    <div ref={containerRef} style={{ flex: 1, minHeight: 240 }}>
       {!data.length ? (
         <div style={{ padding: '24px 24px 8px' }}>
           <Skeleton active paragraph={{ rows: 8 }} title={false} />
@@ -534,7 +534,7 @@ const yAxisLabel = activeMetric?.unit ?? '';
           border: BDR,
           borderRadius: token.borderRadiusLG,
           overflow: 'hidden',
-          minHeight: 0,
+          minHeight: 400,
         }}
       >
         {/* KPI tiles row — horizontal scroll carousel */}

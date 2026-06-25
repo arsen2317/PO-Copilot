@@ -198,7 +198,7 @@ export default function MetricsPage() {
       </div>
 
       {/* ── Table ── */}
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div style={{ flex: 1, overflow: 'auto', border: `1px solid ${token.colorBorderSecondary}`, borderRadius: token.borderRadiusLG }}>
         {isLoading ? (
           <Skeleton active paragraph={{ rows: 8 }} />
         ) : (

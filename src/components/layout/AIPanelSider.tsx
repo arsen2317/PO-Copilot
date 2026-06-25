@@ -176,9 +176,10 @@ function AssistantTyping() {
 }
 
 // ── Main panel content ───────────────────────────────────────────────────────
-function PanelContent({ onChangeMode, mode }: {
+function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
   onChangeMode: (m: AIPanelMode) => void;
   mode: 'sidebar' | 'floating';
+  onDragBarMouseDown?: (e: React.MouseEvent) => void;
 }) {
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState<LocalMessage[]>([]);
@@ -289,13 +290,18 @@ function PanelContent({ onChangeMode, mode }: {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-      {/* ── Top bar ── */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '10px 12px', flexShrink: 0,
-      }}>
-        <IconBtn icon={<FormOutlined />} tooltip="Новый чат" onClick={() => { setMessages([]); setAttachedImages([]); setInputValue(''); }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      {/* ── Top bar (draggable handle in floating mode) ── */}
+      <div
+        onMouseDown={onDragBarMouseDown}
+        style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '10px 12px', flexShrink: 0,
+          cursor: mode === 'floating' ? 'grab' : 'default',
+          userSelect: 'none',
+        }}
+      >
+        <div data-no-drag><IconBtn icon={<FormOutlined />} tooltip="Новый чат" onClick={() => { setMessages([]); setAttachedImages([]); setInputValue(''); }} /></div>
+        <div data-no-drag style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconBtn icon={<HistoryOutlined />} tooltip="История чатов" onClick={() => {}} />
           <IconBtn
             icon={<LayoutOutlined />}
@@ -529,19 +535,44 @@ function PanelContent({ onChangeMode, mode }: {
 
 // ── Shell wrappers (sidebar / floating) ─────────────────────────────────────
 export default function AIPanelSider({ mode, onChangeMode }: AIPanelSiderProps) {
+  const [pos, setPos] = useState(() => ({
+    x: window.innerWidth - 372,
+    y: Math.round(window.innerHeight * 0.17),
+  }));
+
   const commonStyle: React.CSSProperties = {
     background: BG, display: 'flex', flexDirection: 'column',
     overflow: 'hidden', borderRadius: 12, border: `1px solid ${BORDER_COLOR}`,
+  };
+
+  const onDragBarMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('[data-no-drag]')) return;
+    e.preventDefault();
+    const origin = { mx: e.clientX, my: e.clientY, px: pos.x, py: pos.y };
+    const onMove = (ev: MouseEvent) => {
+      setPos({ x: origin.px + ev.clientX - origin.mx, y: origin.py + ev.clientY - origin.my });
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
   };
 
   if (mode === 'floating') {
     return (
       <div style={{
         ...commonStyle,
-        position: 'fixed', top: 12, right: 12, bottom: 12, width: 360,
-        boxShadow: '0 12px 40px rgba(0,0,0,0.5)', zIndex: 1000,
+        position: 'fixed',
+        left: pos.x,
+        top: pos.y,
+        width: 360,
+        height: '66vh',
+        boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+        zIndex: 1000,
       }}>
-        <PanelContent mode={mode} onChangeMode={onChangeMode} />
+        <PanelContent mode={mode} onChangeMode={onChangeMode} onDragBarMouseDown={onDragBarMouseDown} />
       </div>
     );
   }
