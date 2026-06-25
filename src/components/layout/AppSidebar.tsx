@@ -7,6 +7,8 @@ import {
   CreditCardOutlined,
   DashboardOutlined,
   LineChartOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
   MessageOutlined,
   QuestionCircleOutlined,
   SearchOutlined,
@@ -14,6 +16,7 @@ import {
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import { Tooltip } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SearchModal from './SearchModal';
 
@@ -44,6 +47,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
 
   const selectedKey: string =
     NAV_ITEMS.find((item) => {
@@ -60,10 +64,11 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
   const navItemStyle = (key: string): React.CSSProperties => ({
     display: 'flex',
     alignItems: 'center',
-    gap: 9.57,
+    justifyContent: collapsed ? 'center' : 'flex-start',
+    gap: collapsed ? 0 : 9.57,
     height: 38,
-    paddingLeft: 9.57,
-    paddingRight: 9.57,
+    paddingLeft: collapsed ? 0 : 9.57,
+    paddingRight: collapsed ? 0 : 9.57,
     borderRadius: 9.57,
     cursor: 'pointer',
     background:
@@ -78,10 +83,11 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
   const bottomItemStyle = (key: string): React.CSSProperties => ({
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: collapsed ? 'center' : 'flex-start',
+    gap: collapsed ? 0 : 8,
     height: 36,
-    paddingLeft: 8,
-    paddingRight: 8,
+    paddingLeft: collapsed ? 0 : 8,
+    paddingRight: collapsed ? 0 : 8,
     borderRadius: 9.57,
     cursor: key === '__help__' ? 'default' : 'pointer',
     background: hoveredKey === key ? 'rgba(255,255,255,0.04)' : 'transparent',
@@ -112,112 +118,108 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
     <>
       <div
         style={{
-          width: 238,
+          width: collapsed ? 52 : 238,
           flexShrink: 0,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          paddingRight: 12,
+          paddingRight: collapsed ? 0 : 12,
           overflow: 'hidden',
+          transition: 'width 0.18s ease, padding 0.18s ease',
         }}
       >
         {/* ── Top: logo + nav ── */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {/* Logo */}
+          {/* Logo + collapse toggle */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 9.57,
-              padding: '20px 9.57px 16px',
+              justifyContent: 'space-between',
+              padding: collapsed ? '20px 0 16px' : '20px 9.57px 16px',
+              transition: 'padding 0.18s ease',
             }}
           >
-            <span style={{ fontSize: 18, color: '#4A82F7', flexShrink: 0, lineHeight: 1 }}>
-              <CreditCardOutlined />
-            </span>
-            <span
+            {!collapsed && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9.57, overflow: 'hidden' }}>
+                <span style={{ fontSize: 18, color: '#4A82F7', flexShrink: 0, lineHeight: 1 }}>
+                  <CreditCardOutlined />
+                </span>
+                <span style={{ color: '#D7D8DA', fontSize: 15.55, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  Дебетовые карты
+                </span>
+              </div>
+            )}
+            <div
+              onClick={() => setCollapsed(!collapsed)}
               style={{
-                color: '#D7D8DA',
-                fontSize: 15.55,
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 28, height: 28, borderRadius: 6, cursor: 'pointer',
+                color: '#9B9C9E', fontSize: 14, flexShrink: 0,
+                marginLeft: collapsed ? 'auto' : 0,
+                marginRight: collapsed ? 'auto' : 0,
+                transition: 'background 0.15s',
               }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
             >
-              Дебетовые карты
-            </span>
+              {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            </div>
           </div>
 
           {/* Nav items */}
           {NAV_ITEMS.map(({ key, icon: Icon, label }) => (
-            <div
-              key={key}
-              style={navItemStyle(key)}
-              onClick={() => handleNavClick(key)}
-              onMouseEnter={() => setHoveredKey(key)}
-              onMouseLeave={() => setHoveredKey(null)}
-            >
-              <span style={iconStyle}>
-                <Icon />
-              </span>
-              <span
-                style={{
-                  ...labelStyle,
-                  color: key === selectedKey ? '#D7D8DA' : '#9B9C9E',
-                }}
+            <Tooltip key={key} title={collapsed ? label : ''} placement="right">
+              <div
+                style={navItemStyle(key)}
+                onClick={() => handleNavClick(key)}
+                onMouseEnter={() => setHoveredKey(key)}
+                onMouseLeave={() => setHoveredKey(null)}
               >
-                {label}
-              </span>
-            </div>
+                <span style={iconStyle}>
+                  <Icon />
+                </span>
+                {!collapsed && (
+                  <span style={{ ...labelStyle, color: key === selectedKey ? '#D7D8DA' : '#9B9C9E' }}>
+                    {label}
+                  </span>
+                )}
+              </div>
+            </Tooltip>
           ))}
         </div>
 
         {/* ── Bottom items ── */}
         <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: 4 }}>
           {BOTTOM_ITEMS.map(({ key, icon: Icon, label }) => (
-            <div
-              key={key}
-              style={bottomItemStyle(key)}
-              onClick={() => handleNavClick(key)}
-              onMouseEnter={() => setHoveredKey(key)}
-              onMouseLeave={() => setHoveredKey(null)}
-            >
-              {key === '/profile' ? (
-                <div
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: '50%',
-                    background: '#4A82F7',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    fontSize: 12,
-                    color: '#fff',
-                  }}
-                >
-                  <UserOutlined />
-                </div>
-              ) : key === '/notifications' ? (
-                <div style={{ position: 'relative', width: 24, height: 24, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon style={{ fontSize: 15, color: '#9B9C9E' }} />
-                  {unreadCount > 0 && (
-                    <div style={{
-                      position: 'absolute',
-                      top: 0, right: 0,
-                      width: 8, height: 8,
-                      background: '#F04438',
-                      borderRadius: '50%',
-                    }} />
-                  )}
-                </div>
-              ) : (
-                <span style={iconStyle}>
-                  <Icon />
-                </span>
-              )}
-              <span style={labelStyle}>{label}</span>
-            </div>
+            <Tooltip key={key} title={collapsed ? label : ''} placement="right">
+              <div
+                style={bottomItemStyle(key)}
+                onClick={() => handleNavClick(key)}
+                onMouseEnter={() => setHoveredKey(key)}
+                onMouseLeave={() => setHoveredKey(null)}
+              >
+                {key === '/profile' ? (
+                  <div style={{
+                    width: 24, height: 24, borderRadius: '50%',
+                    background: '#4A82F7', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', flexShrink: 0, fontSize: 12, color: '#fff',
+                  }}>
+                    <UserOutlined />
+                  </div>
+                ) : key === '/notifications' ? (
+                  <div style={{ position: 'relative', width: 24, height: 24, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon style={{ fontSize: 15, color: '#9B9C9E' }} />
+                    {unreadCount > 0 && (
+                      <div style={{ position: 'absolute', top: 0, right: 0, width: 8, height: 8, background: '#F04438', borderRadius: '50%' }} />
+                    )}
+                  </div>
+                ) : (
+                  <span style={iconStyle}><Icon /></span>
+                )}
+                {!collapsed && <span style={labelStyle}>{label}</span>}
+              </div>
+            </Tooltip>
           ))}
         </div>
       </div>

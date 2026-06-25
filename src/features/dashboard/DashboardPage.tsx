@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Select,
   Skeleton,
@@ -10,197 +10,125 @@ import {
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
-  ExpandAltOutlined,
   LeftOutlined,
-  LineChartOutlined,
   LinkOutlined,
-  PlusOutlined,
   QuestionCircleOutlined,
   ReloadOutlined,
   RightOutlined,
 } from '@ant-design/icons';
+import { Line } from '@ant-design/plots';
 import { useQuery } from '@tanstack/react-query';
 import { getMetricDefinitions, getMetricGroupDefs } from '../../data/api/metric-definitions';
 import type { MetricDefinition, MetricPoint } from '../../data/types';
+import { useUIStore } from '../../store/uiStore';
 
 const { useToken } = theme;
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Fully-responsive SVG chart (ResizeObserver on both axes)
+// Metric line chart — @ant-design/plots v2 (G2 v5)
 // ────────────────────────────────────────────────────────────────────────────────
 
-interface LineChartProps {
+interface MetricLineChartProps {
   data: MetricPoint[];
   color: string;
+  granularity: string;
   label: string;
   forecastRatio?: number;
 }
 
-function LineChartSVG({ data, color, label, forecastRatio = 0.88 }: LineChartProps) {
+function MetricLineChart({ data, color, granularity, label, forecastRatio = 0.88 }: MetricLineChartProps) {
   const { token } = useToken();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ w: 700, h: 300 });
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(([entry]) => {
-      if (entry?.contentRect) {
-        setSize({ w: entry.contentRect.width, h: entry.contentRect.height });
-      }
-    });
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) setSize({ w: Math.floor(r.width), h: Math.floor(r.height) });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    const r = el.getBoundingClientRect();
-    setSize({ w: r.width, h: r.height });
     return () => ro.disconnect();
   }, []);
 
-  if (!data.length) {
-    return (
-      <div ref={containerRef} style={{ flex: 1, width: '100%' }}>
-        <Skeleton active paragraph={{ rows: 6 }} />
-      </div>
-    );
-  }
-
-  const W = size.w;
-  const H = size.h;
-  const PAD = { top: 16, right: 24, bottom: 36, left: 52 };
-  const cW = Math.max(0, W - PAD.left - PAD.right);
-  const cH = Math.max(0, H - PAD.top - PAD.bottom);
-
-  const values = data.map((d) => d.value);
-  const maxV = Math.max(...values) * 1.15;
-  const range = maxV || 1;
-
-  const toX = (i: number) => PAD.left + (i / (data.length - 1)) * cW;
-  const toY = (v: number) => PAD.top + cH - (v / range) * cH;
-
   const forecastIdx = Math.floor(data.length * forecastRatio);
+  const solidData = data.slice(0, forecastIdx + 1);
+  const forecastData = data.slice(forecastIdx);
 
-  const solidPts = data
-    .slice(0, forecastIdx + 1)
-    .map((d, i) => `${toX(i)},${toY(d.value)}`)
-    .join(' ');
-  const forecastPts = data
-    .slice(forecastIdx)
-    .map((d, i) => `${toX(forecastIdx + i)},${toY(d.value)}`)
-    .join(' ');
+  const fmtXLabel = (val: unknown): string => {
+    const d = new Date(String(val));
+    if (granularity === 'monthly') return d.toLocaleDateString('ru', { month: 'short' });
+    if (granularity === 'weekly') {
+      const end = new Date(d);
+      end.setDate(d.getDate() + 6);
+      return `${d.toLocaleDateString('ru', { day: 'numeric', month: 'short' })}–${end.toLocaleDateString('ru', { day: 'numeric', month: 'short' })}`;
+    }
+    return d.toLocaleDateString('ru', { day: 'numeric', month: 'short' });
+  };
 
-  const fillD = [
-    `M${toX(0)},${toY(data[0]!.value)}`,
-    ...data.slice(0, forecastIdx + 1).map((d, i) => `L${toX(i)},${toY(d.value)}`),
-    `L${toX(forecastIdx)},${PAD.top + cH}`,
-    `L${PAD.left},${PAD.top + cH}`,
-    'Z',
-  ].join(' ');
-
-  const gridCount = 4;
-  const gridVals = Array.from({ length: gridCount + 1 }, (_, i) =>
-    Math.round((maxV / gridCount) * i),
-  );
-
-  const labelStep = Math.max(1, Math.ceil(data.length / 7));
-  const xLabels = data
-    .map((d, i) => ({ d, i }))
-    .filter(({ i }) => i % labelStep === 0 || i === data.length - 1);
-
-  const gradId = `grad-${color.replace('#', '')}`;
+  const fmtYLabel = (val: unknown): string => {
+    const n = Number(val);
+    return n >= 1000 ? `${(n / 1000).toFixed(0)}k` : String(val);
+  };
 
   return (
-    <div
-      ref={containerRef}
-      style={{ flex: 1, width: '100%', overflow: 'hidden', position: 'relative', minHeight: 0 }}
-    >
-      {/* Y-axis label */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 4,
-          top: '50%',
-          transform: 'translateY(-50%) rotate(-90deg)',
-          fontSize: 11,
-          color: token.colorTextTertiary,
-          whiteSpace: 'nowrap',
-          pointerEvents: 'none',
-        }}
-      >
-        {label}
-      </div>
-
-      <svg width={W} height={H} style={{ display: 'block' }}>
-        <defs>
-          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity={0.18} />
-            <stop offset="100%" stopColor={color} stopOpacity={0.01} />
-          </linearGradient>
-        </defs>
-
-        {/* Grid */}
-        {gridVals.map((v, i) => (
-          <g key={i}>
-            <line
-              x1={PAD.left}
-              y1={toY(v)}
-              x2={W - PAD.right}
-              y2={toY(v)}
-              stroke={token.colorBorderSecondary}
-              strokeWidth={0.8}
-              strokeDasharray={i === 0 ? '0' : '3,4'}
-            />
-            <text
-              x={PAD.left - 8}
-              y={toY(v) + 4}
-              textAnchor="end"
-              fontSize={11}
-              fill={token.colorTextTertiary}
-              fontFamily="Inter, -apple-system, sans-serif"
-            >
-              {v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
-            </text>
-          </g>
-        ))}
-
-        {/* X labels */}
-        {xLabels.map(({ d, i }) => (
-          <text
-            key={i}
-            x={toX(i)}
-            y={H - 8}
-            textAnchor="middle"
-            fontSize={11}
-            fill={token.colorTextTertiary}
-            fontFamily="Inter, -apple-system, sans-serif"
-          >
-            {new Date(d.date).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
-          </text>
-        ))}
-
-        {/* Fill */}
-        <path d={fillD} fill={`url(#${gradId})`} />
-
-        {/* Solid line */}
-        <polyline
-          points={solidPts}
-          fill="none"
-          stroke={color}
-          strokeWidth={2}
-          strokeLinejoin="round"
-          strokeLinecap="round"
+    <div ref={containerRef} style={{ flex: 1, minHeight: 240 }}>
+      {!data.length ? (
+        <div style={{ padding: '24px 24px 8px' }}>
+          <Skeleton active paragraph={{ rows: 8 }} title={false} />
+        </div>
+      ) : size ? (
+        <Line
+          data={solidData}
+          xField="date"
+          yField="value"
+          width={size.w}
+          height={size.h}
+          theme="classicDark"
+          paddingBottom={40}
+          paddingLeft={56}
+          paddingTop={12}
+          paddingRight={16}
+          style={{ stroke: color, lineWidth: 2 }}
+          point={{
+            style: {
+              fill: color,
+              r: 3,
+              stroke: token.colorBgContainer,
+              lineWidth: 1.5,
+            },
+          }}
+          area={{
+            style: {
+              fill: color,
+              fillOpacity: 0.1,
+            },
+          }}
+          axis={{
+            x: { labelFormatter: fmtXLabel },
+            y: {
+              labelFormatter: fmtYLabel,
+              title: label,
+            },
+          }}
+          annotations={[
+            {
+              type: 'line',
+              data: forecastData,
+              encode: { x: 'date', y: 'value' },
+              style: { stroke: color, lineWidth: 2, lineDash: [5, 4], opacity: 0.5 },
+            },
+          ]}
+          tooltip={{
+            title: (d: MetricPoint) => fmtXLabel(d.date),
+            items: [(d: MetricPoint) => ({ name: label, value: d.value, color })],
+          }}
+          legend={false}
         />
-
-        {/* Forecast */}
-        <polyline
-          points={forecastPts}
-          fill="none"
-          stroke={color}
-          strokeWidth={2}
-          strokeDasharray="5,4"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          opacity={0.5}
-        />
-      </svg>
+      ) : null}
     </div>
   );
 }
@@ -214,16 +142,17 @@ interface KpiTileProps {
   sublabel?: string | undefined;
   value: string | number;
   change?: number | undefined;
+  statusColor?: string | undefined;
   loading?: boolean | undefined;
   selected?: boolean | undefined;
   onClick?: (() => void) | undefined;
 }
 
-function KpiTile({ label, sublabel, value, change, loading, selected, onClick }: KpiTileProps) {
+function KpiTile({ label, sublabel, value, change, statusColor, loading, selected, onClick }: KpiTileProps) {
   const { token } = useToken();
   const [hovered, setHovered] = useState(false);
   const isPositive = (change ?? 0) >= 0;
-  const changeColor = isPositive ? token.colorSuccess : token.colorError;
+  const changeColor = statusColor ?? (isPositive ? token.colorSuccess : token.colorError);
 
   return (
     <div
@@ -332,6 +261,7 @@ function TilesCarousel({
   onSelect: (id: string) => void;
   bdr: string;
 }) {
+  const { token } = useToken();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
@@ -377,6 +307,11 @@ function TilesCarousel({
                 ? ((m.currentValue - m.lastPeriodValue) / Math.abs(m.lastPeriodValue)) * 100
                 : 0;
               const trend = m.lowerIsBetter ? -raw : raw;
+              const pct = m.planValue === 0 ? 100
+                : m.lowerIsBetter
+                  ? (m.planValue / m.currentValue) * 100
+                  : (m.currentValue / m.planValue) * 100;
+              const statusColor = pct >= 90 ? token.colorSuccess : pct >= 70 ? token.colorWarning : token.colorError;
               return (
                 <KpiTile
                   key={m.id}
@@ -384,6 +319,7 @@ function TilesCarousel({
                   sublabel={m.unit || undefined}
                   value={fmtMetric(m.currentValue, m)}
                   change={trend}
+                  statusColor={statusColor}
                   selected={activeId === m.id}
                   onClick={() => onSelect(m.id)}
                 />
@@ -395,18 +331,8 @@ function TilesCarousel({
   );
 }
 
-type BreakdownSegment = 'all' | 'site' | 'mobile';
-
-// segment multipliers for mock data (channel split)
-const SEGMENT_FACTOR: Record<BreakdownSegment, number> = { all: 1, site: 0.62, mobile: 0.38 };
-
-// days to keep based on date range selection
-const DATE_RANGE_DAYS: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90, q: 91 };
-
-function filterByDateRange(history: MetricPoint[], range: string): MetricPoint[] {
-  const days = DATE_RANGE_DAYS[range] ?? 30;
-  return history.slice(-days);
-}
+// История всегда охватывает Jan–Jun; Q2 начинается с индекса 90 (1 апреля)
+const Q2_START_IDX = 90;
 
 function aggregateByGranularity(points: MetricPoint[], granularity: string): MetricPoint[] {
   if (granularity === 'daily' || points.length === 0) return points;
@@ -447,11 +373,9 @@ function calcFulfillment(m: MetricDefinition): number {
 
 export default function DashboardPage() {
   const { token } = useToken();
-  const [granularity, setGranularity] = useState('daily');
-  const [dateRange, setDateRange] = useState('7d');
+  const [granularity, setGranularity] = useState('weekly');
   const [selectedMetricId, setSelectedMetricId] = useState<string>('');
   const [metricGroupId, setMetricGroupId] = useState<string>('');
-  const [breakdownSegment, setBreakdownSegment] = useState<BreakdownSegment>('all');
 
   const { data: metricGroupDefs } = useQuery({
     queryKey: ['metric-group-defs'],
@@ -462,25 +386,41 @@ export default function DashboardPage() {
     queryFn: getMetricDefinitions,
   });
 
+  // Respond to metric focus from AI panel
+  const focusedMetricId = useUIStore((s) => s.focusedMetricId);
+  const clearFocusedMetric = useUIStore((s) => s.setFocusedMetric);
+  useEffect(() => {
+    if (!focusedMetricId || !metricDefinitions) return;
+    const metric = metricDefinitions.find((m) => m.id === focusedMetricId);
+    if (!metric) return;
+    setMetricGroupId(metric.groupId);
+    setSelectedMetricId(metric.id);
+    clearFocusedMetric(null);
+  }, [focusedMetricId, metricDefinitions, clearFocusedMetric]);
+
   const activeGroupId = metricGroupId || (metricGroupDefs?.[0]?.id ?? '');
   const groupColor = metricGroupDefs?.find((g) => g.id === activeGroupId)?.color ?? token.colorPrimary;
 
-  const breakdownRows: MetricDefinition[] =
+  const breakdownRows =
     (metricDefinitions ?? []).filter((m) => m.groupId === activeGroupId);
 
   const activeMetric = breakdownRows.find((m) => m.id === selectedMetricId) ?? breakdownRows[0];
 
   const rawHistory = activeMetric?.history ?? [];
   const chartData: MetricPoint[] = aggregateByGranularity(
-    filterByDateRange(rawHistory, dateRange),
+    rawHistory.slice(Q2_START_IDX),
     granularity,
   );
-  const chartColor = groupColor;
+  const chartColor = (() => {
+    if (!activeMetric) return groupColor;
+    const pct = activeMetric.planValue === 0 ? 100
+      : activeMetric.lowerIsBetter
+        ? (activeMetric.planValue / activeMetric.currentValue) * 100
+        : (activeMetric.currentValue / activeMetric.planValue) * 100;
+    return pct >= 90 ? token.colorSuccess : pct >= 70 ? token.colorWarning : token.colorError;
+  })();
   const chartLoading = metricsLoading;
-  const chartLabel = activeMetric ? `${activeMetric.name} · ${activeMetric.unit || 'Значение'}` : '';
   const yAxisLabel = activeMetric?.unit ?? '';
-
-  const segFactor = SEGMENT_FACTOR[breakdownSegment];
 
   const BDR = `1px solid ${token.colorBorderSecondary}`;
 
@@ -493,9 +433,6 @@ export default function DashboardPage() {
           <Typography.Title level={3} style={{ margin: 0, fontSize: 22, color: token.colorText }}>
             Обзор продукта
           </Typography.Title>
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Изменено сегодня · Арсен Аракелян
-          </Typography.Text>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Tooltip title="Помощь">
@@ -597,26 +534,11 @@ export default function DashboardPage() {
             onChange={setGranularity}
             variant="borderless"
             size="small"
-            style={{ width: 110 }}
+            style={{ width: 130 }}
             options={[
-              { value: 'hourly', label: 'По часам' },
               { value: 'daily', label: 'По дням' },
               { value: 'weekly', label: 'По неделям' },
               { value: 'monthly', label: 'По месяцам' },
-            ]}
-          />
-          <div style={{ width: 1, height: 24, background: token.colorBorderSecondary }} />
-          <Select
-            value={dateRange}
-            onChange={setDateRange}
-            variant="borderless"
-            size="small"
-            style={{ width: 160 }}
-            options={[
-              { value: '7d', label: 'Последние 7 дней' },
-              { value: '30d', label: 'Последние 30 дней' },
-              { value: '90d', label: 'Последние 90 дней' },
-              { value: 'q', label: 'Текущий квартал' },
             ]}
           />
         </div>
@@ -632,7 +554,7 @@ export default function DashboardPage() {
           border: BDR,
           borderRadius: token.borderRadiusLG,
           overflow: 'hidden',
-          minHeight: 0,
+          minHeight: 400,
         }}
       >
         {/* KPI tiles row — horizontal scroll carousel */}
@@ -644,121 +566,23 @@ export default function DashboardPage() {
           bdr={BDR}
         />
 
-        {/* Chart toolbar */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '8px 16px',
-            flexShrink: 0,
-          }}
-        >
-          {/* Right controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '4px 10px',
-                border: BDR,
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontSize: 12,
-                color: token.colorTextSecondary,
-              }}
-            >
-              <LineChartOutlined style={{ fontSize: 12 }} />
-              <span>Линейный</span>
-              <span style={{ fontSize: 10 }}>▾</span>
-            </div>
-            <Tooltip title="Развернуть">
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: BDR,
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  color: token.colorTextTertiary,
-                }}
-              >
-                <ExpandAltOutlined style={{ fontSize: 12 }} />
-              </div>
-            </Tooltip>
-          </div>
-        </div>
-
         {/* Chart area — fills all remaining height */}
         {chartLoading ? (
           <div style={{ flex: 1, padding: '24px 24px 8px' }}>
             <Skeleton active paragraph={{ rows: 8 }} title={false} />
           </div>
         ) : (
-          <LineChartSVG
+          <MetricLineChart
             data={chartData}
             color={chartColor}
+            granularity={granularity}
             label={yAxisLabel}
-            forecastRatio={0.88}
           />
         )}
 
-        {/* Legend + bottom controls */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '10px 16px',
-            borderTop: BDR,
-            flexShrink: 0,
-            position: 'relative',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span
-              style={{
-                display: 'inline-block',
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                background: chartColor,
-              }}
-            />
-            <Typography.Text style={{ fontSize: 12, color: token.colorTextSecondary }}>
-              {chartLabel}
-            </Typography.Text>
-          </div>
-
-          {/* Bottom-right: add series + settings */}
-          <div style={{ position: 'absolute', right: 16, display: 'flex', gap: 6 }}>
-            <Tooltip title="Добавить серию">
-              <div
-                style={{
-                  width: 24,
-                  height: 24,
-                  border: BDR,
-                  borderRadius: 5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: token.colorTextTertiary,
-                  fontSize: 12,
-                }}
-              >
-                <PlusOutlined />
-              </div>
-            </Tooltip>
-          </div>
-        </div>
       </div>
 
-      {/* ── Breakdown table (hug height) ── */}
+      {/* ── Breakdown table ── */}
       <div
         style={{
           flexShrink: 0,
@@ -769,34 +593,6 @@ export default function DashboardPage() {
           overflow: 'hidden',
         }}
       >
-        {/* Tab bar */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: BDR }}>
-          <Typography.Text strong style={{ fontSize: 13, color: token.colorTextSecondary, marginRight: 20 }}>
-            Разбивка по
-          </Typography.Text>
-          {(['all', 'site', 'mobile'] as BreakdownSegment[]).map((seg) => {
-            const labels: Record<BreakdownSegment, string> = { all: 'Все', site: 'Сайт', mobile: 'Мобильное приложение' };
-            const active = breakdownSegment === seg;
-            return (
-              <div
-                key={seg}
-                onClick={() => setBreakdownSegment(seg)}
-                style={{
-                  padding: '10px 14px',
-                  fontSize: 13,
-                  cursor: 'pointer',
-                  color: active ? token.colorText : token.colorTextSecondary,
-                  borderBottom: active ? `2px solid ${token.colorPrimary}` : '2px solid transparent',
-                  marginBottom: -1,
-                  transition: 'color 0.15s, border-color 0.15s',
-                }}
-              >
-                {labels[seg]}
-              </div>
-            );
-          })}
-        </div>
-
         <Table<MetricDefinition>
           size="small"
           pagination={false}
@@ -820,13 +616,13 @@ export default function DashboardPage() {
               title: 'Текущий квартал',
               dataIndex: 'currentValue',
               align: 'right',
-              render: (_: number, row: MetricDefinition) => fmtMetric(Math.round(row.currentValue * segFactor), row),
+              render: (_: number, row: MetricDefinition) => fmtMetric(row.currentValue, row),
             },
             {
               title: 'План',
               dataIndex: 'planValue',
               align: 'right',
-              render: (_: number, row: MetricDefinition) => fmtMetric(Math.round(row.planValue * segFactor), row),
+              render: (_: number, row: MetricDefinition) => fmtMetric(row.planValue, row),
             },
             {
               title: '% выполнения',
@@ -850,11 +646,13 @@ export default function DashboardPage() {
               title: 'Прошлый квартал',
               dataIndex: 'lastPeriodValue',
               align: 'right',
-              render: (_: number, row: MetricDefinition) => fmtMetric(Math.round(row.lastPeriodValue * segFactor), row),
+              render: (_: number, row: MetricDefinition) => fmtMetric(row.lastPeriodValue, row),
             },
           ]}
         />
       </div>
+
+      <div style={{ height: 24, flexShrink: 0 }} />
     </div>
   );
 }

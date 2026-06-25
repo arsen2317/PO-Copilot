@@ -39,8 +39,9 @@ export default function AppShell() {
             minWidth: 0,
           }}
         >
-          <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column' }}>
+          <div className="content-scroll" style={{ flex: 1, overflow: 'auto', padding: '24px 24px 0', display: 'flex', flexDirection: 'column' }}>
             <Outlet />
+            <div style={{ height: 24, flexShrink: 0 }} />
           </div>
         </div>
 
