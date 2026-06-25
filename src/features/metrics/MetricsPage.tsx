@@ -42,9 +42,6 @@ export default function MetricsPage() {
     queryFn: getMetricGroupDefs,
   });
 
-  const groupColorMap = Object.fromEntries(
-    (groupDefs ?? []).map((g) => [g.id, g.color]),
-  );
   const groupNameMap = Object.fromEntries(
     (groupDefs ?? []).map((g) => [g.id, g.name]),
   );
@@ -62,7 +59,11 @@ export default function MetricsPage() {
       key: 'name',
       ellipsis: true,
       render: (_: unknown, m: MetricDefinition) => {
-        const color = groupColorMap[m.groupId] ?? token.colorPrimary;
+        const pct = m.planValue === 0 ? 100
+          : m.lowerIsBetter
+            ? (m.planValue / m.currentValue) * 100
+            : (m.currentValue / m.planValue) * 100;
+        const dotColor = pct >= 90 ? token.colorSuccess : pct >= 70 ? token.colorWarning : token.colorError;
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, overflow: 'hidden' }}>
             <div
@@ -70,7 +71,7 @@ export default function MetricsPage() {
                 width: 8,
                 height: 8,
                 borderRadius: '50%',
-                background: color,
+                background: dotColor,
                 flexShrink: 0,
               }}
             />
