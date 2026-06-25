@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Select,
   Skeleton,
+  Table,
   theme,
   Tooltip,
   Typography,
@@ -25,7 +26,7 @@ import {
   getNpsHistory,
 } from '../../data/api/dashboard';
 import { getMetricGroups } from '../../data/api/metrics';
-import type { MetricPoint } from '../../data/types';
+import type { MetricPoint, MetricRow } from '../../data/types';
 
 const { useToken } = theme;
 
@@ -295,6 +296,7 @@ function KpiTile({ label, sublabel, value, change, loading, selected, onClick, i
 // ────────────────────────────────────────────────────────────────────────────────
 
 type ChartMetric = 'active' | 'new' | 'nps';
+type BreakdownSegment = 'all' | 'site' | 'mobile';
 
 export default function DashboardPage() {
   const { token } = useToken();
@@ -302,6 +304,7 @@ export default function DashboardPage() {
   const [dateRange, setDateRange] = useState('7d');
   const [selectedMetric, setSelectedMetric] = useState<ChartMetric>('active');
   const [metricGroupId, setMetricGroupId] = useState<string>('');
+  const [breakdownSegment, setBreakdownSegment] = useState<BreakdownSegment>('all');
 
   const { data: activeUsers, isLoading: activeLoading } = useQuery({
     queryKey: ['active-users-trend'],
@@ -319,8 +322,10 @@ export default function DashboardPage() {
     queryKey: ['metric-groups'],
     queryFn: getMetricGroups,
   });
-
   const activeGroupId = metricGroupId || (metricGroups?.[0]?.id ?? '');
+
+  const currentGroup = metricGroups?.find((g) => g.id === activeGroupId);
+  const breakdownRows: MetricRow[] = currentGroup?.metrics ?? [];
 
   const cur = activeUsers?.at(-1)?.value ?? 0;
   const prev = activeUsers?.at(-8)?.value ?? 0;
@@ -680,6 +685,104 @@ export default function DashboardPage() {
             </Tooltip>
           </div>
         </div>
+      </div>
+
+      {/* ── Breakdown table (hug height) ── */}
+      <div
+        style={{
+          flexShrink: 0,
+          background: token.colorBgContainer,
+          border: BDR,
+          borderRadius: token.borderRadiusLG,
+          marginTop: 12,
+          overflow: 'hidden',
+        }}
+      >
+        {/* Tab bar */}
+        <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: BDR }}>
+          <Typography.Text strong style={{ fontSize: 13, color: token.colorTextSecondary, marginRight: 20 }}>
+            Разбивка по
+          </Typography.Text>
+          {(['all', 'site', 'mobile'] as BreakdownSegment[]).map((seg) => {
+            const labels: Record<BreakdownSegment, string> = { all: 'Все', site: 'Сайт', mobile: 'Мобильное приложение' };
+            const active = breakdownSegment === seg;
+            return (
+              <div
+                key={seg}
+                onClick={() => setBreakdownSegment(seg)}
+                style={{
+                  padding: '10px 14px',
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  color: active ? token.colorText : token.colorTextSecondary,
+                  borderBottom: active ? `2px solid ${token.colorPrimary}` : '2px solid transparent',
+                  marginBottom: -1,
+                  transition: 'color 0.15s, border-color 0.15s',
+                }}
+              >
+                {labels[seg]}
+              </div>
+            );
+          })}
+        </div>
+
+        <Table<MetricRow>
+          size="small"
+          pagination={false}
+          dataSource={breakdownRows}
+          rowKey="id"
+          style={{ fontSize: 12 }}
+          columns={[
+            {
+              title: 'Метрика',
+              dataIndex: 'name',
+              render: (name: string, row: MetricRow) => (
+                <span>
+                  {name}
+                  {row.unit
+                    ? <span style={{ color: token.colorTextTertiary, marginLeft: 4, fontSize: 11 }}>{row.unit}</span>
+                    : null}
+                </span>
+              ),
+            },
+            {
+              title: 'Текущий квартал',
+              dataIndex: 'currentQuarter',
+              align: 'right',
+              render: (v: number, row: MetricRow) =>
+                row.unit === '₽' ? v.toLocaleString('ru') + ' ₽' : row.unit === '%' ? `${v}%` : v.toLocaleString('ru'),
+            },
+            {
+              title: 'План',
+              dataIndex: 'plan',
+              align: 'right',
+              render: (v: number, row: MetricRow) =>
+                row.unit === '₽' ? v.toLocaleString('ru') + ' ₽' : row.unit === '%' ? `${v}%` : v.toLocaleString('ru'),
+            },
+            {
+              title: '% выполнения',
+              dataIndex: 'fulfillment',
+              align: 'right',
+              sorter: (a, b) => a.fulfillment - b.fulfillment,
+              render: (v: number) => (
+                <Typography.Text
+                  style={{
+                    color: v >= 90 ? token.colorSuccess : v >= 70 ? token.colorWarning : token.colorError,
+                  }}
+                >
+                  {v}%
+                </Typography.Text>
+              ),
+            },
+            {
+              title: 'Прошлый квартал',
+              dataIndex: 'lastQuarter',
+              align: 'right',
+              render: (v: number, row: MetricRow) =>
+                row.unit === '₽' ? v.toLocaleString('ru') + ' ₽' : row.unit === '%' ? `${v}%` : v.toLocaleString('ru'),
+            },
+          ]}
+        />
       </div>
     </div>
   );
