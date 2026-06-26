@@ -16,6 +16,7 @@ import {
   AudioOutlined,
   BarChartOutlined,
   BulbOutlined,
+  CalendarOutlined,
   CheckSquareOutlined,
   CloseOutlined,
   CodeOutlined,
@@ -90,6 +91,7 @@ type AgentDef = {
 };
 
 const AGENTS_DATA: AgentDef[] = [
+  { key: 'agent-briefing',   label: 'Брифинг',           desc: 'Вводит в курс дела: что изменилось за последние дни в метриках и задачах', color: '#0D1F2D', Icon: CalendarOutlined,   trigger: 'Дай мне брифинг за последние 3 дня' },
   { key: 'agent-metrics',    label: 'Анализ метрик',     desc: 'Исследует аномалии и тренды, выявляет причины отклонений в данных',     color: '#0B2550', Icon: BarChartOutlined,   trigger: 'Проанализируй все текущие метрики' },
   { key: 'agent-qbr',       label: 'Ассистент QBR',     desc: 'Готовит ключевые инсайты и рекомендации для квартального обзора',        color: '#0B3325', Icon: FileTextOutlined,   trigger: 'Начни подготовку QBR отчёта' },
   { key: 'agent-tasks',     label: 'Постановщик задач', desc: 'Пишет и улучшает задачи в формате Jira, расставляет приоритеты',        color: '#25103A', Icon: CheckSquareOutlined },
@@ -978,6 +980,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
   // ── Dropdown items ───────────────────────────────────────────────────────
   const AGENT_ITEMS = [
+    { key: 'agent-briefing', label: 'Брифинг' },
     { key: 'agent-metrics', label: 'Анализ метрик' },
     { key: 'agent-qbr', label: 'Ассистент QBR' },
     { key: 'agent-tasks', label: 'Постановщик задач' },
