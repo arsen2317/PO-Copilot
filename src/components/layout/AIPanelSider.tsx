@@ -1355,14 +1355,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
             alignItems: 'center', justifyContent: 'center',
             padding: '24px 20px', position: 'relative',
           }}>
-            {/* Blue glow */}
-            <div style={{
-              position: 'absolute', left: '50%', bottom: '-10%',
-              transform: 'translateX(-50%)',
-              width: 420, height: 280, background: 'radial-gradient(ellipse at center, #1a3a8a 0%, #0a1f5c 45%, transparent 75%)',
-              borderRadius: 9999, filter: 'blur(48px)', pointerEvents: 'none',
-            }} />
-            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, width: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, width: '100%' }}>
               <JumpingDots />
               <span style={{ color: TEXT_PRIMARY, fontSize: 18, fontWeight: 600, textAlign: 'center', lineHeight: 1.4 }}>
                 Что вы хотите узнать?
@@ -1420,6 +1413,17 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   );
 }
 
+// ── Background glow element ──────────────────────────────────────────────────
+const GlowBg = (
+  <div style={{
+    position: 'absolute', left: '50%', bottom: '-8%',
+    transform: 'translateX(-50%)',
+    width: '140%', height: '55%',
+    background: 'radial-gradient(ellipse at 50% 100%, #1a3a8a 0%, #0a1f5c 40%, transparent 70%)',
+    filter: 'blur(56px)', pointerEvents: 'none', zIndex: 0,
+  }} />
+);
+
 // ── Shell wrappers (sidebar / floating) ─────────────────────────────────────
 export default function AIPanelSider({ mode, onChangeMode, expanded, hideWindowControls }: AIPanelSiderProps) {
   const [pos, setPos] = useState(() => ({
@@ -1430,6 +1434,7 @@ export default function AIPanelSider({ mode, onChangeMode, expanded, hideWindowC
   const commonStyle: React.CSSProperties = {
     background: BG, display: 'flex', flexDirection: 'column',
     overflow: 'hidden', borderRadius: 12, border: `1px solid ${BORDER_COLOR}`,
+    position: 'relative',
   };
 
   const onDragBarMouseDown = (e: React.MouseEvent) => {
@@ -1459,14 +1464,20 @@ export default function AIPanelSider({ mode, onChangeMode, expanded, hideWindowC
         boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
         zIndex: 1000,
       }}>
-        <PanelContent mode={mode} onChangeMode={onChangeMode} onDragBarMouseDown={onDragBarMouseDown} />
+        {GlowBg}
+        <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <PanelContent mode={mode} onChangeMode={onChangeMode} onDragBarMouseDown={onDragBarMouseDown} />
+        </div>
       </div>
     );
   }
 
   return (
     <div style={{ ...commonStyle, ...(expanded ? { flex: 1 } : { width: 320, flexShrink: 0 }), height: '100%' }}>
-      <PanelContent mode={mode} onChangeMode={onChangeMode} {...(hideWindowControls ? { hideWindowControls: true } : {})} />
+      {GlowBg}
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <PanelContent mode={mode} onChangeMode={onChangeMode} {...(hideWindowControls ? { hideWindowControls: true } : {})} />
+      </div>
     </div>
   );
 }

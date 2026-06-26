@@ -23,11 +23,22 @@ export default function AssistantPage() {
         borderRadius: token.borderRadius,
         overflow: 'hidden',
         border: `1px solid ${token.colorBorderSecondary}`,
+        position: 'relative',
       }}
     >
-      <DialogList activeId={dialogId} />
-      <MessageFeed dialogId={dialogId} />
-      <ContextPanel dialogId={dialogId} />
+      {/* Background glow */}
+      <div style={{
+        position: 'absolute', left: '50%', bottom: '-8%',
+        transform: 'translateX(-50%)',
+        width: '80%', height: '55%',
+        background: 'radial-gradient(ellipse at 50% 100%, #1a3a8a 0%, #0a1f5c 40%, transparent 70%)',
+        filter: 'blur(72px)', pointerEvents: 'none', zIndex: 0,
+      }} />
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', minWidth: 0, minHeight: 0 }}>
+        <DialogList activeId={dialogId} />
+        <MessageFeed dialogId={dialogId} />
+        <ContextPanel dialogId={dialogId} />
+      </div>
     </Flex>
   );
 }
