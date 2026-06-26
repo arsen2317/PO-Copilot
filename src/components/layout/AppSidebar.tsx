@@ -204,7 +204,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
           </Tooltip>
 
           {/* ── Analytics group ── */}
-          <Tooltip title={collapsed ? 'Продуктовая аналитика' : ''} placement="right">
+          <Tooltip title={collapsed ? 'Аналитика' : ''} placement="right">
             <div
               style={{
                 display: 'flex',
@@ -232,7 +232,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
                 </span>
                 {!collapsed && (
                   <span style={{ ...labelStyle, color: isAnalyticsActive ? '#D7D8DA' : '#9B9C9E' }}>
-                    Продуктовая аналитика
+                    Аналитика
                   </span>
                 )}
               </div>
