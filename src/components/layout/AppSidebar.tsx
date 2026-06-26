@@ -35,7 +35,6 @@ const ANALYTICS_SUBITEMS = [
 const ANALYTICS_KEYS = new Set(ANALYTICS_SUBITEMS.map((i) => i.key));
 
 const NAV_ITEMS = [
-  { key: '__search__',  icon: SearchOutlined,       label: 'Поиск' },
   { key: '/assistant',  icon: MessageOutlined,       label: 'Ассистент' },
   { key: '/metrics',    icon: LineChartOutlined,     label: 'Метрики' },
   { key: '/services',   icon: AppstoreOutlined,      label: 'ИИ-сервисы' },
@@ -190,6 +189,19 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
               {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             </div>
           </div>
+
+          {/* ── Search ── */}
+          <Tooltip title={collapsed ? 'Поиск' : ''} placement="right">
+            <div
+              style={navItemStyle('__search__')}
+              onClick={() => handleNavClick('__search__')}
+              onMouseEnter={() => setHoveredKey('__search__')}
+              onMouseLeave={() => setHoveredKey(null)}
+            >
+              <span style={iconStyle}><SearchOutlined /></span>
+              {!collapsed && <span style={labelStyle}>Поиск</span>}
+            </div>
+          </Tooltip>
 
           {/* ── Analytics group ── */}
           <Tooltip title={collapsed ? 'Продуктовая аналитика' : ''} placement="right">
