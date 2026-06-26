@@ -802,6 +802,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
+  const [loaderActive, setLoaderActive] = useState(false);
   const [automateHovered, setAutomateHovered] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
@@ -812,6 +813,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const loaderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: metricDefinitions } = useQuery({
     queryKey: ['metric-definitions'],
@@ -830,11 +832,22 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     void navigate('/');
   };
 
-  const hasMessages = messages.length > 0 || isThinking;
+  const hasMessages = messages.length > 0 || isThinking || loaderActive;
+
+  // Keep loader visible for at least 3 s once it appears
+  useEffect(() => {
+    if (isThinking) {
+      setLoaderActive(true);
+      if (loaderTimerRef.current) clearTimeout(loaderTimerRef.current);
+      loaderTimerRef.current = setTimeout(() => setLoaderActive(false), 3000);
+    }
+  }, [isThinking]);
+
+  useEffect(() => () => { if (loaderTimerRef.current) clearTimeout(loaderTimerRef.current); }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isThinking]);
+  }, [messages, loaderActive]);
 
   useEffect(() => {
     if (hasMessages) setAutomateHovered(false);
@@ -1388,7 +1401,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                       ? <UserBubble key={msg.id} msg={msg} />
                       : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
                   )}
-                  {isThinking && <AILoader size={160} />}
+                  {loaderActive && <AILoader size={160} />}
                   <div ref={messagesEndRef} />
                 </div>
               )}
@@ -1466,7 +1479,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                 ? <UserBubble key={msg.id} msg={msg} />
                 : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
             )}
-            {isThinking && <AILoader size={120} />}
+            {loaderActive && <AILoader size={120} />}
             <div ref={messagesEndRef} />
           </div>
         )}
