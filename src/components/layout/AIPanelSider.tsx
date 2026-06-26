@@ -53,6 +53,8 @@ export type AIPanelMode = 'sidebar' | 'floating' | 'closed';
 interface AIPanelSiderProps {
   mode: 'sidebar' | 'floating';
   onChangeMode: (mode: AIPanelMode) => void;
+  expanded?: boolean;
+  hideWindowControls?: boolean;
 }
 
 type LocalMessage = StoredChatMessage;
@@ -373,10 +375,11 @@ function HistoryPanel({ sessions, activeSessionId, onSelect }: {
 }
 
 // ── Main panel content ───────────────────────────────────────────────────────
-function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
+function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowControls }: {
   onChangeMode: (m: AIPanelMode) => void;
   mode: 'sidebar' | 'floating';
   onDragBarMouseDown?: (e: React.MouseEvent) => void;
+  hideWindowControls?: boolean;
 }) {
   const navigate = useNavigate();
   const setFocusedMetric = useUIStore((s) => s.setFocusedMetric);
@@ -620,12 +623,16 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
         <div data-no-drag><IconBtn icon={<FormOutlined />} tooltip="Новый чат" onClick={() => { createSession(); setAttachedImages([]); setInputValue(''); setView('chat'); }} /></div>
         <div data-no-drag style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconBtn icon={<HistoryOutlined />} tooltip="История чатов" active={view === 'history'} onClick={() => setView((v) => v === 'history' ? 'chat' : 'history')} />
-          <IconBtn
-            icon={<LayoutOutlined />}
-            tooltip={mode === 'sidebar' ? 'Открыть как окно' : 'Прикрепить справа'}
-            onClick={() => onChangeMode(mode === 'sidebar' ? 'floating' : 'sidebar')}
-          />
-          <IconBtn icon={<CloseOutlined />} tooltip="Закрыть" onClick={() => onChangeMode('closed')} />
+          {!hideWindowControls && (
+            <>
+              <IconBtn
+                icon={<LayoutOutlined />}
+                tooltip={mode === 'sidebar' ? 'Открыть как окно' : 'Прикрепить справа'}
+                onClick={() => onChangeMode(mode === 'sidebar' ? 'floating' : 'sidebar')}
+              />
+              <IconBtn icon={<CloseOutlined />} tooltip="Закрыть" onClick={() => onChangeMode('closed')} />
+            </>
+          )}
         </div>
       </div>
 
@@ -878,7 +885,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
 }
 
 // ── Shell wrappers (sidebar / floating) ─────────────────────────────────────
-export default function AIPanelSider({ mode, onChangeMode }: AIPanelSiderProps) {
+export default function AIPanelSider({ mode, onChangeMode, expanded, hideWindowControls }: AIPanelSiderProps) {
   const [pos, setPos] = useState(() => ({
     x: window.innerWidth - 372,
     y: Math.round(window.innerHeight * 0.17),
@@ -922,8 +929,8 @@ export default function AIPanelSider({ mode, onChangeMode }: AIPanelSiderProps) 
   }
 
   return (
-    <div style={{ ...commonStyle, width: 320, flexShrink: 0, height: '100%' }}>
-      <PanelContent mode={mode} onChangeMode={onChangeMode} />
+    <div style={{ ...commonStyle, ...(expanded ? { flex: 1 } : { width: 320, flexShrink: 0 }), height: '100%' }}>
+      <PanelContent mode={mode} onChangeMode={onChangeMode} {...(hideWindowControls ? { hideWindowControls: true } : {})} />
     </div>
   );
 }
