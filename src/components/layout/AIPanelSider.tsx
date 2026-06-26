@@ -933,21 +933,17 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           transition: 'outline-color 0.15s',
         }}>
 
-          {/* Context chip */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            height: 28, padding: '0 8px',
-            background: '#1C1D1F', borderRadius: 8, marginBottom: 8,
-          }}>
-            {selectedAgent ? (
+          {/* Agent chip — only when agent is selected */}
+          {selectedAgent && (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              height: 28, padding: '0 8px',
+              background: '#1C1D1F', borderRadius: 8, marginBottom: 8,
+            }}>
               <RobotOutlined style={{ color: ACCENT, fontSize: 13 }} />
-            ) : (
-              <BarChartOutlined style={{ color: ACCENT, fontSize: 13 }} />
-            )}
-            <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, whiteSpace: 'nowrap' }}>
-              {selectedAgent ? (AGENTS_DATA.find(a => a.key === selectedAgent)?.label ?? selectedAgent) : 'Продуктовая аналитика'}
-            </span>
-            {selectedAgent && (
+              <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                {AGENTS_DATA.find(a => a.key === selectedAgent)?.label ?? selectedAgent}
+              </span>
               <div
                 onClick={() => setSelectedAgent(null)}
                 style={{
@@ -962,8 +958,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
               >
                 ✕
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Image previews */}
           {attachedImages.length > 0 && (
