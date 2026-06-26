@@ -10,7 +10,7 @@ import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
 import { BASE_SYSTEM_PROMPT, AGENT_PROMPTS } from '../../lib/agentPrompts';
 import { getMetricDefinitions } from '../../data/api/metric-definitions';
 import { useUIStore } from '../../store/uiStore';
-import type { ChatMessage as StoredChatMessage, ChatSession } from '../../store/uiStore';
+import type { ChatMessage as StoredChatMessage, ChatSession, AttachedFile } from '../../store/uiStore';
 import {
   ApiOutlined,
   AudioOutlined,
@@ -637,6 +637,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const [view, setView] = useState<'chat' | 'history'>('chat');
   const [inputValue, setInputValue] = useState('');
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [automateHovered, setAutomateHovered] = useState(false);
@@ -645,6 +646,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const [pendingTrigger, setPendingTrigger] = useState<{ agent: string; text: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileDocInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -695,7 +697,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   // ── Send message ────────────────────────────────────────────────────────
   const handleSendWith = async (overrideText?: string) => {
     const text = (overrideText ?? inputValue).trim();
-    if (!text && attachedImages.length === 0) return;
+    if (!text && attachedImages.length === 0 && attachedFiles.length === 0) return;
     if (isThinking) return;
 
     const newMsg: LocalMessage = {
@@ -703,6 +705,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       role: 'user',
       content: text,
       ...(attachedImages.length > 0 && { images: [...attachedImages] }),
+      ...(attachedFiles.length > 0 && { files: [...attachedFiles] }),
     };
 
     // Auto-title the session from the first user message
@@ -715,6 +718,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     setMessages((prev) => [...prev, newMsg]);
     if (!overrideText) setInputValue('');
     setAttachedImages([]);
+    setAttachedFiles([]);
     setIsThinking(true);
 
     const abort = new AbortController();
@@ -722,13 +726,33 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
     // Convert a local message to Anthropic API content
     const toApiContent = (m: LocalMessage): string | object[] => {
-      if (m.role === 'user' && m.images && m.images.length > 0) {
-        const parts: object[] = m.images.flatMap((img) => {
-          const match = img.match(/^data:([^;]+);base64,(.+)$/);
-          return match
-            ? [{ type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } }]
-            : [];
-        });
+      const hasImages = m.role === 'user' && m.images && m.images.length > 0;
+      const hasFiles = m.role === 'user' && m.files && m.files.length > 0;
+      if (hasImages || hasFiles) {
+        const parts: object[] = [];
+        // Attached documents (PDF, text, etc.)
+        if (m.files) {
+          for (const f of m.files) {
+            if (f.type === 'application/pdf') {
+              parts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.data }, title: f.name });
+            } else if (f.type.startsWith('text/')) {
+              // Decode base64 text and embed as text block
+              try {
+                const decoded = atob(f.data);
+                parts.push({ type: 'text', text: `[Файл: ${f.name}]\n${decoded}` });
+              } catch {
+                parts.push({ type: 'text', text: `[Файл: ${f.name} — не удалось прочитать]` });
+              }
+            }
+          }
+        }
+        // Images
+        if (m.images) {
+          for (const img of m.images) {
+            const match = img.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) parts.push({ type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } });
+          }
+        }
         if (m.content) parts.push({ type: 'text', text: m.content });
         return parts;
       }
@@ -817,6 +841,23 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     e.target.value = '';
   };
 
+  // ── Document/file attachment ─────────────────────────────────────────────
+  const handleDocFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result;
+        if (typeof dataUrl !== 'string') return;
+        // Strip the data URL prefix to get raw base64
+        const base64 = dataUrl.split(',')[1] ?? '';
+        setAttachedFiles((prev) => [...prev, { name: file.name, type: file.type, data: base64 }]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
   // ── Voice input ─────────────────────────────────────────────────────────
   const toggleVoice = () => {
     if (isListening) {
@@ -886,6 +927,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
   const onDropdownClick = ({ key }: { key: string }) => {
     if (key === 'image') fileInputRef.current?.click();
+    if (key === 'file') fileDocInputRef.current?.click();
     if (AGENT_ITEMS.some((a) => a.key === key)) setSelectedAgent(key);
   };
 
@@ -983,6 +1025,27 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                   >
                     ✕
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* File chips */}
+          {attachedFiles.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+              {attachedFiles.map((f, i) => (
+                <div key={i} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  height: 26, padding: '0 8px',
+                  background: '#1C1D1F', border: `1px solid ${BORDER_COLOR}`,
+                  borderRadius: 6, fontSize: 12, color: TEXT_SECONDARY,
+                }}>
+                  <PaperClipOutlined style={{ fontSize: 11 }} />
+                  <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                  <div
+                    onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                    style={{ cursor: 'pointer', fontSize: 10, marginLeft: 2, color: TEXT_PLACEHOLDER }}
+                  >✕</div>
                 </div>
               ))}
             </div>
@@ -1165,15 +1228,9 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           </div>
         </div>
 
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: 'none' }}
-          onChange={handleImageFile}
-        />
+        {/* Hidden file inputs */}
+        <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleImageFile} />
+        <input ref={fileDocInputRef} type="file" accept=".pdf,.txt,.md,.csv,.json" multiple style={{ display: 'none' }} onChange={handleDocFile} />
       </div>
     );
   }

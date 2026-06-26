@@ -1,10 +1,17 @@
 import { create } from 'zustand';
 
+export interface AttachedFile {
+  name: string;
+  type: string;  // MIME type
+  data: string;  // base64 data
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   images?: string[];
+  files?: AttachedFile[];
   streaming?: boolean;
 }
 
