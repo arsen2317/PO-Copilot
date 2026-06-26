@@ -73,9 +73,9 @@ function UserAvatar({ user, size = 28 }: { user: { id: string; name: string }; s
 function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
   const { token } = useToken();
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13 }}>
-      <span style={{ color: token.colorTextTertiary, width: 120, flexShrink: 0 }}>{label}</span>
-      <span style={{ color: token.colorText }}>{children}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <span style={{ fontSize: 11, color: token.colorTextTertiary, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{label}</span>
+      <span style={{ fontSize: 13, color: token.colorText }}>{children}</span>
     </div>
   );
 }
@@ -130,10 +130,10 @@ export default function TaskDetailPage() {
   const totalCompliance = (task.compliance ?? []).length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
 
       {/* ── Back + header ── */}
-      <div style={{ marginBottom: 20, flexShrink: 0 }}>
+      <div style={{ marginBottom: 20 }}>
         <Button
           type="text"
           icon={<ArrowLeftOutlined />}
@@ -179,13 +179,13 @@ export default function TaskDetailPage() {
       </div>
 
       {/* ── Body: main + sidebar ── */}
-      <div style={{ display: 'flex', gap: 20, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
 
         {/* ── Left: tabs + content ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
 
           {/* Tabs */}
-          <div style={{ display: 'flex', gap: 0, borderBottom: BDR, marginBottom: 20, flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 0, borderBottom: BDR, marginBottom: 20 }}>
             {TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -227,7 +227,7 @@ export default function TaskDetailPage() {
           </div>
 
           {/* Tab content */}
-          <div style={{ flex: 1, overflowY: 'auto' }}>
+          <div>
 
             {/* ── Description ── */}
             {activeTab === 'description' && (
@@ -389,12 +389,11 @@ export default function TaskDetailPage() {
         {/* ── Right: sidebar meta ── */}
         <div
           style={{
-            width: 240,
+            width: 220,
             flexShrink: 0,
             display: 'flex',
             flexDirection: 'column',
-            gap: 20,
-            overflowY: 'auto',
+            gap: 16,
           }}
         >
           {/* Meta */}
@@ -406,10 +405,10 @@ export default function TaskDetailPage() {
               padding: '16px',
               display: 'flex',
               flexDirection: 'column',
-              gap: 12,
+              gap: 14,
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 600, color: token.colorTextTertiary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: token.colorTextTertiary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Детали
             </div>
 

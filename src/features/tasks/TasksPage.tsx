@@ -221,8 +221,8 @@ function KanbanColumn({
   return (
     <div
       style={{
-        width: 260,
-        flexShrink: 0,
+        flex: 1,
+        minWidth: 160,
         display: 'flex',
         flexDirection: 'column',
         gap: 0,
@@ -429,12 +429,11 @@ export default function TasksPage() {
           <div
             style={{
               display: 'flex',
-              gap: 12,
+              gap: 10,
               flex: 1,
               minHeight: 0,
-              overflowX: 'auto',
+              overflowX: 'hidden',
               overflowY: 'hidden',
-              paddingBottom: 4,
             }}
           >
             {COLUMNS.map((col) => (
