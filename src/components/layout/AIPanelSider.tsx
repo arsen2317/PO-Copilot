@@ -414,6 +414,12 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
                     w?.document.write(html);
                     w?.document.close();
                   };
+                  const downloadPdf = () => {
+                    const printHtml = html.replace('</body>', '<script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script></body>');
+                    const w = window.open('', '_blank');
+                    w?.document.write(printHtml);
+                    w?.document.close();
+                  };
                   return (
                     <div style={{ margin: '10px 0', borderRadius: 10, overflow: 'hidden', border: `1px solid ${BORDER_COLOR}` }}>
                       <div style={{
@@ -422,6 +428,13 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
                       }}>
                         <span style={{ fontSize: 12, color: TEXT_SECONDARY, fontWeight: 500 }}>QBR Отчёт</span>
                         <div style={{ display: 'flex', gap: 8 }}>
+                          <span
+                            onClick={downloadPdf}
+                            style={{ fontSize: 12, color: ACCENT, cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            Скачать PDF
+                          </span>
+                          <span style={{ fontSize: 12, color: BORDER_COLOR }}>|</span>
                           <span
                             onClick={openInTab}
                             style={{ fontSize: 12, color: ACCENT, cursor: 'pointer', userSelect: 'none' }}
