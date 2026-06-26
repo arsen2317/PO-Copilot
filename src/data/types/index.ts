@@ -100,6 +100,20 @@ export interface Task {
   updatedAt?: string;
 }
 
+export interface TaskDraft {
+  id: string;
+  title: string;
+  type: 'Story' | 'Bug' | 'Task' | 'Spike';
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  storyPoints?: number;
+  description?: string;
+  epicId?: string;
+  labels?: string[];
+  criteria: string[];
+  complianceNotes?: string;
+  createdAt: number;
+}
+
 export interface Employee {
   id: string;
   name: string;
