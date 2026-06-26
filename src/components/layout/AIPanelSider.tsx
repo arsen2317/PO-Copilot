@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { streamChat } from '../../lib/claude';
 import { TOOL_DEFINITIONS, executeTool } from '../../lib/tools';
 import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
+import { BASE_SYSTEM_PROMPT, AGENT_PROMPTS } from '../../lib/agentPrompts';
 import { getMetricDefinitions } from '../../data/api/metric-definitions';
 import { useUIStore } from '../../store/uiStore';
 import type { ChatMessage as StoredChatMessage, ChatSession } from '../../store/uiStore';
@@ -59,21 +60,6 @@ interface AIPanelSiderProps {
 
 type LocalMessage = StoredChatMessage;
 
-const SYSTEM_PROMPT = `Ты ИИ-ассистент встроенный в «Барометр» — платформу продуктовой аналитики для команды дебетовых карт. Помогаешь продуктовым менеджерам анализировать метрики, находить аномалии, приоритизировать задачи и принимать решения на основе данных.
-
-Правила форматирования:
-- Используй инструменты для получения данных перед ответом.
-- Отвечай кратко и по делу. Всегда на русском языке.
-- Markdown: заголовки (###), жирный (**текст**), списки, таблицы для сравнений.
-- Никаких эмодзи, никаких декоративных символов (❌ ✅ 🔴 и т.д.).
-- Никаких горизонтальных разделителей (---) между абзацами без необходимости.
-- Числа и метрики — конкретно, с единицами измерения.
-
-Интерактивные ссылки на метрики:
-Когда ссылаешься на конкретную метрику из данных, оборачивай её id в backticks.
-Например: \`active_cards\`, \`nps_general\`, \`churn_rate\`.
-Это создаёт кликабельный чип — пользователь нажимает и попадает на эту метрику в дашборде.
-Используй id именно так, как он пришёл из инструмента get_metrics (поле id).`;
 
 const SUGGESTIONS = [
   'Найти аномалии и исследовать причину',
@@ -150,7 +136,7 @@ function AgentCards({ onSelect }: { onSelect: (label: string) => void }) {
         {AGENTS_DATA.map((agent) => (
           <div
             key={agent.key}
-            onClick={() => onSelect(agent.label)}
+            onClick={() => onSelect(agent.key)}
             style={{
               minWidth: 156, maxWidth: 156, padding: '14px 14px 16px',
               background: '#18191B', border: `1px solid ${BORDER_COLOR}`,
@@ -314,6 +300,39 @@ function AssistantBubble({ msg, metricMap, onMetricClick }: {
             code: ({ children, className }) => {
               const isBlock = className?.startsWith('language-');
               if (isBlock) {
+                // QBR HTML report — render in iframe
+                if (className === 'language-html-report') {
+                  const html = String(children);
+                  const openInTab = () => {
+                    const w = window.open('', '_blank');
+                    w?.document.write(html);
+                    w?.document.close();
+                  };
+                  return (
+                    <div style={{ margin: '10px 0', borderRadius: 10, overflow: 'hidden', border: `1px solid ${BORDER_COLOR}` }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '8px 12px', background: '#1C1D1F', borderBottom: `1px solid ${BORDER_COLOR}`,
+                      }}>
+                        <span style={{ fontSize: 12, color: TEXT_SECONDARY, fontWeight: 500 }}>QBR Отчёт</span>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <span
+                            onClick={openInTab}
+                            style={{ fontSize: 12, color: ACCENT, cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            Открыть на странице
+                          </span>
+                        </div>
+                      </div>
+                      <iframe
+                        srcDoc={html}
+                        sandbox="allow-same-origin"
+                        style={{ width: '100%', height: 480, border: 'none', display: 'block', background: '#fff' }}
+                        title="QBR Report"
+                      />
+                    </div>
+                  );
+                }
                 return (
                   <pre style={{
                     background: '#1C1D1F', border: `1px solid ${BORDER_COLOR}`,
@@ -586,7 +605,9 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
         const result = await streamChat({
           messages: apiMessages as ChatMessage[],
-          system: SYSTEM_PROMPT,
+          system: selectedAgent && AGENT_PROMPTS[selectedAgent]
+            ? AGENT_PROMPTS[selectedAgent]
+            : BASE_SYSTEM_PROMPT,
           tools: TOOL_DEFINITIONS as unknown as object[],
           signal: abort.signal,
           onTextDelta: (delta) => {
@@ -722,8 +743,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
   const onDropdownClick = ({ key }: { key: string }) => {
     if (key === 'image') fileInputRef.current?.click();
-    const agent = AGENT_ITEMS.find((a) => a.key === key);
-    if (agent) setSelectedAgent(agent.label);
+    if (AGENT_ITEMS.some((a) => a.key === key)) setSelectedAgent(key);
   };
 
   const canSend = inputValue.trim().length > 0 || attachedImages.length > 0;
@@ -741,7 +761,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           userSelect: 'none',
         }}
       >
-        <div data-no-drag><IconBtn icon={<FormOutlined />} tooltip="Новый чат" onClick={() => { createSession(); setAttachedImages([]); setInputValue(''); setView('chat'); }} /></div>
+        <div data-no-drag><IconBtn icon={<FormOutlined />} tooltip="Новый чат" onClick={() => { createSession(); setAttachedImages([]); setInputValue(''); setSelectedAgent(null); setView('chat'); }} /></div>
         <div data-no-drag style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <IconBtn icon={<HistoryOutlined />} tooltip="История чатов" active={view === 'history'} onClick={() => setView((v) => v === 'history' ? 'chat' : 'history')} />
           {!hideWindowControls && (
@@ -788,7 +808,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                 {isAssistantPage ? <>Над чем будем<br />работать сегодня?</> : 'Что вы хотите узнать?'}
               </span>
               {isAssistantPage ? (
-                <AgentCards onSelect={(label) => { setSelectedAgent(label); }} />
+                <AgentCards onSelect={(key) => { setSelectedAgent(key); }} />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                   {SUGGESTIONS.map((s) => (
@@ -881,7 +901,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                 <BarChartOutlined style={{ color: ACCENT, fontSize: 13 }} />
               )}
               <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, whiteSpace: 'nowrap' }}>
-                {selectedAgent ?? 'Продуктовая аналитика'}
+                {selectedAgent ? (AGENTS_DATA.find(a => a.key === selectedAgent)?.label ?? selectedAgent) : 'Продуктовая аналитика'}
               </span>
               {selectedAgent && (
                 <div

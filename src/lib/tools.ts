@@ -1,6 +1,7 @@
 import { getMetricDefinitions, getMetricGroupDefs } from '../data/api/metric-definitions';
 import { getTasks } from '../data/api/tasks';
 import { getAgents } from '../data/api/agents';
+import { getToken } from '../features/auth/auth';
 
 export const TOOL_DEFINITIONS = [
   {
@@ -28,6 +29,17 @@ export const TOOL_DEFINITIONS = [
     name: 'get_agents',
     description: 'Возвращает список доступных ИИ-агентов: название, описание, статус.',
     input_schema: { type: 'object' as const, properties: {}, required: [] },
+  },
+  {
+    name: 'search_web',
+    description: 'Выполняет поиск в интернете по заданному запросу. Используй для поиска актуальных новостей о конкурентах, банковских трендах, новых фичах российских банков. Возвращает список результатов с заголовком, URL и кратким описанием.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: { type: 'string', description: 'Поисковый запрос на русском или английском языке.' },
+      },
+      required: ['query'],
+    },
   },
 ] as const;
 
@@ -68,6 +80,22 @@ export async function executeTool(
 
     case 'get_agents':
       return getAgents();
+
+    case 'search_web': {
+      const query = typeof input.query === 'string' ? input.query : '';
+      if (!query) return { results: [] };
+      const token = getToken();
+      const resp = await fetch('/api/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ query }),
+      });
+      if (!resp.ok) return { error: `Search failed: ${resp.status}`, results: [] };
+      return resp.json();
+    }
 
     default:
       return { error: `Unknown tool: ${name}` };

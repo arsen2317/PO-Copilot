@@ -95,6 +95,44 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// ── Web search endpoint ──────────────────────────────────────────────────────
+app.post('/api/search', async (req, res) => {
+  const secret = process.env.APP_SESSION_SECRET;
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!secret || !token || !(await verifyToken(token, secret))) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const apiKey = process.env.BRAVE_SEARCH_API_KEY;
+  const { query } = req.body as { query?: string };
+
+  if (!apiKey) {
+    res.json({ error: 'BRAVE_SEARCH_API_KEY not configured — add it to .env.local', results: [] });
+    return;
+  }
+  if (!query?.trim()) {
+    res.json({ results: [] });
+    return;
+  }
+
+  try {
+    const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=8&search_lang=ru&country=ru&text_decorations=false`;
+    const resp = await fetch(url, {
+      headers: { 'Accept': 'application/json', 'X-Subscription-Token': apiKey },
+    });
+    const data = await resp.json() as {
+      web?: { results?: Array<{ title: string; url: string; description: string }> };
+    };
+    const results = (data.web?.results ?? []).map((r) => ({ title: r.title, url: r.url, snippet: r.description }));
+    res.json({ results });
+  } catch (err) {
+    res.json({ error: String(err), results: [] });
+  }
+});
+
 app.listen(3001, () => {
   console.log('[dev-api] listening on http://localhost:3001');
 });
