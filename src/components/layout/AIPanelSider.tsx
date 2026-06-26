@@ -11,6 +11,7 @@ import { TOOL_DEFINITIONS, executeTool } from '../../lib/tools';
 import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
 import { BASE_SYSTEM_PROMPT, AGENT_PROMPTS } from '../../lib/agentPrompts';
 import { getMetricDefinitions } from '../../data/api/metric-definitions';
+import { getFunnelAnalytics } from '../../data/api/funnel-analytics';
 import { useUIStore } from '../../store/uiStore';
 import type { ChatMessage as StoredChatMessage, ChatSession, AttachedFile } from '../../store/uiStore';
 import {
@@ -370,7 +371,7 @@ function MetricSelector({ json, onConfirm }: { json: string; onConfirm: (ids: st
 
 function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
   msg: LocalMessage;
-  metricMap: Map<string, string>;
+  metricMap: Map<string, string>; // combined: metrics + funnel steps
   onMetricClick: (id: string) => void;
   onSend: (text: string) => void;
 }) {
@@ -521,20 +522,23 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
                 );
               }
               const id = String(children).trim();
-              const metricName = metricMap.get(id);
-              if (metricName) {
+              const chipName = metricMap.get(id);
+              if (chipName) {
+                const isFunnel = id.startsWith('funnel:');
+                const chipAccent = isFunnel ? '#7C6AF6' : ACCENT;
+                const tooltipText = isFunnel ? 'Открыть в воронке' : 'Открыть на дашборде';
                 return (
                   <span
                     onClick={() => onMetricClick(id)}
-                    title="Открыть на дашборде"
+                    title={tooltipText}
                     style={{
                       display: 'inline-block',
-                      background: '#242526',
-                      border: `1px solid #3A3B3D`,
+                      background: isFunnel ? 'rgba(124,106,246,0.12)' : '#242526',
+                      border: `1px solid ${isFunnel ? 'rgba(124,106,246,0.4)' : '#3A3B3D'}`,
                       borderRadius: 5,
                       padding: '0px 6px',
                       fontSize: 12,
-                      color: TEXT_PRIMARY,
+                      color: isFunnel ? '#B5AAFF' : TEXT_PRIMARY,
                       fontFamily: 'inherit',
                       cursor: 'pointer',
                       lineHeight: '20px',
@@ -542,15 +546,15 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
                       transition: 'background 0.15s, border-color 0.15s',
                     }}
                     onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLSpanElement).style.background = '#2D2E30';
-                      (e.currentTarget as HTMLSpanElement).style.borderColor = ACCENT;
+                      (e.currentTarget as HTMLSpanElement).style.background = isFunnel ? 'rgba(124,106,246,0.22)' : '#2D2E30';
+                      (e.currentTarget as HTMLSpanElement).style.borderColor = chipAccent;
                     }}
                     onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLSpanElement).style.background = '#242526';
-                      (e.currentTarget as HTMLSpanElement).style.borderColor = '#3A3B3D';
+                      (e.currentTarget as HTMLSpanElement).style.background = isFunnel ? 'rgba(124,106,246,0.12)' : '#242526';
+                      (e.currentTarget as HTMLSpanElement).style.borderColor = isFunnel ? 'rgba(124,106,246,0.4)' : '#3A3B3D';
                     }}
                   >
-                    {metricName}
+                    {isFunnel ? '↳ ' : ''}{chipName}
                   </span>
                 );
               }
@@ -801,13 +805,30 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     queryKey: ['metric-definitions'],
     queryFn: getMetricDefinitions,
   });
+  const { data: funnelSteps } = useQuery({
+    queryKey: ['funnel-analytics'],
+    queryFn: getFunnelAnalytics,
+  });
+
   const metricMap = new Map(
     (metricDefinitions ?? []).map((m) => [m.id, m.name]),
   );
+  const funnelStepMap = new Map(
+    (funnelSteps ?? []).map((s) => [`funnel:${s.id}`, s.name]),
+  );
+  // Combined map: metrics + funnel steps
+  const chipMap = new Map([...metricMap, ...funnelStepMap]);
+
+  const setFocusedFunnelStep = useUIStore((s) => s.setFocusedFunnelStep);
 
   const handleMetricClick = (id: string) => {
     if (id.startsWith('__task__')) {
       void navigate('/tasks');
+      return;
+    }
+    if (id.startsWith('funnel:')) {
+      setFocusedFunnelStep(id);
+      void navigate('/funnel');
       return;
     }
     setFocusedMetric(id);
@@ -1371,7 +1392,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                   {messages.map((msg) =>
                     msg.role === 'user'
                       ? <UserBubble key={msg.id} msg={msg} />
-                      : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
+                      : <AssistantBubble key={msg.id} msg={msg} metricMap={chipMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
                   )}
                                     <div ref={messagesEndRef} />
                 </div>
@@ -1449,7 +1470,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
             {messages.map((msg) =>
               msg.role === 'user'
                 ? <UserBubble key={msg.id} msg={msg} />
-                : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
+                : <AssistantBubble key={msg.id} msg={msg} metricMap={chipMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
             )}
                         <div ref={messagesEndRef} />
           </div>

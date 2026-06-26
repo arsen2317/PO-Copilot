@@ -12,6 +12,7 @@ import { Column, Line } from '@ant-design/plots';
 import { useQuery } from '@tanstack/react-query';
 import { getFunnelAnalytics } from '../../data/api/funnel-analytics';
 import type { FunnelAnalyticsStep, MetricPoint } from '../../data/types';
+import { useUIStore } from '../../store/uiStore';
 
 const { useToken } = theme;
 
@@ -25,9 +26,24 @@ interface FunnelBarChartProps {
 }
 
 function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
+  // Build stepped lookup for tooltip enrichment
+  const stepByName = new Map(steps.map((s) => [s.name, s]));
+
   const barData = steps.flatMap((s) => [
-    { step: s.name, type: 'Конверсия', value: s.conversionFromFirst },
-    { step: s.name, type: 'Отсев', value: 100 - s.conversionFromFirst },
+    {
+      step: s.name,
+      type: 'Конверсия',
+      value: s.conversionFromFirst,
+      users: s.users,
+      pct: s.conversionFromFirst,
+    },
+    {
+      step: s.name,
+      type: 'Отсев',
+      value: 100 - s.conversionFromFirst,
+      users: s.users,
+      pct: s.conversionFromFirst,
+    },
   ]);
 
   const annotations = steps.map((s) => ({
@@ -35,7 +51,7 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
     data: [s.name, s.conversionFromFirst, 'Конверсия'],
     style: {
       text: `${s.conversionFromFirst.toFixed(1)}%\n${s.users}`,
-      textAlign: 'center',
+      textAlign: 'center' as const,
       fill: '#fff',
       fontSize: 12,
       fontWeight: 600,
@@ -58,9 +74,14 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
       paddingTop={32}
       paddingRight={16}
       scale={{
-        color: { range: ['#4E6AF6', 'rgba(78,106,246,0.18)'] },
+        color: { range: ['#4E6AF6', 'rgba(120,140,255,0.22)'] },
         y: { domain: [0, 100] },
       }}
+      style={(d: { type: string }) => ({
+        fill: d.type === 'Отсев' ? 'rgba(120,140,255,0.18)' : '#4E6AF6',
+        stroke: d.type === 'Отсев' ? 'rgba(120,140,255,0.45)' : '#4E6AF6',
+        lineWidth: d.type === 'Отсев' ? 1 : 0,
+      })}
       axis={{
         y: {
           labelFormatter: (v: unknown) => `${v}%`,
@@ -73,11 +94,27 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
       }}
       annotations={annotations}
       tooltip={{
+        title: (d: { step: string }) => d.step,
         items: [
-          (d: { step: string; type: string; value: number }) =>
-            d.type === 'Конверсия'
-              ? { name: 'Конверсия от первого шага', value: `${d.value.toFixed(1)}%`, color: '#4E6AF6' }
-              : null,
+          (d: { step: string; type: string; value: number }) => {
+            const s = stepByName.get(d.step);
+            if (!s || d.type !== 'Конверсия') return null;
+            return {
+              name: `Конверсия от первого шага`,
+              value: `${s.conversionFromFirst.toFixed(1)}% (${s.users} чел.)`,
+              color: '#4E6AF6',
+            };
+          },
+          (d: { step: string; type: string; value: number }) => {
+            const s = stepByName.get(d.step);
+            if (!s || d.type !== 'Отсев') return null;
+            const dropped = steps[0] ? steps[0].users - s.users : 0;
+            return {
+              name: 'Отсеялись',
+              value: `${(100 - s.conversionFromFirst).toFixed(1)}% (${dropped} чел.)`,
+              color: 'rgba(120,140,255,0.6)',
+            };
+          },
         ],
       }}
       legend={false}
@@ -393,6 +430,24 @@ export default function FunnelPage() {
     queryKey: ['funnel-analytics'],
     queryFn: getFunnelAnalytics,
   });
+
+  // AI panel navigation: respond to focusedFunnelStepId from the store
+  const focusedFunnelStepId = useUIStore((s) => s.focusedFunnelStepId);
+  const clearFocusedFunnelStep = useUIStore((s) => s.setFocusedFunnelStep);
+  useEffect(() => {
+    if (!focusedFunnelStepId || !steps.length) return;
+    if (focusedFunnelStepId === `funnel:${OVERALL_ID}` || focusedFunnelStepId === OVERALL_ID) {
+      setSelectedId(OVERALL_ID);
+    } else {
+      // ID format from AI: "funnel:step1"
+      const raw = focusedFunnelStepId.startsWith('funnel:')
+        ? focusedFunnelStepId.slice('funnel:'.length)
+        : focusedFunnelStepId;
+      const step = steps.find((s) => s.id === raw);
+      if (step) setSelectedId(step.id);
+    }
+    clearFocusedFunnelStep(null);
+  }, [focusedFunnelStepId, steps, clearFocusedFunnelStep]);
 
   const lastStep = steps[steps.length - 1];
   const overallConversion = lastStep?.conversionFromFirst ?? 0;
