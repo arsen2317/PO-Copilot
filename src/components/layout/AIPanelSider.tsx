@@ -398,6 +398,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const [isThinking, setIsThinking] = useState(false);
   const [automateHovered, setAutomateHovered] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -576,6 +577,16 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   };
 
   // ── Dropdown items ───────────────────────────────────────────────────────
+  const AGENT_ITEMS = [
+    { key: 'agent-metrics', label: 'Анализ метрик' },
+    { key: 'agent-qbr', label: 'Ассистент QBR' },
+    { key: 'agent-tasks', label: 'Постановщик задач' },
+    { key: 'agent-risks', label: 'Поиск рисков' },
+    { key: 'agent-hypotheses', label: 'Генератор гипотез' },
+    { key: 'agent-custdev', label: 'CustDev' },
+    { key: 'agent-trends', label: 'Трендвотчер' },
+  ];
+
   const dropdownItems = [
     {
       key: 'image',
@@ -589,9 +600,16 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     },
     { type: 'divider' as const },
     {
+      key: 'agents',
+      label: 'Агенты',
+      icon: <RobotOutlined />,
+      children: AGENT_ITEMS,
+    },
+    {
       key: 'connectors',
       label: 'Коннекторы',
       icon: <ApiOutlined />,
+      children: [{ key: 'connectors-soon', label: 'Скоро', disabled: true }],
     },
     {
       key: 'commands',
@@ -602,7 +620,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
   const onDropdownClick = ({ key }: { key: string }) => {
     if (key === 'image') fileInputRef.current?.click();
-    // 'file', 'connectors', 'commands' — stubs for future phases
+    const agent = AGENT_ITEMS.find((a) => a.key === key);
+    if (agent) setSelectedAgent(agent.label);
   };
 
   const canSend = inputValue.trim().length > 0 || attachedImages.length > 0;
@@ -750,10 +769,30 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
               height: 28, padding: '0 8px',
               background: '#1C1D1F', borderRadius: 8, marginBottom: 8,
             }}>
-              <BarChartOutlined style={{ color: ACCENT, fontSize: 13 }} />
+              {selectedAgent ? (
+                <RobotOutlined style={{ color: ACCENT, fontSize: 13 }} />
+              ) : (
+                <BarChartOutlined style={{ color: ACCENT, fontSize: 13 }} />
+              )}
               <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, whiteSpace: 'nowrap' }}>
-                Продуктовая аналитика
+                {selectedAgent ?? 'Продуктовая аналитика'}
               </span>
+              {selectedAgent && (
+                <div
+                  onClick={() => setSelectedAgent(null)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 14, height: 14, borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.1)', cursor: 'pointer',
+                    color: TEXT_SECONDARY, fontSize: 9,
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.2)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.1)'; }}
+                >
+                  ✕
+                </div>
+              )}
             </div>
 
             {/* Image previews */}
