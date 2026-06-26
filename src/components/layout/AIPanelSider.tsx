@@ -1476,15 +1476,12 @@ export function AIPanelFAB({ onClick }: { onClick: () => void }) {
     <Tooltip title="Открыть ИИ-помощник" placement="left">
       <button
         onClick={onClick}
-        style={{
-          position: 'fixed', bottom: 24, right: 24, width: 48, height: 48,
-          borderRadius: '50%', background: ACCENT, border: 'none',
-          cursor: 'pointer', zIndex: 999,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-        }}
+        className="ai-fab-btn"
+        style={{ position: 'fixed', bottom: 24, right: 24, width: 48, height: 48, borderRadius: '50%' }}
       >
-        <RobotOutlined style={{ fontSize: 22, color: '#fff' }} />
+        <span>
+          <RobotOutlined style={{ fontSize: 20, color: '#fff', position: 'relative', zIndex: 3 }} />
+        </span>
       </button>
     </Tooltip>
   );
