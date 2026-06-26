@@ -455,23 +455,23 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
                     w?.document.close();
                   };
                   const downloadPdf = async () => {
-                    // Render each slide via html2canvas → combine into jsPDF
+                    const W = 1280, H = 720;
                     const container = document.createElement('div');
-                    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:960px;background:#fff;';
+                    container.style.cssText = `position:fixed;left:-9999px;top:0;width:${W}px;background:#fff;`;
                     container.innerHTML = html;
                     document.body.appendChild(container);
                     try {
                       const slides = Array.from(container.querySelectorAll<HTMLElement>('.slide'));
                       const targets = slides.length > 0 ? slides : [container];
-                      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [960, 540] });
+                      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [W, H], hotfixes: ['px_scaling'] });
                       for (let i = 0; i < targets.length; i++) {
                         const el = targets[i] as HTMLElement;
-                        el.style.width = '960px';
-                        el.style.height = '540px';
-                        const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#fff' });
-                        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                        if (i > 0) pdf.addPage([960, 540], 'landscape');
-                        pdf.addImage(imgData, 'JPEG', 0, 0, 960, 540);
+                        el.style.width = `${W}px`;
+                        el.style.height = `${H}px`;
+                        const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#fff', width: W, height: H });
+                        const imgData = canvas.toDataURL('image/png');
+                        if (i > 0) pdf.addPage([W, H], 'landscape');
+                        pdf.addImage(imgData, 'PNG', 0, 0, W, H);
                       }
                       pdf.save('QBR-Report.pdf');
                     } finally {
@@ -504,7 +504,7 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
                       <iframe
                         srcDoc={html}
                         sandbox="allow-same-origin"
-                        style={{ width: '100%', height: 480, border: 'none', display: 'block', background: '#fff' }}
+                        style={{ width: '100%', aspectRatio: '16/9', border: 'none', display: 'block', background: '#fff' }}
                         title="QBR Report"
                       />
                     </div>
