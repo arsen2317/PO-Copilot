@@ -1339,7 +1339,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
       {/* ── Center: history / empty state / message list ── */}
       <div style={{
-        flex: 1, overflow: 'auto', position: 'relative',
+        flex: 1, overflow: 'hidden', position: 'relative',
         display: 'flex', flexDirection: 'column',
       }}>
         {view === 'history' ? (
