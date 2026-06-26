@@ -10,7 +10,7 @@ import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
 import { BASE_SYSTEM_PROMPT, AGENT_PROMPTS } from '../../lib/agentPrompts';
 import { getMetricDefinitions } from '../../data/api/metric-definitions';
 import { useUIStore } from '../../store/uiStore';
-import type { ChatMessage as StoredChatMessage, ChatSession } from '../../store/uiStore';
+import type { ChatMessage as StoredChatMessage, ChatSession, AttachedFile } from '../../store/uiStore';
 import {
   ApiOutlined,
   AudioOutlined,
@@ -272,10 +272,89 @@ function UserBubble({ msg }: { msg: LocalMessage }) {
 }
 
 // ── Assistant message bubble ─────────────────────────────────────────────────
-function AssistantBubble({ msg, metricMap, onMetricClick }: {
+// ── Interactive metric selector for QBR ─────────────────────────────────────
+type MetricSelectorItem = {
+  id: string; name: string; currentValue: number; planValue: number;
+  lastPeriodValue: number; unit: string; fulfillmentPct: number; lowerIsBetter?: boolean;
+};
+
+function MetricSelector({ json, onConfirm }: { json: string; onConfirm: (ids: string[]) => void }) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  let items: MetricSelectorItem[] = [];
+  try { items = JSON.parse(json) as MetricSelectorItem[]; } catch { return null; }
+
+  const toggle = (id: string) => setSelected(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const pctColor = (pct: number) => pct >= 95 ? '#16A34A' : pct >= 80 ? '#D97706' : '#DC2626';
+
+  return (
+    <div style={{ margin: '8px 0', border: `1px solid ${BORDER_COLOR}`, borderRadius: 10, overflow: 'hidden' }}>
+      <div style={{ padding: '10px 14px', background: '#1C1D1F', borderBottom: `1px solid ${BORDER_COLOR}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 12, color: TEXT_SECONDARY, fontWeight: 500 }}>Выберите метрики для отчёта</span>
+        <span style={{ fontSize: 11, color: TEXT_PLACEHOLDER }}>выбрано: {selected.size}</span>
+      </div>
+      <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+        {items.map((m) => {
+          const active = selected.has(m.id);
+          const delta = m.lastPeriodValue ? ((m.currentValue - m.lastPeriodValue) / Math.abs(m.lastPeriodValue) * 100) : 0;
+          return (
+            <div
+              key={m.id}
+              onClick={() => toggle(m.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '9px 14px', cursor: 'pointer',
+                background: active ? 'rgba(74,130,247,0.08)' : 'transparent',
+                borderBottom: `1px solid ${BORDER_COLOR}`,
+                transition: 'background 0.12s',
+              }}
+              onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)'; }}
+              onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+            >
+              <div style={{
+                width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                border: `1.5px solid ${active ? ACCENT : '#3A3B3D'}`,
+                background: active ? ACCENT : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.12s',
+              }}>
+                {active && <span style={{ color: '#fff', fontSize: 10, lineHeight: 1 }}>✓</span>}
+              </div>
+              <span style={{ flex: 1, fontSize: 13, color: active ? TEXT_PRIMARY : TEXT_SECONDARY }}>{m.name}</span>
+              <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500 }}>{m.currentValue}{m.unit}</span>
+              <span style={{ fontSize: 11, color: pctColor(m.fulfillmentPct), minWidth: 40, textAlign: 'right' }}>{m.fulfillmentPct}%</span>
+              <span style={{ fontSize: 11, color: delta >= 0 ? '#16A34A' : '#DC2626', minWidth: 44, textAlign: 'right' }}>
+                {delta >= 0 ? '+' : ''}{delta.toFixed(1)}%
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ padding: '10px 14px', background: '#1C1D1F', display: 'flex', justifyContent: 'flex-end' }}>
+        <div
+          onClick={() => selected.size > 0 && onConfirm([...selected])}
+          style={{
+            padding: '6px 16px', borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: selected.size > 0 ? 'pointer' : 'not-allowed',
+            background: selected.size > 0 ? ACCENT : '#2A2B2D', color: selected.size > 0 ? '#fff' : TEXT_PLACEHOLDER,
+            transition: 'background 0.15s',
+          }}
+        >
+          Создать отчёт{selected.size > 0 ? ` (${selected.size})` : ''}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
   msg: LocalMessage;
   metricMap: Map<string, string>;
   onMetricClick: (id: string) => void;
+  onSend: (text: string) => void;
 }) {
   return (
     <div style={{ marginBottom: 16, minWidth: 0 }}>
@@ -316,6 +395,15 @@ function AssistantBubble({ msg, metricMap, onMetricClick }: {
             code: ({ children, className }) => {
               const isBlock = className?.startsWith('language-');
               if (isBlock) {
+                // QBR metric selector — interactive checklist
+                if (className === 'language-metric-selector') {
+                  return (
+                    <MetricSelector
+                      json={String(children).trim()}
+                      onConfirm={(ids) => onSend(`QBR: выбраны метрики: ${ids.join(', ')}`)}
+                    />
+                  );
+                }
                 // QBR HTML report — render in iframe
                 if (className === 'language-html-report') {
                   const html = String(children);
@@ -637,6 +725,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const [view, setView] = useState<'chat' | 'history'>('chat');
   const [inputValue, setInputValue] = useState('');
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [automateHovered, setAutomateHovered] = useState(false);
@@ -645,6 +734,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const [pendingTrigger, setPendingTrigger] = useState<{ agent: string; text: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileDocInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -695,7 +785,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   // ── Send message ────────────────────────────────────────────────────────
   const handleSendWith = async (overrideText?: string) => {
     const text = (overrideText ?? inputValue).trim();
-    if (!text && attachedImages.length === 0) return;
+    if (!text && attachedImages.length === 0 && attachedFiles.length === 0) return;
     if (isThinking) return;
 
     const newMsg: LocalMessage = {
@@ -703,6 +793,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       role: 'user',
       content: text,
       ...(attachedImages.length > 0 && { images: [...attachedImages] }),
+      ...(attachedFiles.length > 0 && { files: [...attachedFiles] }),
     };
 
     // Auto-title the session from the first user message
@@ -715,6 +806,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     setMessages((prev) => [...prev, newMsg]);
     if (!overrideText) setInputValue('');
     setAttachedImages([]);
+    setAttachedFiles([]);
     setIsThinking(true);
 
     const abort = new AbortController();
@@ -722,13 +814,38 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
     // Convert a local message to Anthropic API content
     const toApiContent = (m: LocalMessage): string | object[] => {
-      if (m.role === 'user' && m.images && m.images.length > 0) {
-        const parts: object[] = m.images.flatMap((img) => {
-          const match = img.match(/^data:([^;]+);base64,(.+)$/);
-          return match
-            ? [{ type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } }]
-            : [];
-        });
+      const hasImages = m.role === 'user' && m.images && m.images.length > 0;
+      const hasFiles = m.role === 'user' && m.files && m.files.length > 0;
+      if (hasImages || hasFiles) {
+        const parts: object[] = [];
+        // Attached documents (PDF, text, Office, etc.)
+        if (m.files) {
+          for (const f of m.files) {
+            const isOffice =
+              f.type === 'application/msword' ||
+              f.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+              f.type === 'application/vnd.ms-excel' ||
+              f.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+            if (f.type === 'application/pdf' || isOffice) {
+              parts.push({ type: 'document', source: { type: 'base64', media_type: f.type, data: f.data }, title: f.name });
+            } else if (f.type.startsWith('text/') || f.type === 'application/json') {
+              try {
+                const decoded = atob(f.data);
+                parts.push({ type: 'text', text: `[Файл: ${f.name}]\n${decoded}` });
+              } catch {
+                parts.push({ type: 'text', text: `[Файл: ${f.name} — не удалось прочитать]` });
+              }
+            }
+          }
+        }
+        // Images
+        if (m.images) {
+          for (const img of m.images) {
+            const match = img.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) parts.push({ type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } });
+          }
+        }
         if (m.content) parts.push({ type: 'text', text: m.content });
         return parts;
       }
@@ -749,7 +866,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
         const result = await streamChat({
           messages: apiMessages as ChatMessage[],
           system: selectedAgent && AGENT_PROMPTS[selectedAgent]
-            ? AGENT_PROMPTS[selectedAgent]
+            ? `${BASE_SYSTEM_PROMPT}\n\n${AGENT_PROMPTS[selectedAgent]}`
             : BASE_SYSTEM_PROMPT,
           tools: TOOL_DEFINITIONS as unknown as object[],
           signal: abort.signal,
@@ -811,6 +928,23 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
         if (typeof result === 'string') {
           setAttachedImages((prev) => [...prev, result]);
         }
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
+  // ── Document/file attachment ─────────────────────────────────────────────
+  const handleDocFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result;
+        if (typeof dataUrl !== 'string') return;
+        // Strip the data URL prefix to get raw base64
+        const base64 = dataUrl.split(',')[1] ?? '';
+        setAttachedFiles((prev) => [...prev, { name: file.name, type: file.type, data: base64 }]);
       };
       reader.readAsDataURL(file);
     });
@@ -886,6 +1020,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
   const onDropdownClick = ({ key }: { key: string }) => {
     if (key === 'image') fileInputRef.current?.click();
+    if (key === 'file') fileDocInputRef.current?.click();
     if (AGENT_ITEMS.some((a) => a.key === key)) setSelectedAgent(key);
   };
 
@@ -933,21 +1068,17 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           transition: 'outline-color 0.15s',
         }}>
 
-          {/* Context chip */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            height: 28, padding: '0 8px',
-            background: '#1C1D1F', borderRadius: 8, marginBottom: 8,
-          }}>
-            {selectedAgent ? (
+          {/* Agent chip — only when agent is selected */}
+          {selectedAgent && (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              height: 28, padding: '0 8px',
+              background: '#1C1D1F', borderRadius: 8, marginBottom: 8,
+            }}>
               <RobotOutlined style={{ color: ACCENT, fontSize: 13 }} />
-            ) : (
-              <BarChartOutlined style={{ color: ACCENT, fontSize: 13 }} />
-            )}
-            <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, whiteSpace: 'nowrap' }}>
-              {selectedAgent ? (AGENTS_DATA.find(a => a.key === selectedAgent)?.label ?? selectedAgent) : 'Продуктовая аналитика'}
-            </span>
-            {selectedAgent && (
+              <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                {AGENTS_DATA.find(a => a.key === selectedAgent)?.label ?? selectedAgent}
+              </span>
               <div
                 onClick={() => setSelectedAgent(null)}
                 style={{
@@ -962,8 +1093,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
               >
                 ✕
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Image previews */}
           {attachedImages.length > 0 && (
@@ -987,6 +1118,27 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                   >
                     ✕
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* File chips */}
+          {attachedFiles.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+              {attachedFiles.map((f, i) => (
+                <div key={i} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  height: 26, padding: '0 8px',
+                  background: '#1C1D1F', border: `1px solid ${BORDER_COLOR}`,
+                  borderRadius: 6, fontSize: 12, color: TEXT_SECONDARY,
+                }}>
+                  <PaperClipOutlined style={{ fontSize: 11 }} />
+                  <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                  <div
+                    onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                    style={{ cursor: 'pointer', fontSize: 10, marginLeft: 2, color: TEXT_PLACEHOLDER }}
+                  >✕</div>
                 </div>
               ))}
             </div>
@@ -1154,7 +1306,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                   {messages.map((msg) =>
                     msg.role === 'user'
                       ? <UserBubble key={msg.id} msg={msg} />
-                      : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} />,
+                      : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
                   )}
                   {isThinking && <AssistantTyping />}
                   <div ref={messagesEndRef} />
@@ -1169,15 +1321,9 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           </div>
         </div>
 
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: 'none' }}
-          onChange={handleImageFile}
-        />
+        {/* Hidden file inputs */}
+        <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleImageFile} />
+        <input ref={fileDocInputRef} type="file" accept=".pdf,.txt,.md,.csv,.json,.doc,.docx,.xls,.xlsx" multiple style={{ display: 'none' }} onChange={handleDocFile} />
       </div>
     );
   }
@@ -1245,7 +1391,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
             {messages.map((msg) =>
               msg.role === 'user'
                 ? <UserBubble key={msg.id} msg={msg} />
-                : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} />,
+                : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
             )}
             {isThinking && <AssistantTyping />}
             <div ref={messagesEndRef} />
