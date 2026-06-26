@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { streamChat } from '../../lib/claude';
 import { TOOL_DEFINITIONS, executeTool } from '../../lib/tools';
 import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
+import { BASE_SYSTEM_PROMPT, AGENT_PROMPTS } from '../../lib/agentPrompts';
 import { getMetricDefinitions } from '../../data/api/metric-definitions';
 import { useUIStore } from '../../store/uiStore';
 import type { ChatMessage as StoredChatMessage, ChatSession } from '../../store/uiStore';
@@ -14,18 +15,24 @@ import {
   ApiOutlined,
   AudioOutlined,
   BarChartOutlined,
+  BulbOutlined,
+  CheckSquareOutlined,
   CloseOutlined,
   CodeOutlined,
   FileImageOutlined,
+  FileTextOutlined,
   FormOutlined,
   HistoryOutlined,
   LayoutOutlined,
   PaperClipOutlined,
   PlusOutlined,
+  RiseOutlined,
   RobotOutlined,
+  SafetyOutlined,
   SendOutlined,
   StarFilled,
   StopOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { Dropdown, Tooltip } from 'antd';
 
@@ -53,25 +60,12 @@ export type AIPanelMode = 'sidebar' | 'floating' | 'closed';
 interface AIPanelSiderProps {
   mode: 'sidebar' | 'floating';
   onChangeMode: (mode: AIPanelMode) => void;
+  expanded?: boolean;
+  hideWindowControls?: boolean;
 }
 
 type LocalMessage = StoredChatMessage;
 
-const SYSTEM_PROMPT = `Ты ИИ-ассистент встроенный в «Барометр» — платформу продуктовой аналитики для команды дебетовых карт. Помогаешь продуктовым менеджерам анализировать метрики, находить аномалии, приоритизировать задачи и принимать решения на основе данных.
-
-Правила форматирования:
-- Используй инструменты для получения данных перед ответом.
-- Отвечай кратко и по делу. Всегда на русском языке.
-- Markdown: заголовки (###), жирный (**текст**), списки, таблицы для сравнений.
-- Никаких эмодзи, никаких декоративных символов (❌ ✅ 🔴 и т.д.).
-- Никаких горизонтальных разделителей (---) между абзацами без необходимости.
-- Числа и метрики — конкретно, с единицами измерения.
-
-Интерактивные ссылки на метрики:
-Когда ссылаешься на конкретную метрику из данных, оборачивай её id в backticks.
-Например: \`active_cards\`, \`nps_general\`, \`churn_rate\`.
-Это создаёт кликабельный чип — пользователь нажимает и попадает на эту метрику в дашборде.
-Используй id именно так, как он пришёл из инструмента get_metrics (поле id).`;
 
 const SUGGESTIONS = [
   'Найти аномалии и исследовать причину',
@@ -85,6 +79,116 @@ const TEXT_PRIMARY = '#D7D8DA';
 const TEXT_SECONDARY = '#9B9C9E';
 const TEXT_PLACEHOLDER = '#757575';
 const ACCENT = '#4A82F7';
+
+type AgentDef = {
+  key: string;
+  label: string;
+  desc: string;
+  color: string;
+  Icon: React.ComponentType<{ style?: React.CSSProperties }>;
+  trigger?: string;
+};
+
+const AGENTS_DATA: AgentDef[] = [
+  { key: 'agent-metrics',    label: 'Анализ метрик',     desc: 'Исследует аномалии и тренды, выявляет причины отклонений в данных',     color: '#0B2550', Icon: BarChartOutlined,   trigger: 'Проанализируй все текущие метрики' },
+  { key: 'agent-qbr',       label: 'Ассистент QBR',     desc: 'Готовит ключевые инсайты и рекомендации для квартального обзора',        color: '#0B3325', Icon: FileTextOutlined,   trigger: 'Начни подготовку QBR отчёта' },
+  { key: 'agent-tasks',     label: 'Постановщик задач', desc: 'Пишет и улучшает задачи в формате Jira, расставляет приоритеты',        color: '#25103A', Icon: CheckSquareOutlined },
+  { key: 'agent-risks',     label: 'Поиск рисков',      desc: 'Выявляет комплаенс-риски и риски имплементации фичей',                  color: '#3A0F0F', Icon: SafetyOutlined },
+  { key: 'agent-hypotheses',label: 'Гипотезы роста',    desc: 'Предлагает проверяемые гипотезы на основе метрик с ICE-скорингом',      color: '#2A2A0A', Icon: BulbOutlined,       trigger: 'Сгенерируй гипотезы роста на основе текущих метрик' },
+  { key: 'agent-custdev',   label: 'CustDev',            desc: 'Подбирает методы исследования и помогает составить бриф',               color: '#0A2530', Icon: TeamOutlined },
+  { key: 'agent-trends',    label: 'Трендвотчер',       desc: 'Мониторит фичи конкурентов и тренды банковского рынка со ссылками',     color: '#1A0A35', Icon: RiseOutlined,       trigger: 'Проведи мониторинг последних фич конкурентов в сегменте дебетовых карт' },
+];
+
+// ── Agent cards carousel — 3 visible, icon-based ────────────────────────────
+function AgentCards({ onSelect }: { onSelect: (key: string) => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(true);
+
+  const updateArrows = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 4);
+    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  };
+
+  const scroll = (dir: 'left' | 'right') => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const cardW = el.clientWidth / 3;
+    el.scrollBy({ left: dir === 'left' ? -cardW : cardW, behavior: 'smooth' });
+  };
+
+  return (
+    <div style={{ width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingRight: 2 }}>
+        <span style={{ fontSize: 12, color: TEXT_SECONDARY, fontWeight: 500 }}>Агенты</span>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {(['left', 'right'] as const).map((dir) => {
+            const active = dir === 'left' ? canLeft : canRight;
+            return (
+              <div
+                key={dir}
+                onClick={() => scroll(dir)}
+                style={{
+                  width: 24, height: 24, borderRadius: 6, cursor: active ? 'pointer' : 'default',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: active ? TEXT_SECONDARY : '#3A3B3D',
+                  fontSize: 14, transition: 'color 0.15s', background: 'rgba(255,255,255,0.04)',
+                }}
+              >
+                {dir === 'left' ? '←' : '→'}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div
+        ref={scrollRef}
+        onScroll={updateArrows}
+        style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}
+      >
+        {AGENTS_DATA.map((agent) => (
+          <div
+            key={agent.key}
+            onClick={() => onSelect(agent.key)}
+            style={{
+              flex: '0 0 calc(33.333% - 7px)',
+              minWidth: 0,
+              padding: '14px 14px 16px',
+              background: '#18191B', border: `1px solid ${BORDER_COLOR}`,
+              borderRadius: 12, cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', gap: 12,
+              transition: 'border-color 0.15s, background 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              const el = e.currentTarget as HTMLDivElement;
+              el.style.borderColor = '#4A82F7';
+              el.style.background = '#1C1E22';
+            }}
+            onMouseLeave={(e) => {
+              const el = e.currentTarget as HTMLDivElement;
+              el.style.borderColor = BORDER_COLOR;
+              el.style.background = '#18191B';
+            }}
+          >
+            <div style={{
+              width: 44, height: 44, borderRadius: 10,
+              background: agent.color, border: `1px solid rgba(255,255,255,0.06)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <agent.Icon style={{ fontSize: 20, color: '#fff' }} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: TEXT_PRIMARY, lineHeight: 1.3 }}>{agent.label}</span>
+              <span style={{ fontSize: 12, color: TEXT_SECONDARY, lineHeight: 1.5 }}>{agent.desc}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ── Jumping dots (loading indicator) ────────────────────────────────────────
 function JumpingDots() {
@@ -212,6 +316,39 @@ function AssistantBubble({ msg, metricMap, onMetricClick }: {
             code: ({ children, className }) => {
               const isBlock = className?.startsWith('language-');
               if (isBlock) {
+                // QBR HTML report — render in iframe
+                if (className === 'language-html-report') {
+                  const html = String(children);
+                  const openInTab = () => {
+                    const w = window.open('', '_blank');
+                    w?.document.write(html);
+                    w?.document.close();
+                  };
+                  return (
+                    <div style={{ margin: '10px 0', borderRadius: 10, overflow: 'hidden', border: `1px solid ${BORDER_COLOR}` }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '8px 12px', background: '#1C1D1F', borderBottom: `1px solid ${BORDER_COLOR}`,
+                      }}>
+                        <span style={{ fontSize: 12, color: TEXT_SECONDARY, fontWeight: 500 }}>QBR Отчёт</span>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <span
+                            onClick={openInTab}
+                            style={{ fontSize: 12, color: ACCENT, cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            Открыть на странице
+                          </span>
+                        </div>
+                      </div>
+                      <iframe
+                        srcDoc={html}
+                        sandbox="allow-same-origin"
+                        style={{ width: '100%', height: 480, border: 'none', display: 'block', background: '#fff' }}
+                        title="QBR Report"
+                      />
+                    </div>
+                  );
+                }
                 return (
                   <pre style={{
                     background: '#1C1D1F', border: `1px solid ${BORDER_COLOR}`,
@@ -372,13 +509,122 @@ function HistoryPanel({ sessions, activeSessionId, onSelect }: {
   );
 }
 
+// ── Assistant page left sidebar ──────────────────────────────────────────────
+function AssistantLeftSidebar({ sessions, activeSessionId, onNewChat, onSelectSession }: {
+  sessions: ChatSession[];
+  activeSessionId: string;
+  onNewChat: () => void;
+  onSelectSession: (id: string) => void;
+}) {
+  const now = Date.now();
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+  const todays = sessions.filter(s => s.createdAt >= todayStart.getTime());
+  const yesterdays = sessions.filter(s => s.createdAt >= yesterdayStart.getTime() && s.createdAt < todayStart.getTime());
+  const older = sessions.filter(s => s.createdAt < yesterdayStart.getTime());
+
+  const SectionLabel = ({ label }: { label: string }) => (
+    <div style={{ fontSize: 11, color: TEXT_PLACEHOLDER, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', padding: '10px 12px 4px' }}>
+      {label}
+    </div>
+  );
+
+  const SessionItem = ({ s }: { s: ChatSession }) => {
+    const active = s.id === activeSessionId;
+    return (
+      <div
+        onClick={() => onSelectSession(s.id)}
+        style={{
+          padding: '6px 12px', borderRadius: 7, cursor: 'pointer', marginBottom: 1,
+          background: active ? 'rgba(74,130,247,0.12)' : 'transparent',
+          border: `1px solid ${active ? 'rgba(74,130,247,0.25)' : 'transparent'}`,
+          display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.12s',
+        }}
+        onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
+        onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+      >
+        <div style={{ width: 6, height: 6, borderRadius: '50%', background: active ? ACCENT : '#3A3B3D', flexShrink: 0 }} />
+        <span style={{ fontSize: 13, color: active ? TEXT_PRIMARY : TEXT_SECONDARY, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+          {s.title}
+        </span>
+      </div>
+    );
+  };
+
+  void now;
+
+  return (
+    <div style={{ width: 220, flexShrink: 0, borderRight: `1px solid ${BORDER_COLOR}`, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Top actions */}
+      <div style={{ padding: '14px 12px 8px', display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+        <div
+          onClick={onNewChat}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '7px 10px', borderRadius: 8, cursor: 'pointer',
+            color: TEXT_PRIMARY, fontSize: 13, fontWeight: 500,
+            transition: 'background 0.12s',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.06)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+        >
+          <FormOutlined style={{ fontSize: 15, color: TEXT_SECONDARY }} />
+          Новый чат
+        </div>
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '7px 10px', borderRadius: 8, cursor: 'not-allowed',
+            color: TEXT_SECONDARY, fontSize: 13,
+          }}
+        >
+          <RobotOutlined style={{ fontSize: 15 }} />
+          <span>Мои агенты</span>
+          <span style={{ marginLeft: 'auto', fontSize: 10, color: TEXT_PLACEHOLDER, background: 'rgba(255,255,255,0.06)', borderRadius: 4, padding: '1px 5px' }}>скоро</span>
+        </div>
+      </div>
+
+      <div style={{ height: 1, background: BORDER_COLOR, flexShrink: 0 }} />
+
+      {/* History list */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 12px' }}>
+        {todays.length > 0 && (
+          <>
+            <SectionLabel label="Сегодня" />
+            {todays.map(s => <SessionItem key={s.id} s={s} />)}
+          </>
+        )}
+        {yesterdays.length > 0 && (
+          <>
+            <SectionLabel label="Вчера" />
+            {yesterdays.map(s => <SessionItem key={s.id} s={s} />)}
+          </>
+        )}
+        {older.length > 0 && (
+          <>
+            <SectionLabel label="Ранее" />
+            {older.map(s => <SessionItem key={s.id} s={s} />)}
+          </>
+        )}
+        {sessions.length === 0 && (
+          <div style={{ padding: '16px 12px', fontSize: 13, color: TEXT_PLACEHOLDER }}>История пуста</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main panel content ───────────────────────────────────────────────────────
-function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
+function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowControls }: {
   onChangeMode: (m: AIPanelMode) => void;
   mode: 'sidebar' | 'floating';
   onDragBarMouseDown?: (e: React.MouseEvent) => void;
+  hideWindowControls?: boolean;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isAssistantPage = location.pathname === '/assistant' || location.pathname.startsWith('/assistant/');
   const setFocusedMetric = useUIStore((s) => s.setFocusedMetric);
   const sessions = useUIStore((s) => s.sessions);
   const activeSessionId = useUIStore((s) => s.activeSessionId);
@@ -393,6 +639,10 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
+  const [automateHovered, setAutomateHovered] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [pendingTrigger, setPendingTrigger] = useState<{ agent: string; text: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -412,13 +662,39 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
     navigate('/');
   };
 
+  const hasMessages = messages.length > 0 || isThinking;
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isThinking]);
 
+  useEffect(() => {
+    if (hasMessages) setAutomateHovered(false);
+  }, [hasMessages]);
+
+  // ── Agent card click — select agent and auto-trigger if needed ─────────
+  const handleAgentSelect = (key: string) => {
+    const agent = AGENTS_DATA.find(a => a.key === key);
+    if (!agent) return;
+    setSelectedAgent(key);
+    if (agent.trigger) {
+      setPendingTrigger({ agent: key, text: agent.trigger });
+    }
+  };
+
+  // Fire pending trigger after selectedAgent is committed to state
+  useEffect(() => {
+    if (!pendingTrigger) return;
+    // Use a local snapshot of the trigger to avoid stale closure
+    const { text } = pendingTrigger;
+    setPendingTrigger(null);
+    void handleSendWith(text);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingTrigger]);
+
   // ── Send message ────────────────────────────────────────────────────────
-  const handleSend = async () => {
-    const text = inputValue.trim();
+  const handleSendWith = async (overrideText?: string) => {
+    const text = (overrideText ?? inputValue).trim();
     if (!text && attachedImages.length === 0) return;
     if (isThinking) return;
 
@@ -437,7 +713,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
     // Snapshot current messages before state update (closure capture)
     const prevMessages = messages;
     setMessages((prev) => [...prev, newMsg]);
-    setInputValue('');
+    if (!overrideText) setInputValue('');
     setAttachedImages([]);
     setIsThinking(true);
 
@@ -472,7 +748,9 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
 
         const result = await streamChat({
           messages: apiMessages as ChatMessage[],
-          system: SYSTEM_PROMPT,
+          system: selectedAgent && AGENT_PROMPTS[selectedAgent]
+            ? AGENT_PROMPTS[selectedAgent]
+            : BASE_SYSTEM_PROMPT,
           tools: TOOL_DEFINITIONS as unknown as object[],
           signal: abort.signal,
           onTextDelta: (delta) => {
@@ -565,6 +843,16 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
   };
 
   // ── Dropdown items ───────────────────────────────────────────────────────
+  const AGENT_ITEMS = [
+    { key: 'agent-metrics', label: 'Анализ метрик' },
+    { key: 'agent-qbr', label: 'Ассистент QBR' },
+    { key: 'agent-tasks', label: 'Постановщик задач' },
+    { key: 'agent-risks', label: 'Поиск рисков' },
+    { key: 'agent-hypotheses', label: 'Генератор гипотез' },
+    { key: 'agent-custdev', label: 'CustDev' },
+    { key: 'agent-trends', label: 'Трендвотчер' },
+  ];
+
   const dropdownItems = [
     {
       key: 'image',
@@ -578,9 +866,16 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
     },
     { type: 'divider' as const },
     {
+      key: 'agents',
+      label: 'Агенты',
+      icon: <RobotOutlined />,
+      children: AGENT_ITEMS,
+    },
+    {
       key: 'connectors',
       label: 'Коннекторы',
       icon: <ApiOutlined />,
+      children: [{ key: 'connectors-soon', label: 'Скоро', disabled: true }],
     },
     {
       key: 'commands',
@@ -591,36 +886,307 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
 
   const onDropdownClick = ({ key }: { key: string }) => {
     if (key === 'image') fileInputRef.current?.click();
-    // 'file', 'connectors', 'commands' — stubs for future phases
+    if (AGENT_ITEMS.some((a) => a.key === key)) setSelectedAgent(key);
   };
 
   const canSend = inputValue.trim().length > 0 || attachedImages.length > 0;
-  const hasMessages = messages.length > 0 || isThinking;
 
+  // ── Reusable input card ────────────────────────────────────────────────────
+  const InputCard = (
+    <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Input card */}
+      <div style={{
+        background: automateHovered ? '#0B1F5F' : '#1C1D1F',
+        borderRadius: 18,
+        outline: automateHovered ? '1px #434446 solid' : `1px solid ${BORDER_COLOR}`,
+        overflow: 'hidden',
+        transition: 'background 0.18s, outline-color 0.18s',
+      }}>
+
+        {/* Automate row — only in empty state */}
+        {!hasMessages && (
+          <>
+            <div
+              onMouseEnter={() => setAutomateHovered(true)}
+              onMouseLeave={() => setAutomateHovered(false)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '10px 16px', cursor: 'default',
+              }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <StarFilled style={{ color: ACCENT, fontSize: 12 }} />
+                <span style={{ fontSize: 12, color: TEXT_SECONDARY }}>Автоматизировать повторяющиеся задачи</span>
+              </div>
+              <span style={{ fontSize: 12, color: ACCENT, cursor: 'pointer', whiteSpace: 'nowrap' }}>Попробовать</span>
+            </div>
+            <div style={{ height: 1, background: BORDER_COLOR }} />
+          </>
+        )}
+
+        {/* Input area */}
+        <div style={{
+          background: BG,
+          borderRadius: 18,
+          padding: '12px 16px 10px',
+          outline: inputFocused ? '1px #487EFF solid' : 'none',
+          outlineOffset: '-1px',
+          transition: 'outline-color 0.15s',
+        }}>
+
+          {/* Context chip */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            height: 28, padding: '0 8px',
+            background: '#1C1D1F', borderRadius: 8, marginBottom: 8,
+          }}>
+            {selectedAgent ? (
+              <RobotOutlined style={{ color: ACCENT, fontSize: 13 }} />
+            ) : (
+              <BarChartOutlined style={{ color: ACCENT, fontSize: 13 }} />
+            )}
+            <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, whiteSpace: 'nowrap' }}>
+              {selectedAgent ? (AGENTS_DATA.find(a => a.key === selectedAgent)?.label ?? selectedAgent) : 'Продуктовая аналитика'}
+            </span>
+            {selectedAgent && (
+              <div
+                onClick={() => setSelectedAgent(null)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 14, height: 14, borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.1)', cursor: 'pointer',
+                  color: TEXT_SECONDARY, fontSize: 9,
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.2)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.1)'; }}
+              >
+                ✕
+              </div>
+            )}
+          </div>
+
+          {/* Image previews */}
+          {attachedImages.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+              {attachedImages.map((src, i) => (
+                <div key={i} style={{ position: 'relative' }}>
+                  <img
+                    src={src}
+                    alt=""
+                    style={{ height: 60, maxWidth: 90, borderRadius: 6, objectFit: 'cover', border: `1px solid ${BORDER_COLOR}`, display: 'block' }}
+                  />
+                  <div
+                    onClick={() => setAttachedImages((prev) => prev.filter((_, idx) => idx !== i))}
+                    style={{
+                      position: 'absolute', top: -4, right: -4,
+                      width: 16, height: 16, borderRadius: '50%',
+                      background: '#3A3B3D', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', fontSize: 9, color: TEXT_SECONDARY,
+                    }}
+                  >
+                    ✕
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Textarea */}
+          <textarea
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder={isListening ? 'Слушаю...' : 'Напишите сообщение или введите / для команд'}
+            rows={2}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendWith();
+              }
+            }}
+            style={{
+              background: 'transparent', border: 'none', outline: 'none',
+              resize: 'none', fontSize: 13, color: isListening ? ACCENT : TEXT_PRIMARY,
+              fontFamily: 'inherit', lineHeight: 1.5, width: '100%', padding: 0,
+            }}
+          />
+
+          {/* Footer row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+
+            {/* Left: + dropdown */}
+            <Dropdown
+              menu={{ items: dropdownItems, onClick: onDropdownClick }}
+              trigger={['click']}
+              placement="topLeft"
+            >
+              <div style={{
+                width: 24, height: 24,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', color: TEXT_SECONDARY, fontSize: 14,
+                borderRadius: 5,
+                transition: 'color 0.15s',
+              }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.color = TEXT_PRIMARY; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.color = TEXT_SECONDARY; }}
+              >
+                <PlusOutlined />
+              </div>
+            </Dropdown>
+
+            {/* Right: voice + send */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Tooltip title={isListening ? 'Остановить запись' : 'Голосовой ввод'}>
+                <div
+                  onClick={toggleVoice}
+                  style={{
+                    width: 24, height: 24,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: isListening ? '#F04438' : TEXT_SECONDARY,
+                    fontSize: 14,
+                    transition: 'color 0.15s',
+                  }}
+                >
+                  {isListening ? <StopOutlined /> : <AudioOutlined />}
+                </div>
+              </Tooltip>
+
+              {canSend && (
+                <Tooltip title="Отправить">
+                  <div
+                    onClick={() => handleSendWith()}
+                    style={{
+                      width: 24, height: 24,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', color: ACCENT, fontSize: 14,
+                      transition: 'opacity 0.15s',
+                    }}
+                  >
+                    <SendOutlined />
+                  </div>
+                </Tooltip>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Disclaimer */}
+      <span style={{ fontSize: 11, color: TEXT_PLACEHOLDER, textAlign: 'center' }}>
+        ИИ может ошибаться. Проверяйте важные данные.
+      </span>
+    </div>
+  );
+
+  // ── Top bar ─────────────────────────────────────────────────────────────────
+  const TopBar = (
+    <div
+      onMouseDown={onDragBarMouseDown}
+      style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '10px 12px', flexShrink: 0,
+        cursor: mode === 'floating' ? 'grab' : 'default',
+        userSelect: 'none',
+      }}
+    >
+      <div data-no-drag><IconBtn icon={<FormOutlined />} tooltip="Новый чат" onClick={() => { createSession(); setAttachedImages([]); setInputValue(''); setSelectedAgent(null); setView('chat'); }} /></div>
+      <div data-no-drag style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        {!isAssistantPage && (
+          <IconBtn icon={<HistoryOutlined />} tooltip="История чатов" active={view === 'history'} onClick={() => setView((v) => v === 'history' ? 'chat' : 'history')} />
+        )}
+        {!hideWindowControls && (
+          <>
+            <IconBtn
+              icon={<LayoutOutlined />}
+              tooltip={mode === 'sidebar' ? 'Открыть как окно' : 'Прикрепить справа'}
+              onClick={() => onChangeMode(mode === 'sidebar' ? 'floating' : 'sidebar')}
+            />
+            <IconBtn icon={<CloseOutlined />} tooltip="Закрыть" onClick={() => onChangeMode('closed')} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  // ── Assistant page: 2-column layout ─────────────────────────────────────────
+  if (isAssistantPage) {
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {TopBar}
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          {/* Left sidebar: history + new chat */}
+          <AssistantLeftSidebar
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            onNewChat={() => { createSession(); setAttachedImages([]); setInputValue(''); setSelectedAgent(null); }}
+            onSelectSession={(id) => switchSession(id)}
+          />
+
+          {/* Main content: centered column */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', alignItems: 'center' }}>
+
+            {/* Center: messages / empty state */}
+            <div style={{ flex: 1, overflow: 'auto', width: '100%', maxWidth: 760, display: 'flex', flexDirection: 'column' }}>
+              {!hasMessages ? (
+                <div style={{
+                  flex: 1, display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  padding: '32px 24px', position: 'relative',
+                }}>
+                  <div style={{
+                    position: 'absolute', left: '50%', top: '38%',
+                    transform: 'translate(-50%, -50%)',
+                    width: 220, height: 220, background: '#09225C',
+                    borderRadius: 9999, filter: 'blur(80px)', pointerEvents: 'none',
+                  }} />
+                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, width: '100%' }}>
+                    <span style={{ color: TEXT_PRIMARY, fontSize: 22, fontWeight: 600, textAlign: 'center', lineHeight: 1.4 }}>
+                      Над чем будем<br />работать сегодня?
+                    </span>
+                    <AgentCards onSelect={handleAgentSelect} />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ flex: 1, padding: '24px 24px 8px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
+                  {messages.map((msg) =>
+                    msg.role === 'user'
+                      ? <UserBubble key={msg.id} msg={msg} />
+                      : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} />,
+                  )}
+                  {isThinking && <AssistantTyping />}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </div>
+
+            {/* Input — constrained, centered */}
+            <div style={{ width: '100%', maxWidth: 760, padding: '0 24px 20px', flexShrink: 0 }}>
+              {InputCard}
+            </div>
+          </div>
+        </div>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          style={{ display: 'none' }}
+          onChange={handleImageFile}
+        />
+      </div>
+    );
+  }
+
+  // ── Sidebar / floating layout ────────────────────────────────────────────────
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-      {/* ── Top bar (draggable handle in floating mode) ── */}
-      <div
-        onMouseDown={onDragBarMouseDown}
-        style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '10px 12px', flexShrink: 0,
-          cursor: mode === 'floating' ? 'grab' : 'default',
-          userSelect: 'none',
-        }}
-      >
-        <div data-no-drag><IconBtn icon={<FormOutlined />} tooltip="Новый чат" onClick={() => { createSession(); setAttachedImages([]); setInputValue(''); setView('chat'); }} /></div>
-        <div data-no-drag style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <IconBtn icon={<HistoryOutlined />} tooltip="История чатов" active={view === 'history'} onClick={() => setView((v) => v === 'history' ? 'chat' : 'history')} />
-          <IconBtn
-            icon={<LayoutOutlined />}
-            tooltip={mode === 'sidebar' ? 'Открыть как окно' : 'Прикрепить справа'}
-            onClick={() => onChangeMode(mode === 'sidebar' ? 'floating' : 'sidebar')}
-          />
-          <IconBtn icon={<CloseOutlined />} tooltip="Закрыть" onClick={() => onChangeMode('closed')} />
-        </div>
-      </div>
+      {TopBar}
 
       {/* ── Center: history / empty state / message list ── */}
       <div style={{
@@ -652,17 +1218,17 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
               <span style={{ color: TEXT_PRIMARY, fontSize: 18, fontWeight: 600, textAlign: 'center', lineHeight: 1.4 }}>
                 Что вы хотите узнать?
               </span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                 {SUGGESTIONS.map((s) => (
                   <div
                     key={s}
                     onClick={() => setInputValue(s)}
                     style={{
-                      height: 32, padding: '0 8px', borderRadius: 8,
+                      height: 32, padding: '0 14px', borderRadius: 8,
                       outline: `1px solid ${BORDER_COLOR}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', color: TEXT_SECONDARY, fontSize: 13, textAlign: 'center',
-                      background: 'transparent', transition: 'background 0.15s',
+                      display: 'inline-flex', alignItems: 'center',
+                      cursor: 'pointer', color: TEXT_SECONDARY, fontSize: 13,
+                      background: 'transparent', transition: 'background 0.15s', whiteSpace: 'nowrap',
                     }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
@@ -687,156 +1253,9 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
         )}
       </div>
 
-
       {/* ── Bottom section ── */}
-      <div style={{ padding: '0 14px 12px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-
-        {/* Input card */}
-        <div style={{ background: BG, borderRadius: 18, outline: `1px solid ${BORDER_COLOR}`, overflow: 'hidden' }}>
-
-          {/* Automate row — only in empty state */}
-          {!hasMessages && (
-            <>
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '10px 16px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <StarFilled style={{ color: ACCENT, fontSize: 12 }} />
-                  <span style={{ fontSize: 12, color: TEXT_SECONDARY }}>Автоматизировать повторяющиеся задачи</span>
-                </div>
-                <span style={{ fontSize: 12, color: ACCENT, cursor: 'pointer', whiteSpace: 'nowrap' }}>Попробовать</span>
-              </div>
-              <div style={{ height: 1, background: BORDER_COLOR }} />
-            </>
-          )}
-
-          {/* Input area */}
-          <div style={{ padding: '12px 16px 10px' }}>
-
-            {/* Context chip */}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              height: 28, padding: '0 8px',
-              background: '#1C1D1F', borderRadius: 8, marginBottom: 8,
-            }}>
-              <BarChartOutlined style={{ color: ACCENT, fontSize: 13 }} />
-              <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, whiteSpace: 'nowrap' }}>
-                Продуктовая аналитика
-              </span>
-            </div>
-
-            {/* Image previews */}
-            {attachedImages.length > 0 && (
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
-                {attachedImages.map((src, i) => (
-                  <div key={i} style={{ position: 'relative' }}>
-                    <img
-                      src={src}
-                      alt=""
-                      style={{ height: 60, maxWidth: 90, borderRadius: 6, objectFit: 'cover', border: `1px solid ${BORDER_COLOR}`, display: 'block' }}
-                    />
-                    <div
-                      onClick={() => setAttachedImages((prev) => prev.filter((_, idx) => idx !== i))}
-                      style={{
-                        position: 'absolute', top: -4, right: -4,
-                        width: 16, height: 16, borderRadius: '50%',
-                        background: '#3A3B3D', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center',
-                        cursor: 'pointer', fontSize: 9, color: TEXT_SECONDARY,
-                      }}
-                    >
-                      ✕
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Textarea */}
-            <textarea
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={isListening ? '🎙 Слушаю...' : 'Напишите сообщение или введите / для команд'}
-              rows={2}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              style={{
-                background: 'transparent', border: 'none', outline: 'none',
-                resize: 'none', fontSize: 13, color: isListening ? ACCENT : TEXT_PRIMARY,
-                fontFamily: 'inherit', lineHeight: 1.5, width: '100%', padding: 0,
-              }}
-            />
-
-            {/* Footer row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-
-              {/* Left: + dropdown */}
-              <Dropdown
-                menu={{ items: dropdownItems, onClick: onDropdownClick }}
-                trigger={['click']}
-                placement="topLeft"
-              >
-                <div style={{
-                  width: 24, height: 24,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', color: TEXT_SECONDARY, fontSize: 14,
-                  borderRadius: 5,
-                  transition: 'color 0.15s',
-                }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.color = TEXT_PRIMARY; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.color = TEXT_SECONDARY; }}
-                >
-                  <PlusOutlined />
-                </div>
-              </Dropdown>
-
-              {/* Right: voice + send */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Tooltip title={isListening ? 'Остановить запись' : 'Голосовой ввод'}>
-                  <div
-                    onClick={toggleVoice}
-                    style={{
-                      width: 24, height: 24,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer',
-                      color: isListening ? '#F04438' : TEXT_SECONDARY,
-                      fontSize: 14,
-                      transition: 'color 0.15s',
-                    }}
-                  >
-                    {isListening ? <StopOutlined /> : <AudioOutlined />}
-                  </div>
-                </Tooltip>
-
-                {canSend && (
-                  <Tooltip title="Отправить">
-                    <div
-                      onClick={handleSend}
-                      style={{
-                        width: 24, height: 24,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        cursor: 'pointer', color: ACCENT, fontSize: 14,
-                        transition: 'opacity 0.15s',
-                      }}
-                    >
-                      <SendOutlined />
-                    </div>
-                  </Tooltip>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Disclaimer */}
-        <span style={{ fontSize: 11, color: TEXT_PLACEHOLDER, textAlign: 'center' }}>
-          ИИ может ошибаться. Проверяйте важные данные.
-        </span>
+      <div style={{ padding: '0 14px 12px', flexShrink: 0 }}>
+        {InputCard}
       </div>
 
       {/* Hidden file input */}
@@ -853,7 +1272,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
 }
 
 // ── Shell wrappers (sidebar / floating) ─────────────────────────────────────
-export default function AIPanelSider({ mode, onChangeMode }: AIPanelSiderProps) {
+export default function AIPanelSider({ mode, onChangeMode, expanded, hideWindowControls }: AIPanelSiderProps) {
   const [pos, setPos] = useState(() => ({
     x: window.innerWidth - 372,
     y: Math.round(window.innerHeight * 0.17),
@@ -897,8 +1316,8 @@ export default function AIPanelSider({ mode, onChangeMode }: AIPanelSiderProps) 
   }
 
   return (
-    <div style={{ ...commonStyle, width: 320, flexShrink: 0, height: '100%' }}>
-      <PanelContent mode={mode} onChangeMode={onChangeMode} />
+    <div style={{ ...commonStyle, ...(expanded ? { flex: 1 } : { width: 320, flexShrink: 0 }), height: '100%' }}>
+      <PanelContent mode={mode} onChangeMode={onChangeMode} {...(hideWindowControls ? { hideWindowControls: true } : {})} />
     </div>
   );
 }
