@@ -1282,8 +1282,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   // ── Assistant page: 2-column layout ─────────────────────────────────────────
   if (isAssistantPage) {
     return (
-      <div style={{ height: '100%', display: 'flex', overflow: 'hidden', position: 'relative' }}>
-        {!hasMessages && GlowBg}
+      <div style={{ height: '100%', display: 'flex', overflow: 'hidden' }}>
         {/* Left sidebar: history — spans full height so borderRight goes edge to edge */}
         <AssistantLeftSidebar
           sessions={sessions}
@@ -1292,12 +1291,17 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           onSelectSession={(id) => switchSession(id)}
         />
 
-        {/* Right: TopBar + content */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          {TopBar}
+        {/* Right: TopBar + content — glow lives here so it never bleeds into sidebar */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+          {!hasMessages && GlowBg}
 
-          {/* Main content: centered column */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', alignItems: 'center' }}>
+          {/* TopBar above the glow */}
+          <div style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>
+            {TopBar}
+          </div>
+
+          {/* Main content: centered column — above the glow */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', alignItems: 'center', position: 'relative', zIndex: 1 }}>
 
             {/* Center: messages / empty state */}
             <div style={{ flex: 1, overflow: 'hidden', width: '100%', maxWidth: 760, display: 'flex', flexDirection: 'column' }}>
@@ -1345,11 +1349,11 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
       {!hasMessages && view !== 'history' && GlowBg}
-      {TopBar}
+      <div style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>{TopBar}</div>
 
       {/* ── Center: history / empty state / message list ── */}
       <div style={{
-        flex: 1, overflow: 'hidden', position: 'relative',
+        flex: 1, overflow: 'hidden', position: 'relative', zIndex: 1,
         display: 'flex', flexDirection: 'column',
       }}>
         {view === 'history' ? (
@@ -1406,7 +1410,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       </div>
 
       {/* ── Bottom section ── */}
-      <div style={{ padding: '0 14px 12px', flexShrink: 0 }}>
+      <div style={{ padding: '0 14px 12px', flexShrink: 0, position: 'relative', zIndex: 1 }}>
         {InputCard}
       </div>
 
@@ -1426,11 +1430,11 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 // ── Background glow element ──────────────────────────────────────────────────
 const GlowBg = (
   <div style={{
-    position: 'absolute', left: '50%', bottom: '-8%',
-    transform: 'translateX(-50%)',
-    width: '140%', height: '55%',
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    height: '50%',
     background: 'radial-gradient(ellipse at 50% 100%, #1a3a8a 0%, #0a1f5c 40%, transparent 70%)',
     filter: 'blur(56px)', pointerEvents: 'none', zIndex: 0,
+    opacity: 0.15,
   }} />
 );
 
