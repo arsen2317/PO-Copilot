@@ -227,6 +227,16 @@ export interface MetricGroupDef {
   color: string;
 }
 
+export interface FunnelAnalyticsStep {
+  id: string;
+  name: string;
+  eventName: string;
+  users: number;
+  change: number;
+  conversionFromFirst: number;
+  history: MetricPoint[];
+}
+
 export interface MetricDefinition {
   id: string;
   name: string;
