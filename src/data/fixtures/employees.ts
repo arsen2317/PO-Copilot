@@ -8,6 +8,7 @@ export const employeeFixtures: Employee[] = [
     department: 'Команда онбординга',
     initials: 'АС',
     color: '#1668dc',
+    avatar: 'https://i.pravatar.cc/150?img=47',
   },
   {
     id: 'u2',
@@ -16,6 +17,7 @@ export const employeeFixtures: Employee[] = [
     department: 'Команда онбординга',
     initials: 'ИП',
     color: '#49aa19',
+    avatar: 'https://i.pravatar.cc/150?img=68',
   },
   {
     id: 'u3',
@@ -24,6 +26,7 @@ export const employeeFixtures: Employee[] = [
     department: 'Команда онбординга',
     initials: 'МК',
     color: '#d89614',
+    avatar: 'https://i.pravatar.cc/150?img=45',
   },
   {
     id: 'u4',
@@ -32,6 +35,7 @@ export const employeeFixtures: Employee[] = [
     department: 'Команда онбординга',
     initials: 'ДВ',
     color: '#722ed1',
+    avatar: 'https://i.pravatar.cc/150?img=60',
   },
   {
     id: 'u5',
@@ -40,6 +44,7 @@ export const employeeFixtures: Employee[] = [
     department: 'Команда онбординга',
     initials: 'ЕН',
     color: '#eb2f96',
+    avatar: 'https://i.pravatar.cc/150?img=44',
   },
   {
     id: 'u6',
@@ -48,6 +53,7 @@ export const employeeFixtures: Employee[] = [
     department: 'Команда онбординга',
     initials: 'СЛ',
     color: '#13c2c2',
+    avatar: 'https://i.pravatar.cc/150?img=65',
   },
   {
     id: 'u7',
@@ -56,5 +62,6 @@ export const employeeFixtures: Employee[] = [
     department: 'Команда онбординга',
     initials: 'ОМ',
     color: '#fa8c16',
+    avatar: 'https://i.pravatar.cc/150?img=41',
   },
 ];

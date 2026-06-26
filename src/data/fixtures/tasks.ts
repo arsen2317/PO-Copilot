@@ -1,11 +1,11 @@
 import type { Task } from '../types';
 
-const u1 = { id: 'u1', name: 'Анна Смирнова', role: 'developer' };
-const u2 = { id: 'u2', name: 'Иван Петров', role: 'product_manager' };
-const u3 = { id: 'u3', name: 'Мария Ковалёва', role: 'designer' };
-const u4 = { id: 'u4', name: 'Дмитрий Волков', role: 'developer' };
-const u5 = { id: 'u5', name: 'Екатерина Новикова', role: 'qa' };
-const u6 = { id: 'u6', name: 'Сергей Лебедев', role: 'analyst' };
+const u1 = { id: 'u1', name: 'Анна Смирнова', role: 'developer', avatar: 'https://i.pravatar.cc/150?img=47' };
+const u2 = { id: 'u2', name: 'Иван Петров', role: 'product_manager', avatar: 'https://i.pravatar.cc/150?img=68' };
+const u3 = { id: 'u3', name: 'Мария Ковалёва', role: 'designer', avatar: 'https://i.pravatar.cc/150?img=45' };
+const u4 = { id: 'u4', name: 'Дмитрий Волков', role: 'developer', avatar: 'https://i.pravatar.cc/150?img=60' };
+const u5 = { id: 'u5', name: 'Екатерина Новикова', role: 'qa', avatar: 'https://i.pravatar.cc/150?img=44' };
+const u6 = { id: 'u6', name: 'Сергей Лебедев', role: 'analyst', avatar: 'https://i.pravatar.cc/150?img=65' };
 
 export const taskFixtures: Task[] = [
   // ── BACKLOG ──────────────────────────────────────────────────────────────────

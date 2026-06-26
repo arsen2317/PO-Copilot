@@ -58,13 +58,13 @@ const AVATAR_COLORS: Record<string, string> = {
   u4: '#722ed1', u5: '#eb2f96', u6: '#13c2c2', u7: '#fa8c16',
 };
 
-function UserAvatar({ user, size = 28 }: { user: { id: string; name: string }; size?: number }) {
+function UserAvatar({ user, size = 28 }: { user: { id: string; name: string; avatar?: string }; size?: number }) {
   const initials = user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+  if (user.avatar) {
+    return <img src={user.avatar} alt={user.name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, display: 'block' }} />;
+  }
   return (
-    <Avatar
-      size={size}
-      style={{ background: AVATAR_COLORS[user.id] ?? '#1668dc', fontSize: size * 0.42, fontWeight: 600, flexShrink: 0 }}
-    >
+    <Avatar size={size} style={{ background: AVATAR_COLORS[user.id] ?? '#1668dc', fontSize: size * 0.42, fontWeight: 600, flexShrink: 0 }}>
       {initials}
     </Avatar>
   );

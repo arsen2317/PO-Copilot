@@ -70,18 +70,14 @@ const AVATAR_COLORS: Record<string, string> = {
   u4: '#722ed1', u5: '#eb2f96', u6: '#13c2c2', u7: '#fa8c16',
 };
 
-function UserAvatar({ user, size = 22 }: { user: { id: string; name: string }; size?: number }) {
+function UserAvatar({ user, size = 22 }: { user: { id: string; name: string; avatar?: string }; size?: number }) {
   const initials = user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
   return (
     <Tooltip title={user.name}>
-      <div style={{
-        width: size, height: size, borderRadius: '50%',
-        background: AVATAR_COLORS[user.id] ?? '#1668dc',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: size * 0.42, fontWeight: 600, color: '#fff', flexShrink: 0,
-      }}>
-        {initials}
-      </div>
+      {user.avatar
+        ? <img src={user.avatar} alt={user.name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, display: 'block' }} />
+        : <div style={{ width: size, height: size, borderRadius: '50%', background: AVATAR_COLORS[user.id] ?? '#1668dc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.42, fontWeight: 600, color: '#fff', flexShrink: 0 }}>{initials}</div>
+      }
     </Tooltip>
   );
 }
