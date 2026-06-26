@@ -51,15 +51,63 @@ export interface User {
   avatar?: string;
 }
 
+export type TaskPriority = 'critical' | 'high' | 'medium' | 'low';
+
+export interface TaskComment {
+  id: string;
+  author: User;
+  text: string;
+  time: string;
+}
+
+export interface TaskCriteria {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export interface ComplianceCheck {
+  id: string;
+  label: string;
+  passed: boolean;
+}
+
+export interface TaskArtifact {
+  type: 'pr' | 'figma' | 'confluence' | 'metric';
+  title: string;
+  url: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   status: TaskStatus;
   assignee?: User;
-  priority: 'critical' | 'high' | 'medium' | 'low';
+  priority: TaskPriority;
   riskLevel: RiskLevel;
   deadline?: string;
   description?: string;
+  sprintId?: string;
+  epicId?: string;
+  storyPoints?: number;
+  labels?: string[];
+  criteria?: TaskCriteria[];
+  comments?: TaskComment[];
+  compliance?: ComplianceCheck[];
+  artifacts?: TaskArtifact[];
+  relatedMetricIds?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Employee {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  avatar?: string;
+  initials: string;
+  color: string;
 }
 
 export type AgentCategory =

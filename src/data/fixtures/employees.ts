@@ -1,0 +1,60 @@
+import type { Employee } from '../types';
+
+export const employeeFixtures: Employee[] = [
+  {
+    id: 'u1',
+    name: 'Анна Смирнова',
+    role: 'Разработчик',
+    department: 'Команда онбординга',
+    initials: 'АС',
+    color: '#1668dc',
+  },
+  {
+    id: 'u2',
+    name: 'Иван Петров',
+    role: 'Product Manager',
+    department: 'Команда онбординга',
+    initials: 'ИП',
+    color: '#49aa19',
+  },
+  {
+    id: 'u3',
+    name: 'Мария Ковалёва',
+    role: 'Дизайнер',
+    department: 'Команда онбординга',
+    initials: 'МК',
+    color: '#d89614',
+  },
+  {
+    id: 'u4',
+    name: 'Дмитрий Волков',
+    role: 'Разработчик',
+    department: 'Команда онбординга',
+    initials: 'ДВ',
+    color: '#722ed1',
+  },
+  {
+    id: 'u5',
+    name: 'Екатерина Новикова',
+    role: 'QA-инженер',
+    department: 'Команда онбординга',
+    initials: 'ЕН',
+    color: '#eb2f96',
+  },
+  {
+    id: 'u6',
+    name: 'Сергей Лебедев',
+    role: 'Аналитик',
+    department: 'Команда онбординга',
+    initials: 'СЛ',
+    color: '#13c2c2',
+  },
+  {
+    id: 'u7',
+    name: 'Ольга Морозова',
+    role: 'Scrum-мастер',
+    department: 'Команда онбординга',
+    initials: 'ОМ',
+    color: '#fa8c16',
+  },
+];
