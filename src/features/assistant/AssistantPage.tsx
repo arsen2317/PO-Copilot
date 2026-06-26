@@ -26,13 +26,12 @@ export default function AssistantPage() {
         position: 'relative',
       }}
     >
-      {/* Background glow */}
+      {/* Background glow — starts after history sidebar (~220px), opacity 40% */}
       <div style={{
-        position: 'absolute', left: '50%', bottom: '-8%',
-        transform: 'translateX(-50%)',
-        width: '80%', height: '55%',
+        position: 'absolute', left: 220, right: 0, bottom: '-8%',
+        height: '55%',
         background: 'radial-gradient(ellipse at 50% 100%, #1a3a8a 0%, #0a1f5c 40%, transparent 70%)',
-        filter: 'blur(72px)', pointerEvents: 'none', zIndex: 0,
+        filter: 'blur(72px)', pointerEvents: 'none', zIndex: 0, opacity: 0.4,
       }} />
       <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', minWidth: 0, minHeight: 0 }}>
         <DialogList activeId={dialogId} />

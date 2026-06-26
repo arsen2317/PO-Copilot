@@ -1269,16 +1269,18 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   // ── Assistant page: 2-column layout ─────────────────────────────────────────
   if (isAssistantPage) {
     return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {TopBar}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          {/* Left sidebar: history + new chat */}
-          <AssistantLeftSidebar
-            sessions={sessions}
-            activeSessionId={activeSessionId}
-            onNewChat={() => { createSession(); setAttachedImages([]); setInputValue(''); setSelectedAgent(null); }}
-            onSelectSession={(id) => switchSession(id)}
-          />
+      <div style={{ height: '100%', display: 'flex', overflow: 'hidden' }}>
+        {/* Left sidebar: history — spans full height so borderRight goes edge to edge */}
+        <AssistantLeftSidebar
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          onNewChat={() => { createSession(); setAttachedImages([]); setInputValue(''); setSelectedAgent(null); }}
+          onSelectSession={(id) => switchSession(id)}
+        />
+
+        {/* Right: TopBar + content */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {TopBar}
 
           {/* Main content: centered column */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', alignItems: 'center' }}>
@@ -1289,15 +1291,9 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                 <div style={{
                   flex: 1, display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center',
-                  padding: '32px 24px', position: 'relative',
+                  padding: '32px 24px',
                 }}>
-                  <div style={{
-                    position: 'absolute', left: '50%', top: '38%',
-                    transform: 'translate(-50%, -50%)',
-                    width: 220, height: 220, background: '#09225C',
-                    borderRadius: 9999, filter: 'blur(80px)', pointerEvents: 'none',
-                  }} />
-                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, width: '100%' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, width: '100%' }}>
                     <span style={{ color: TEXT_PRIMARY, fontSize: 22, fontWeight: 600, textAlign: 'center', lineHeight: 1.4 }}>
                       Над чем будем<br />работать сегодня?
                     </span>
