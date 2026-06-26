@@ -393,6 +393,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
+  const [automateHovered, setAutomateHovered] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -412,9 +414,15 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
     navigate('/');
   };
 
+  const hasMessages = messages.length > 0 || isThinking;
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isThinking]);
+
+  useEffect(() => {
+    if (hasMessages) setAutomateHovered(false);
+  }, [hasMessages]);
 
   // ── Send message ────────────────────────────────────────────────────────
   const handleSend = async () => {
@@ -595,7 +603,6 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
   };
 
   const canSend = inputValue.trim().length > 0 || attachedImages.length > 0;
-  const hasMessages = messages.length > 0 || isThinking;
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -692,15 +699,24 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
       <div style={{ padding: '0 14px 12px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
 
         {/* Input card */}
-        <div style={{ background: BG, borderRadius: 18, outline: `1px solid ${BORDER_COLOR}`, overflow: 'hidden' }}>
+        <div style={{
+          background: automateHovered ? '#0B1F5F' : '#1C1D1F',
+          borderRadius: 18,
+          outline: automateHovered ? '1px #434446 solid' : `1px solid ${BORDER_COLOR}`,
+          overflow: 'hidden',
+          transition: 'background 0.18s, outline-color 0.18s',
+        }}>
 
           {/* Automate row — only in empty state */}
           {!hasMessages && (
             <>
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '10px 16px',
-              }}>
+              <div
+                onMouseEnter={() => setAutomateHovered(true)}
+                onMouseLeave={() => setAutomateHovered(false)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '10px 16px', cursor: 'default',
+                }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <StarFilled style={{ color: ACCENT, fontSize: 12 }} />
                   <span style={{ fontSize: 12, color: TEXT_SECONDARY }}>Автоматизировать повторяющиеся задачи</span>
@@ -712,7 +728,14 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
           )}
 
           {/* Input area */}
-          <div style={{ padding: '12px 16px 10px' }}>
+          <div style={{
+            background: BG,
+            borderRadius: 18,
+            padding: '12px 16px 10px',
+            outline: inputFocused ? '1px #487EFF solid' : 'none',
+            outlineOffset: '-1px',
+            transition: 'outline-color 0.15s',
+          }}>
 
             {/* Context chip */}
             <div style={{
@@ -759,6 +782,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
               onChange={(e) => setInputValue(e.target.value)}
               placeholder={isListening ? '🎙 Слушаю...' : 'Напишите сообщение или введите / для команд'}
               rows={2}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
