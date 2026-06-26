@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Badge, Button, message, Select, Skeleton, Table, Tag, theme, Tooltip, Typography,
 } from 'antd';
@@ -451,10 +451,17 @@ function BacklogView({ tasks, isLoading, bdr }: { tasks: Task[]; isLoading: bool
 
 // ─── Drafts view ──────────────────────────────────────────────────────────────
 
-function DraftsView({ bdr }: { bdr: string }) {
+function DraftsView({ bdr, highlightId }: { bdr: string; highlightId?: string }) {
   const { token } = useToken();
   const drafts = useUIStore((s) => s.taskDrafts);
   const removeTaskDraft = useUIStore((s) => s.removeTaskDraft);
+  const highlightRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (highlightId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightId]);
 
   if (drafts.length === 0) {
     return (
@@ -480,10 +487,13 @@ function DraftsView({ bdr }: { bdr: string }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {drafts.map((draft) => (
+      {drafts.map((draft) => {
+        const isHighlighted = draft.id === highlightId;
+        return (
         <div
           key={draft.id}
-          style={{ background: '#16171a', border: bdr, borderRadius: 10, padding: '16px 18px' }}
+          ref={isHighlighted ? highlightRef : null}
+          style={{ background: '#16171a', border: isHighlighted ? '1px solid rgba(74,130,247,0.6)' : bdr, borderRadius: 10, padding: '16px 18px', transition: 'border-color 0.3s', boxShadow: isHighlighted ? '0 0 0 3px rgba(74,130,247,0.15)' : 'none' }}
         >
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
@@ -547,7 +557,8 @@ function DraftsView({ bdr }: { bdr: string }) {
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -566,7 +577,12 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 export default function TasksPage() {
   const { token } = useToken();
   const BDR = `1px solid ${token.colorBorderSecondary}`;
-  const [activeTab, setActiveTab] = useState<TabId>('kanban');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    const tab = searchParams.get('tab');
+    return (tab === 'drafts' || tab === 'kanban' || tab === 'list' || tab === 'backlog') ? tab : 'kanban';
+  });
+  const [highlightDraftId] = useState<string | null>(() => searchParams.get('draft'));
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
   const draftsCount = useUIStore((s) => s.taskDrafts.length);
@@ -679,7 +695,7 @@ export default function TasksPage() {
         {activeTab === 'kanban' && <KanbanView tasks={filtered} isLoading={isLoading} bdr={BDR} />}
         {activeTab === 'list' && <ListView tasks={filtered} isLoading={isLoading} />}
         {activeTab === 'backlog' && <BacklogView tasks={filtered} isLoading={isLoading} bdr={BDR} />}
-        {activeTab === 'drafts' && <div className="content-scroll" style={{ flex: 1, overflowY: 'auto' }}><DraftsView bdr={BDR} /></div>}
+        {activeTab === 'drafts' && <div className="content-scroll" style={{ flex: 1, overflowY: 'auto' }}>{highlightDraftId ? <DraftsView bdr={BDR} highlightId={highlightDraftId} /> : <DraftsView bdr={BDR} />}</div>}
       </div>
     </div>
   );

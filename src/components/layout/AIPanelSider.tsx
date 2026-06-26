@@ -823,7 +823,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
   const handleMetricClick = (id: string) => {
     if (id.startsWith('__task__')) {
-      void navigate('/tasks');
+      const draftId = id.slice('__task__'.length);
+      void navigate(`/tasks?tab=drafts&draft=${draftId}`);
       return;
     }
     if (id.startsWith('funnel:')) {
