@@ -666,17 +666,17 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
               <span style={{ color: TEXT_PRIMARY, fontSize: 18, fontWeight: 600, textAlign: 'center', lineHeight: 1.4 }}>
                 Что вы хотите узнать?
               </span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                 {SUGGESTIONS.map((s) => (
                   <div
                     key={s}
                     onClick={() => setInputValue(s)}
                     style={{
-                      height: 32, padding: '0 8px', borderRadius: 8,
+                      height: 32, padding: '0 14px', borderRadius: 8,
                       outline: `1px solid ${BORDER_COLOR}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', color: TEXT_SECONDARY, fontSize: 13, textAlign: 'center',
-                      background: 'transparent', transition: 'background 0.15s',
+                      display: 'inline-flex', alignItems: 'center',
+                      cursor: 'pointer', color: TEXT_SECONDARY, fontSize: 13,
+                      background: 'transparent', transition: 'background 0.15s', whiteSpace: 'nowrap',
                     }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
