@@ -52,7 +52,7 @@ export const AGENT_PROMPTS: Record<string, string> = {
 Требования к HTML-странице:
 - Светлая тема, шрифт: Inter, system-ui, sans-serif
 - Ширина 960px, горизонтальный центр, padding 48px 56px
-- Верхняя шапка (header): слева — заголовок «Дебетовые карты» (24px, bold, #111) и подзаголовок «Результаты по продукту за [текущий квартал] [год] года» (14px, #666); справа — логотип МТС Банка (SVG inline, красный квадрат с белым текстом «МТС Банк», 80×32px, border-radius 6px)
+- Верхняя шапка (header): слева — заголовок «Дебетовые карты» (24px, bold, #111) и подзаголовок «Результаты по продукту за [текущий квартал] [год] года» (14px, #666); справа — логотип МТС Банка: <svg width="80" height="32" viewBox="0 0 80 32" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="32" rx="6" fill="#E30611"/><text x="40" y="21" font-family="system-ui,sans-serif" font-size="12" font-weight="700" fill="white" text-anchor="middle">МТС Банк</text></svg> (вставь этот SVG inline в HTML)
 - Разделитель после шапки: 1px solid #E5E7EB
 - Сетка метрик: CSS grid, 3 колонки, gap 16px, margin-top 32px
 - Каждая карточка: белый фон, border 1px solid #E5E7EB, border-radius 12px, padding 20px 24px, box-shadow 0 1px 3px rgba(0,0,0,0.06)
