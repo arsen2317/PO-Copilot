@@ -1,4 +1,5 @@
 import { getMetricDefinitions, getMetricGroupDefs } from '../data/api/metric-definitions';
+import { getFunnelAnalytics } from '../data/api/funnel-analytics';
 import { getTasks } from '../data/api/tasks';
 import { getAgents } from '../data/api/agents';
 import { getToken } from '../features/auth/auth';
@@ -20,6 +21,11 @@ export const TOOL_DEFINITIONS = [
       },
       required: [],
     },
+  },
+  {
+    name: 'get_funnel_steps',
+    description: 'Возвращает шаги воронки конверсии: название, техническое имя события, количество пользователей, конверсию от первого шага. Используй для анализа узких мест воронки.',
+    input_schema: { type: 'object' as const, properties: {}, required: [] },
   },
   {
     name: 'get_tasks',
@@ -92,6 +98,19 @@ export async function executeTool(
                 ? (m.planValue / m.currentValue)
                 : (m.currentValue / m.planValue)) * 100,
             ),
+      }));
+    }
+
+    case 'get_funnel_steps': {
+      const steps = await getFunnelAnalytics();
+      return steps.map((s, idx) => ({
+        id: `funnel:${s.id}`,
+        stepNumber: idx + 1,
+        name: s.name,
+        eventName: s.eventName,
+        users: s.users,
+        conversionFromFirst: s.conversionFromFirst,
+        dropFromPrev: idx === 0 ? 0 : Math.round((1 - s.users / (steps[idx - 1]?.users ?? s.users)) * 100),
       }));
     }
 

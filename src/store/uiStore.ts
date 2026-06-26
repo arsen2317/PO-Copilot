@@ -33,6 +33,9 @@ interface UIState {
   focusedMetricId: string | null;
   setFocusedMetric: (id: string | null) => void;
 
+  focusedFunnelStepId: string | null;
+  setFocusedFunnelStep: (id: string | null) => void;
+
   sessions: ChatSession[];
   activeSessionId: string;
   createSession: () => void;
@@ -48,6 +51,9 @@ interface UIState {
 export const useUIStore = create<UIState>((set) => ({
   focusedMetricId: null,
   setFocusedMetric: (id) => set({ focusedMetricId: id }),
+
+  focusedFunnelStepId: null,
+  setFocusedFunnelStep: (id) => set({ focusedFunnelStepId: id }),
 
   sessions: [initial],
   activeSessionId: initial.id,
