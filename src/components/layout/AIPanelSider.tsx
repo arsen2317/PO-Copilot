@@ -608,18 +608,19 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
   );
 }
 
-// ── Assistant typing dots ────────────────────────────────────────────────────
-function AssistantTyping() {
+// ── AI thinking loader ───────────────────────────────────────────────────────
+const LOADER_TEXT = 'Анализирую';
+function AILoader({ size = 140 }: { size?: number }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 16, height: 20 }}>
-      {[0, 1, 2].map((i) => (
-        <motion.div
-          key={i}
-          style={{ width: 6, height: 6, borderRadius: '50%', background: TEXT_SECONDARY }}
-          animate={{ opacity: [0.3, 1, 0.3] }}
-          transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
-        />
-      ))}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, padding: '24px 0' }}>
+      <div className="ai-loader-wrapper" style={{ width: size, height: size }}>
+        <div className="ai-loader" />
+        <span style={{ position: 'relative', zIndex: 1, letterSpacing: '0.02em' }}>
+          {LOADER_TEXT.split('').map((ch, i) => (
+            <span key={i} className="ai-loader-letter">{ch}</span>
+          ))}
+        </span>
+      </div>
     </div>
   );
 }
@@ -1387,7 +1388,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                       ? <UserBubble key={msg.id} msg={msg} />
                       : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
                   )}
-                  {isThinking && <AssistantTyping />}
+                  {isThinking && <AILoader size={160} />}
                   <div ref={messagesEndRef} />
                 </div>
               )}
@@ -1465,7 +1466,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                 ? <UserBubble key={msg.id} msg={msg} />
                 : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
             )}
-            {isThinking && <AssistantTyping />}
+            {isThinking && <AILoader size={120} />}
             <div ref={messagesEndRef} />
           </div>
         )}
