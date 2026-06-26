@@ -122,7 +122,7 @@ export const AGENT_PROMPTS: Record<string, string> = {
 body { margin: 0; background: #fff; }
 .slide { width: 1280px; height: 720px; display: flex; flex-direction: column; gap: 24px; padding: 40px 56px; overflow: hidden; page-break-after: always; break-after: page; }
 .slide:last-child { page-break-after: avoid; break-after: avoid; }
-.metrics-grid { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: max-content; gap: 16px; align-items: start; }
 @media print { @page { size: 1280px 720px; margin: 0; } body { margin: 0; } }
 \`\`\`
 

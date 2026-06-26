@@ -150,6 +150,8 @@ body {
   background: linear-gradient(90deg, transparent 0%, #4A82F7 40%, #93c5fd 60%, transparent 100%);
   background-size: 200% 100%;
   animation: ai-shimmer 1.6s linear infinite;
+  -webkit-mask: linear-gradient(90deg, transparent 0%, black 12%, black 88%, transparent 100%);
+  mask: linear-gradient(90deg, transparent 0%, black 12%, black 88%, transparent 100%);
 }
 
 /* ── AI thinking loader ──────────────────────────────────────────── */
