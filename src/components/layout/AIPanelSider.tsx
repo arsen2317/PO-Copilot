@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -87,6 +87,106 @@ const TEXT_PRIMARY = '#D7D8DA';
 const TEXT_SECONDARY = '#9B9C9E';
 const TEXT_PLACEHOLDER = '#757575';
 const ACCENT = '#4A82F7';
+
+const AGENTS_DATA = [
+  { key: 'agent-metrics',    label: 'Анализ метрик',       desc: 'Исследует аномалии и тренды, выявляет причины отклонений в данных',        color: '#0B2550' },
+  { key: 'agent-qbr',       label: 'Ассистент QBR',       desc: 'Готовит ключевые инсайты и рекомендации для квартального обзора',           color: '#0B3325' },
+  { key: 'agent-tasks',     label: 'Постановщик задач',   desc: 'Декомпозирует цели на задачи и помогает расставить приоритеты',             color: '#25103A' },
+  { key: 'agent-risks',     label: 'Поиск рисков',        desc: 'Анализирует метрики и бэклог на наличие угроз и узких мест',                color: '#3A0F0F' },
+  { key: 'agent-hypotheses',label: 'Генератор гипотез',   desc: 'Предлагает проверяемые гипотезы для роста на основе данных',               color: '#2A2A0A' },
+  { key: 'agent-custdev',   label: 'CustDev',              desc: 'Помогает формулировать вопросы для исследований и анализировать ответы',    color: '#0A2530' },
+  { key: 'agent-trends',    label: 'Трендвотчер',         desc: 'Отслеживает изменения в данных и сигнализирует о новых трендах',            color: '#1A0A35' },
+];
+
+// ── Agent cards carousel ─────────────────────────────────────────────────────
+function AgentCards({ onSelect }: { onSelect: (label: string) => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(true);
+
+  const updateArrows = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 4);
+    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  };
+
+  const scroll = (dir: 'left' | 'right') => {
+    scrollRef.current?.scrollBy({ left: dir === 'left' ? -176 : 176, behavior: 'smooth' });
+  };
+
+  const ICONS: Record<string, string> = {
+    'agent-metrics': '📊', 'agent-qbr': '📋', 'agent-tasks': '✅',
+    'agent-risks': '🔍', 'agent-hypotheses': '💡', 'agent-custdev': '🗣️', 'agent-trends': '📈',
+  };
+
+  return (
+    <div style={{ width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingRight: 2 }}>
+        <span style={{ fontSize: 12, color: TEXT_SECONDARY, fontWeight: 500 }}>Агенты</span>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {(['left', 'right'] as const).map((dir) => (
+            <div
+              key={dir}
+              onClick={() => scroll(dir)}
+              style={{
+                width: 24, height: 24, borderRadius: 6, cursor: (dir === 'left' ? canLeft : canRight) ? 'pointer' : 'default',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: (dir === 'left' ? canLeft : canRight) ? TEXT_SECONDARY : '#3A3B3D',
+                fontSize: 14, transition: 'color 0.15s',
+                background: 'rgba(255,255,255,0.04)',
+              }}
+            >
+              {dir === 'left' ? '←' : '→'}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div
+        ref={scrollRef}
+        onScroll={updateArrows}
+        style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}
+      >
+        {AGENTS_DATA.map((agent) => (
+          <div
+            key={agent.key}
+            onClick={() => onSelect(agent.label)}
+            style={{
+              minWidth: 156, maxWidth: 156, padding: '14px 14px 16px',
+              background: '#18191B', border: `1px solid ${BORDER_COLOR}`,
+              borderRadius: 12, cursor: 'pointer', flexShrink: 0,
+              display: 'flex', flexDirection: 'column', gap: 12,
+              transition: 'border-color 0.15s, background 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              const el = e.currentTarget as HTMLDivElement;
+              el.style.borderColor = '#4A82F7';
+              el.style.background = '#1C1E22';
+            }}
+            onMouseLeave={(e) => {
+              const el = e.currentTarget as HTMLDivElement;
+              el.style.borderColor = BORDER_COLOR;
+              el.style.background = '#18191B';
+            }}
+          >
+            <div style={{
+              width: 44, height: 44, borderRadius: 10,
+              background: agent.color, border: `1px solid rgba(255,255,255,0.06)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 22,
+            }}>
+              {ICONS[agent.key]}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: TEXT_PRIMARY, lineHeight: 1.3 }}>{agent.label}</span>
+              <span style={{ fontSize: 12, color: TEXT_SECONDARY, lineHeight: 1.5 }}>{agent.desc}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ── Jumping dots (loading indicator) ────────────────────────────────────────
 function JumpingDots() {
@@ -382,6 +482,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   hideWindowControls?: boolean;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isAssistantPage = location.pathname === '/assistant' || location.pathname.startsWith('/assistant/');
   const setFocusedMetric = useUIStore((s) => s.setFocusedMetric);
   const sessions = useUIStore((s) => s.sessions);
   const activeSessionId = useUIStore((s) => s.activeSessionId);
@@ -681,29 +783,33 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
               borderRadius: 9999, filter: 'blur(62px)', pointerEvents: 'none',
             }} />
             <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, width: '100%' }}>
-              <JumpingDots />
+              {!isAssistantPage && <JumpingDots />}
               <span style={{ color: TEXT_PRIMARY, fontSize: 18, fontWeight: 600, textAlign: 'center', lineHeight: 1.4 }}>
-                Что вы хотите узнать?
+                {isAssistantPage ? <>Над чем будем<br />работать сегодня?</> : 'Что вы хотите узнать?'}
               </span>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                {SUGGESTIONS.map((s) => (
-                  <div
-                    key={s}
-                    onClick={() => setInputValue(s)}
-                    style={{
-                      height: 32, padding: '0 14px', borderRadius: 8,
-                      outline: `1px solid ${BORDER_COLOR}`,
-                      display: 'inline-flex', alignItems: 'center',
-                      cursor: 'pointer', color: TEXT_SECONDARY, fontSize: 13,
-                      background: 'transparent', transition: 'background 0.15s', whiteSpace: 'nowrap',
-                    }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-                  >
-                    {s}
-                  </div>
-                ))}
-              </div>
+              {isAssistantPage ? (
+                <AgentCards onSelect={(label) => { setSelectedAgent(label); }} />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  {SUGGESTIONS.map((s) => (
+                    <div
+                      key={s}
+                      onClick={() => setInputValue(s)}
+                      style={{
+                        height: 32, padding: '0 14px', borderRadius: 8,
+                        outline: `1px solid ${BORDER_COLOR}`,
+                        display: 'inline-flex', alignItems: 'center',
+                        cursor: 'pointer', color: TEXT_SECONDARY, fontSize: 13,
+                        background: 'transparent', transition: 'background 0.15s', whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                    >
+                      {s}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ) : (
