@@ -35,7 +35,7 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const PAD = { top: 20, right: 24, bottom: 52, left: 52 };
+  const PAD = { top: 36, right: 24, bottom: 72, left: 52 };
   const chartW = size.w - PAD.left - PAD.right;
   const chartH = size.h - PAD.top - PAD.bottom;
 
@@ -48,7 +48,6 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
   const toH = (pct: number) => chartH * (pct / 100);
 
   const yLabels = [0, 25, 50, 75, 100];
-  const firstUsers = steps[0]?.users ?? 1;
 
   const handleMouseMove = (e: React.MouseEvent<SVGGElement>, step: FunnelAnalyticsStep) => {
     const rect = svgRef.current?.getBoundingClientRect();
@@ -60,7 +59,6 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
     <div style={{ position: 'relative', width: size.w, height: size.h, overflow: 'visible' }}>
       <svg ref={svgRef} width={size.w} height={size.h} style={{ display: 'block' }}>
         <defs>
-          {/* Diagonal hatch: vertical lines rotated -45° — exactly like the reference */}
           <pattern id="funnel-hatch" patternUnits="userSpaceOnUse" width="9" height="9" patternTransform="rotate(-45 0 0)">
             <rect width="9" height="9" fill="rgba(100,120,255,0.18)" />
             <line x1="0" y1="0" x2="0" y2="9" stroke="rgba(255,255,255,0.45)" strokeWidth="3" />
@@ -87,11 +85,16 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
           {/* Bars */}
           {steps.map((step, i) => {
             const x = i * colW + barOff;
-            const solidH = toH(step.conversionFromFirst);
-            const solidY = toY(step.conversionFromFirst);
-            const hatchH = toH(100 - step.conversionFromFirst);
-            const dropped = firstUsers - step.users;
-            const dropPct = 100 - step.conversionFromFirst;
+            // Conversion relative to PREVIOUS step (not first)
+            const prevUsers = i === 0 ? step.users : steps[i - 1]!.users;
+            const convFromPrev = i === 0 ? 100 : (step.users / prevUsers) * 100;
+            const droppedFromPrev = prevUsers - step.users;
+            const solidH = toH(convFromPrev);
+            const solidY = toY(convFromPrev);
+            const hatchH = toH(100 - convFromPrev);
+
+            // Two-line x-axis label
+            const shortName = step.name.length > 18 ? step.name.slice(0, 17) + '…' : step.name;
 
             return (
               <g
@@ -100,33 +103,23 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
                 onMouseLeave={() => setTooltip(null)}
                 style={{ cursor: 'default' }}
               >
-                {/* Hatched zone (dropped) — always from top */}
+                {/* Hatched zone (dropped from prev step) */}
                 {hatchH > 0 && (
-                  <rect
-                    x={x} y={0}
-                    width={barW} height={hatchH}
-                    fill="url(#funnel-hatch)"
-                    rx={3}
-                  />
+                  <rect x={x} y={0} width={barW} height={hatchH} fill="url(#funnel-hatch)" rx={3} />
                 )}
 
-                {/* Solid zone (converted) */}
+                {/* Solid zone (converted from prev step) */}
                 {solidH > 0 && (
-                  <rect
-                    x={x} y={solidY}
-                    width={barW} height={solidH}
-                    fill="#4E6AF6"
-                    rx={3}
-                  />
+                  <rect x={x} y={solidY} width={barW} height={solidH} fill="#4E6AF6" rx={3} />
                 )}
 
-                {/* Conversion label above solid zone */}
+                {/* Conversion % + user count label above solid zone */}
                 <text
                   x={x + barW / 2} y={solidY - 16}
                   textAnchor="middle" fill="#fff"
                   fontSize={13} fontWeight={700} fontFamily="Inter,sans-serif"
                 >
-                  {step.conversionFromFirst.toFixed(1)}%
+                  {convFromPrev.toFixed(1)}%
                 </text>
                 <text
                   x={x + barW / 2} y={solidY - 3}
@@ -136,24 +129,21 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
                   {step.users.toLocaleString('ru')}
                 </text>
 
-                {/* Drop label inside hatch zone (if tall enough) */}
-                {hatchH > 30 && dropPct > 0 && (
+                {/* Drop count inside hatch zone */}
+                {hatchH > 30 && droppedFromPrev > 0 && (
                   <text
                     x={x + barW / 2} y={hatchH / 2 + 4}
                     textAnchor="middle" fill="rgba(255,255,255,0.45)"
                     fontSize={11} fontFamily="Inter,sans-serif"
                   >
-                    −{dropped.toLocaleString('ru')}
+                    −{droppedFromPrev.toLocaleString('ru')}
                   </text>
                 )}
 
-                {/* X-axis label */}
-                <text
-                  x={x + barW / 2} y={chartH + 16}
-                  textAnchor="middle" fill="rgba(255,255,255,0.45)"
-                  fontSize={11} fontFamily="Inter,sans-serif"
-                >
-                  {step.eventName}
+                {/* Two-line Russian x-axis label */}
+                <text textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize={10} fontFamily="Inter,sans-serif">
+                  <tspan x={x + barW / 2} y={chartH + 18}>Шаг {i + 1}</tspan>
+                  <tspan x={x + barW / 2} dy={14}>{shortName}</tspan>
                 </text>
               </g>
             );
@@ -161,50 +151,51 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
         </g>
       </svg>
 
-      {/* Custom tooltip — no G2 artifacts */}
-      {tooltip && (
-        <div
-          style={{
-            position: 'absolute',
-            left: Math.min(tooltip.x + 14, size.w - 220),
-            top: Math.max(tooltip.y - 60, 4),
-            background: '#1a1b1f',
-            border: '1px solid rgba(255,255,255,0.14)',
-            borderRadius: 8,
-            padding: '10px 14px',
-            fontSize: 12,
-            color: '#fff',
-            pointerEvents: 'none',
-            zIndex: 20,
-            minWidth: 200,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
-            lineHeight: 1.7,
-          }}
-        >
-          <div style={{ fontWeight: 600, marginBottom: 6, color: '#fff' }}>
-            {tooltip.step.name}
-          </div>
-          <div style={{ color: '#8DA4F5' }}>
-            Конверсия: <b style={{ color: '#fff' }}>{tooltip.step.conversionFromFirst.toFixed(1)}%</b>
-            <span style={{ color: 'rgba(255,255,255,0.45)', marginLeft: 6 }}>
-              {tooltip.step.users.toLocaleString('ru')} чел.
-            </span>
-          </div>
-          {tooltip.step.conversionFromFirst < 100 && (
-            <div style={{ color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
-              Отсеялись: <b style={{ color: 'rgba(255,255,255,0.8)' }}>
-                {(100 - tooltip.step.conversionFromFirst).toFixed(1)}%
-              </b>
-              <span style={{ marginLeft: 6 }}>
-                {(firstUsers - tooltip.step.users).toLocaleString('ru')} чел.
+      {/* Custom tooltip */}
+      {tooltip && (() => {
+        const idx = steps.indexOf(tooltip.step);
+        const prevUsers = idx === 0 ? tooltip.step.users : steps[idx - 1]!.users;
+        const convFromPrev = idx === 0 ? 100 : (tooltip.step.users / prevUsers) * 100;
+        const droppedFromPrev = prevUsers - tooltip.step.users;
+        return (
+          <div
+            style={{
+              position: 'absolute',
+              left: Math.min(tooltip.x + 14, size.w - 230),
+              top: Math.max(tooltip.y - 60, 4),
+              background: '#1a1b1f',
+              border: '1px solid rgba(255,255,255,0.14)',
+              borderRadius: 8,
+              padding: '10px 14px',
+              fontSize: 12,
+              color: '#fff',
+              pointerEvents: 'none',
+              zIndex: 20,
+              minWidth: 200,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+              lineHeight: 1.7,
+            }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>{tooltip.step.name}</div>
+            <div style={{ color: '#8DA4F5' }}>
+              От шага {idx}: <b style={{ color: '#fff' }}>{convFromPrev.toFixed(1)}%</b>
+              <span style={{ color: 'rgba(255,255,255,0.45)', marginLeft: 6 }}>
+                {tooltip.step.users.toLocaleString('ru')} чел.
               </span>
             </div>
-          )}
-          <div style={{ color: 'rgba(255,255,255,0.3)', marginTop: 4, fontSize: 11 }}>
-            {tooltip.step.eventName}
+            {droppedFromPrev > 0 && (
+              <div style={{ color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
+                Отсеялись: <b style={{ color: 'rgba(255,255,255,0.8)' }}>
+                  −{droppedFromPrev.toLocaleString('ru')} чел.
+                </b>
+              </div>
+            )}
+            <div style={{ color: 'rgba(255,255,255,0.3)', marginTop: 4, fontSize: 11 }}>
+              {tooltip.step.eventName}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -309,7 +300,7 @@ function ChartContainer({ selectedId, steps, granularity, loading }: ChartContai
   const chartData = aggregateByGranularity(selectedStep?.history ?? [], granularity);
 
   return (
-    <div ref={containerRef} style={{ flex: 1, minHeight: 240 }}>
+    <div ref={containerRef} style={{ flex: 1, minHeight: 240, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
       {loading ? (
         <div style={{ padding: '24px 24px 8px' }}>
           <Skeleton active paragraph={{ rows: 8 }} title={false} />
@@ -318,7 +309,7 @@ function ChartContainer({ selectedId, steps, granularity, loading }: ChartContai
         isOverall ? (
           <FunnelBarChart steps={steps} size={size} />
         ) : (
-          <StepLineChart data={chartData} granularity={granularity} size={size} />
+          <StepLineChart key={selectedId} data={chartData} granularity={granularity} size={size} />
         )
       ) : null}
     </div>
