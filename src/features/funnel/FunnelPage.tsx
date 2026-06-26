@@ -8,7 +8,7 @@ import {
   ReloadOutlined,
   RightOutlined,
 } from '@ant-design/icons';
-import { Column, Line } from '@ant-design/plots';
+import { Line } from '@ant-design/plots';
 import { useQuery } from '@tanstack/react-query';
 import { getFunnelAnalytics } from '../../data/api/funnel-analytics';
 import type { FunnelAnalyticsStep, MetricPoint } from '../../data/types';
@@ -17,7 +17,7 @@ import { useUIStore } from '../../store/uiStore';
 const { useToken } = theme;
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Funnel bar chart — shows all steps as stacked columns (conversion vs drop)
+// Funnel bar chart — custom SVG: solid blue (converted) + diagonal-stripe (dropped)
 // ────────────────────────────────────────────────────────────────────────────────
 
 interface FunnelBarChartProps {
@@ -25,100 +25,187 @@ interface FunnelBarChartProps {
   size: { w: number; h: number };
 }
 
+interface TooltipState {
+  step: FunnelAnalyticsStep;
+  x: number;
+  y: number;
+}
+
 function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
-  // Build stepped lookup for tooltip enrichment
-  const stepByName = new Map(steps.map((s) => [s.name, s]));
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
-  const barData = steps.flatMap((s) => [
-    {
-      step: s.name,
-      type: 'Конверсия',
-      value: s.conversionFromFirst,
-      users: s.users,
-      pct: s.conversionFromFirst,
-    },
-    {
-      step: s.name,
-      type: 'Отсев',
-      value: 100 - s.conversionFromFirst,
-      users: s.users,
-      pct: s.conversionFromFirst,
-    },
-  ]);
+  const PAD = { top: 20, right: 24, bottom: 52, left: 52 };
+  const chartW = size.w - PAD.left - PAD.right;
+  const chartH = size.h - PAD.top - PAD.bottom;
 
-  const annotations = steps.map((s) => ({
-    type: 'text' as const,
-    data: [s.name, s.conversionFromFirst, 'Конверсия'],
-    style: {
-      text: `${s.conversionFromFirst.toFixed(1)}%\n${s.users}`,
-      textAlign: 'center' as const,
-      fill: '#fff',
-      fontSize: 12,
-      fontWeight: 600,
-      dy: -8,
-    },
-  }));
+  const n = steps.length;
+  const colW = chartW / n;
+  const barW = colW * 0.52;
+  const barOff = (colW - barW) / 2;
+
+  const toY = (pct: number) => chartH * (1 - pct / 100);
+  const toH = (pct: number) => chartH * (pct / 100);
+
+  const yLabels = [0, 25, 50, 75, 100];
+  const firstUsers = steps[0]?.users ?? 1;
+
+  const handleMouseMove = (e: React.MouseEvent<SVGGElement>, step: FunnelAnalyticsStep) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setTooltip({ step, x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
 
   return (
-    <Column
-      data={barData}
-      xField="step"
-      yField="value"
-      colorField="type"
-      stack={true}
-      theme="classicDark"
-      width={size.w}
-      height={size.h}
-      paddingBottom={60}
-      paddingLeft={56}
-      paddingTop={32}
-      paddingRight={16}
-      scale={{
-        color: { range: ['#4E6AF6', 'rgba(120,140,255,0.22)'] },
-        y: { domain: [0, 100] },
-      }}
-      style={(d: { type: string }) => ({
-        fill: d.type === 'Отсев' ? 'rgba(120,140,255,0.18)' : '#4E6AF6',
-        stroke: d.type === 'Отсев' ? 'rgba(120,140,255,0.45)' : '#4E6AF6',
-        lineWidth: d.type === 'Отсев' ? 1 : 0,
-      })}
-      axis={{
-        y: {
-          labelFormatter: (v: unknown) => `${v}%`,
-          title: 'Конверсия',
-        },
-        x: {
-          labelAutoRotate: false,
-          labelAutoHide: false,
-        },
-      }}
-      annotations={annotations}
-      tooltip={{
-        title: (d: { step: string }) => d.step,
-        items: [
-          (d: { step: string; type: string; value: number }) => {
-            const s = stepByName.get(d.step);
-            if (!s || d.type !== 'Конверсия') return null;
-            return {
-              name: `Конверсия от первого шага`,
-              value: `${s.conversionFromFirst.toFixed(1)}% (${s.users} чел.)`,
-              color: '#4E6AF6',
-            };
-          },
-          (d: { step: string; type: string; value: number }) => {
-            const s = stepByName.get(d.step);
-            if (!s || d.type !== 'Отсев') return null;
-            const dropped = steps[0] ? steps[0].users - s.users : 0;
-            return {
-              name: 'Отсеялись',
-              value: `${(100 - s.conversionFromFirst).toFixed(1)}% (${dropped} чел.)`,
-              color: 'rgba(120,140,255,0.6)',
-            };
-          },
-        ],
-      }}
-      legend={false}
-    />
+    <div style={{ position: 'relative', width: size.w, height: size.h, overflow: 'visible' }}>
+      <svg ref={svgRef} width={size.w} height={size.h} style={{ display: 'block' }}>
+        <defs>
+          {/* Diagonal hatch: vertical lines rotated -45° — exactly like the reference */}
+          <pattern id="funnel-hatch" patternUnits="userSpaceOnUse" width="9" height="9" patternTransform="rotate(-45 0 0)">
+            <rect width="9" height="9" fill="rgba(100,120,255,0.18)" />
+            <line x1="0" y1="0" x2="0" y2="9" stroke="rgba(255,255,255,0.45)" strokeWidth="3" />
+          </pattern>
+        </defs>
+
+        <g transform={`translate(${PAD.left},${PAD.top})`}>
+          {/* Y-axis grid + labels */}
+          {yLabels.map((pct) => (
+            <g key={pct}>
+              <line
+                x1={0} y1={toY(pct)} x2={chartW} y2={toY(pct)}
+                stroke="rgba(255,255,255,0.07)" strokeWidth={1}
+                strokeDasharray={pct === 0 ? 'none' : '3 3'}
+              />
+              <text
+                x={-8} y={toY(pct)}
+                textAnchor="end" dominantBaseline="middle"
+                fill="rgba(255,255,255,0.38)" fontSize={11} fontFamily="Inter,sans-serif"
+              >{pct}%</text>
+            </g>
+          ))}
+
+          {/* Bars */}
+          {steps.map((step, i) => {
+            const x = i * colW + barOff;
+            const solidH = toH(step.conversionFromFirst);
+            const solidY = toY(step.conversionFromFirst);
+            const hatchH = toH(100 - step.conversionFromFirst);
+            const dropped = firstUsers - step.users;
+            const dropPct = 100 - step.conversionFromFirst;
+
+            return (
+              <g
+                key={step.id}
+                onMouseMove={(e) => handleMouseMove(e, step)}
+                onMouseLeave={() => setTooltip(null)}
+                style={{ cursor: 'default' }}
+              >
+                {/* Hatched zone (dropped) — always from top */}
+                {hatchH > 0 && (
+                  <rect
+                    x={x} y={0}
+                    width={barW} height={hatchH}
+                    fill="url(#funnel-hatch)"
+                    rx={3}
+                  />
+                )}
+
+                {/* Solid zone (converted) */}
+                {solidH > 0 && (
+                  <rect
+                    x={x} y={solidY}
+                    width={barW} height={solidH}
+                    fill="#4E6AF6"
+                    rx={3}
+                  />
+                )}
+
+                {/* Conversion label above solid zone */}
+                <text
+                  x={x + barW / 2} y={solidY - 16}
+                  textAnchor="middle" fill="#fff"
+                  fontSize={13} fontWeight={700} fontFamily="Inter,sans-serif"
+                >
+                  {step.conversionFromFirst.toFixed(1)}%
+                </text>
+                <text
+                  x={x + barW / 2} y={solidY - 3}
+                  textAnchor="middle" fill="rgba(255,255,255,0.65)"
+                  fontSize={11} fontFamily="Inter,sans-serif"
+                >
+                  {step.users.toLocaleString('ru')}
+                </text>
+
+                {/* Drop label inside hatch zone (if tall enough) */}
+                {hatchH > 30 && dropPct > 0 && (
+                  <text
+                    x={x + barW / 2} y={hatchH / 2 + 4}
+                    textAnchor="middle" fill="rgba(255,255,255,0.45)"
+                    fontSize={11} fontFamily="Inter,sans-serif"
+                  >
+                    −{dropped.toLocaleString('ru')}
+                  </text>
+                )}
+
+                {/* X-axis label */}
+                <text
+                  x={x + barW / 2} y={chartH + 16}
+                  textAnchor="middle" fill="rgba(255,255,255,0.45)"
+                  fontSize={11} fontFamily="Inter,sans-serif"
+                >
+                  {step.eventName}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+      </svg>
+
+      {/* Custom tooltip — no G2 artifacts */}
+      {tooltip && (
+        <div
+          style={{
+            position: 'absolute',
+            left: Math.min(tooltip.x + 14, size.w - 220),
+            top: Math.max(tooltip.y - 60, 4),
+            background: '#1a1b1f',
+            border: '1px solid rgba(255,255,255,0.14)',
+            borderRadius: 8,
+            padding: '10px 14px',
+            fontSize: 12,
+            color: '#fff',
+            pointerEvents: 'none',
+            zIndex: 20,
+            minWidth: 200,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+            lineHeight: 1.7,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 6, color: '#fff' }}>
+            {tooltip.step.name}
+          </div>
+          <div style={{ color: '#8DA4F5' }}>
+            Конверсия: <b style={{ color: '#fff' }}>{tooltip.step.conversionFromFirst.toFixed(1)}%</b>
+            <span style={{ color: 'rgba(255,255,255,0.45)', marginLeft: 6 }}>
+              {tooltip.step.users.toLocaleString('ru')} чел.
+            </span>
+          </div>
+          {tooltip.step.conversionFromFirst < 100 && (
+            <div style={{ color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
+              Отсеялись: <b style={{ color: 'rgba(255,255,255,0.8)' }}>
+                {(100 - tooltip.step.conversionFromFirst).toFixed(1)}%
+              </b>
+              <span style={{ marginLeft: 6 }}>
+                {(firstUsers - tooltip.step.users).toLocaleString('ru')} чел.
+              </span>
+            </div>
+          )}
+          <div style={{ color: 'rgba(255,255,255,0.3)', marginTop: 4, fontSize: 11 }}>
+            {tooltip.step.eventName}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
