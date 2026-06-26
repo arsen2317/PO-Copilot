@@ -778,7 +778,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
         const result = await streamChat({
           messages: apiMessages as ChatMessage[],
           system: selectedAgent && AGENT_PROMPTS[selectedAgent]
-            ? AGENT_PROMPTS[selectedAgent]
+            ? `${BASE_SYSTEM_PROMPT}\n\n${AGENT_PROMPTS[selectedAgent]}`
             : BASE_SYSTEM_PROMPT,
           tools: TOOL_DEFINITIONS as unknown as object[],
           signal: abort.signal,
