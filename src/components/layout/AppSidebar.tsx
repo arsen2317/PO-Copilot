@@ -3,9 +3,10 @@ import {
   AppstoreOutlined,
   BellOutlined,
   BookOutlined,
+  BarChartOutlined,
   CheckSquareOutlined,
   CreditCardOutlined,
-  DashboardOutlined,
+  DownOutlined,
   LineChartOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -24,22 +25,29 @@ interface AppSidebarProps {
   unreadCount: number;
 }
 
+const ANALYTICS_SUBITEMS = [
+  { key: '/',          label: 'Дашборд' },
+  { key: '/funnel',    label: 'Воронка' },
+  { key: '/retention', label: 'Удержание' },
+  { key: '/features',  label: 'Фичи' },
+] as const;
+
+const ANALYTICS_KEYS = new Set(ANALYTICS_SUBITEMS.map((i) => i.key));
+
 const NAV_ITEMS = [
-  { key: '__search__', icon: SearchOutlined, label: 'Поиск' },
-  { key: '/assistant', icon: MessageOutlined, label: 'Ассистент' },
-  { key: '/', icon: DashboardOutlined, label: 'Дашборд' },
-  { key: '/metrics', icon: LineChartOutlined, label: 'Метрики' },
-  { key: '/services', icon: AppstoreOutlined, label: 'ИИ-сервисы' },
-  { key: '/tasks', icon: CheckSquareOutlined, label: 'Задачи' },
-  { key: '/rooms', icon: TeamOutlined, label: 'Комнаты' },
-  { key: '/knowledge', icon: BookOutlined, label: 'База знаний' },
+  { key: '/assistant',  icon: MessageOutlined,       label: 'Ассистент' },
+  { key: '/metrics',    icon: LineChartOutlined,     label: 'Метрики' },
+  { key: '/services',   icon: AppstoreOutlined,      label: 'ИИ-сервисы' },
+  { key: '/tasks',      icon: CheckSquareOutlined,   label: 'Задачи' },
+  { key: '/rooms',      icon: TeamOutlined,          label: 'Комнаты' },
+  { key: '/knowledge',  icon: BookOutlined,          label: 'База знаний' },
 ] as const;
 
 const BOTTOM_ITEMS = [
-  { key: '/profile', icon: UserOutlined, label: 'Профиль' },
-  { key: '/notifications', icon: BellOutlined, label: 'Уведомления' },
-  { key: '/settings', icon: SettingOutlined, label: 'Настройки' },
-  { key: '__help__', icon: QuestionCircleOutlined, label: 'Помощь' },
+  { key: '/profile',       icon: UserOutlined,          label: 'Профиль' },
+  { key: '/notifications', icon: BellOutlined,          label: 'Уведомления' },
+  { key: '/settings',      icon: SettingOutlined,       label: 'Настройки' },
+  { key: '__help__',       icon: QuestionCircleOutlined, label: 'Помощь' },
 ] as const;
 
 export default function AppSidebar({ unreadCount }: AppSidebarProps) {
@@ -49,16 +57,31 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
 
+  const isAnalyticsActive = ANALYTICS_KEYS.has(location.pathname as '/');
+  const [analyticsOpen, setAnalyticsOpen] = useState(true);
+
   const selectedKey: string =
     NAV_ITEMS.find((item) => {
       const k = item.key as string;
-      return k !== '/' && k !== '__search__' && location.pathname.startsWith(k);
-    })?.key as string | undefined ?? (location.pathname === '/' ? '/' : '');
+      return k !== '__search__' && location.pathname.startsWith(k);
+    })?.key as string | undefined ?? (isAnalyticsActive ? location.pathname : '');
 
   const handleNavClick = (key: string) => {
     if (key === '__search__') { setSearchOpen(true); return; }
     if (key === '__help__') return;
     void navigate(key);
+  };
+
+  const handleAnalyticsGroupClick = () => {
+    if (collapsed) {
+      setCollapsed(false);
+      setAnalyticsOpen(true);
+      void navigate('/');
+      return;
+    }
+    // If not on an analytics route, navigate to dashboard; always toggle open
+    if (!isAnalyticsActive) void navigate('/');
+    setAnalyticsOpen((v) => !v);
   };
 
   const navItemStyle = (key: string): React.CSSProperties => ({
@@ -167,7 +190,110 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
             </div>
           </div>
 
-          {/* Nav items */}
+          {/* ── Search ── */}
+          <Tooltip title={collapsed ? 'Поиск' : ''} placement="right">
+            <div
+              style={navItemStyle('__search__')}
+              onClick={() => handleNavClick('__search__')}
+              onMouseEnter={() => setHoveredKey('__search__')}
+              onMouseLeave={() => setHoveredKey(null)}
+            >
+              <span style={iconStyle}><SearchOutlined /></span>
+              {!collapsed && <span style={labelStyle}>Поиск</span>}
+            </div>
+          </Tooltip>
+
+          {/* ── Analytics group ── */}
+          <Tooltip title={collapsed ? 'Продуктовая аналитика' : ''} placement="right">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: collapsed ? 'center' : 'space-between',
+                height: 38,
+                paddingLeft: collapsed ? 0 : 9.57,
+                paddingRight: collapsed ? 0 : 6,
+                borderRadius: 9.57,
+                cursor: 'pointer',
+                background: isAnalyticsActive && collapsed
+                  ? 'rgba(255,255,255,0.07)'
+                  : hoveredKey === '__analytics__'
+                    ? 'rgba(255,255,255,0.04)'
+                    : 'transparent',
+                transition: 'background 0.15s',
+              }}
+              onClick={handleAnalyticsGroupClick}
+              onMouseEnter={() => setHoveredKey('__analytics__')}
+              onMouseLeave={() => setHoveredKey(null)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 9.57, minWidth: 0 }}>
+                <span style={{ ...iconStyle, color: isAnalyticsActive ? '#D7D8DA' : '#9B9C9E' }}>
+                  <BarChartOutlined />
+                </span>
+                {!collapsed && (
+                  <span style={{ ...labelStyle, color: isAnalyticsActive ? '#D7D8DA' : '#9B9C9E' }}>
+                    Продуктовая аналитика
+                  </span>
+                )}
+              </div>
+              {!collapsed && (
+                <DownOutlined
+                  style={{
+                    fontSize: 10,
+                    color: '#9B9C9E',
+                    flexShrink: 0,
+                    transform: analyticsOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
+                    transition: 'transform 0.18s ease',
+                  }}
+                />
+              )}
+            </div>
+          </Tooltip>
+
+          {/* ── Analytics subitems ── */}
+          {!collapsed && analyticsOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', marginTop: 2, marginBottom: 2 }}>
+              {ANALYTICS_SUBITEMS.map(({ key, label }) => {
+                const isActive = location.pathname === key;
+                return (
+                  <div
+                    key={key}
+                    onClick={() => void navigate(key)}
+                    onMouseEnter={() => setHoveredKey(`sub-${key}`)}
+                    onMouseLeave={() => setHoveredKey(null)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      height: 34,
+                      paddingLeft: 36,
+                      paddingRight: 9.57,
+                      borderRadius: 9.57,
+                      cursor: 'pointer',
+                      background: isActive
+                        ? 'rgba(255,255,255,0.07)'
+                        : hoveredKey === `sub-${key}`
+                          ? 'rgba(255,255,255,0.04)'
+                          : 'transparent',
+                      transition: 'background 0.15s',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 14,
+                        fontWeight: isActive ? 500 : 400,
+                        color: isActive ? '#D7D8DA' : '#9B9C9E',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Other nav items ── */}
           {NAV_ITEMS.map(({ key, icon: Icon, label }) => (
             <Tooltip key={key} title={collapsed ? label : ''} placement="right">
               <div

@@ -18,6 +18,7 @@ import ArtifactDetailPage from '../features/knowledge-base/ArtifactDetailPage';
 import NotificationsPage from '../features/notifications/NotificationsPage';
 import ProfilePage from '../features/profile/ProfilePage';
 import MetricsPage from '../features/metrics/MetricsPage';
+import PlaceholderPage from '../features/analytics/PlaceholderPage';
 import LoginPage from '../features/auth/LoginPage';
 import { isAuthenticated } from '../features/auth/auth';
 
@@ -50,6 +51,9 @@ export const router = createBrowserRouter([
           { path: 'rooms/:roomId', element: <RoomDetailPage /> },
           { path: 'knowledge', element: <KnowledgeBasePage /> },
           { path: 'knowledge/:artifactId', element: <ArtifactDetailPage /> },
+          { path: 'funnel', element: <PlaceholderPage /> },
+          { path: 'retention', element: <PlaceholderPage /> },
+          { path: 'features', element: <PlaceholderPage /> },
           { path: 'notifications', element: <NotificationsPage /> },
           { path: 'profile', element: <ProfilePage /> },
         ],

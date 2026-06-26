@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -16,6 +18,7 @@ import {
   AudioOutlined,
   BarChartOutlined,
   BulbOutlined,
+  CalendarOutlined,
   CheckSquareOutlined,
   CloseOutlined,
   CodeOutlined,
@@ -35,6 +38,20 @@ import {
   TeamOutlined,
 } from '@ant-design/icons';
 import { Dropdown, Tooltip } from 'antd';
+
+// ── Sparkle / AI icon (three 4-pointed stars) ───────────────────────────────
+function SparkleIcon({ size = 20, color = 'currentColor' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill={color} xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+      {/* large star top-right */}
+      <path d="M14 1.5 L14.65 4.35 L17.5 5 L14.65 5.65 L14 8.5 L13.35 5.65 L10.5 5 L13.35 4.35 Z"/>
+      {/* medium star bottom-left */}
+      <path d="M6.5 10 L7 12 L9 12.5 L7 13 L6.5 15 L6 13 L4 12.5 L6 12 Z"/>
+      {/* small star top-left */}
+      <path d="M5 3 L5.3 4.2 L6.5 4.5 L5.3 4.8 L5 6 L4.7 4.8 L3.5 4.5 L4.7 4.2 Z"/>
+    </svg>
+  );
+}
 
 // ── SpeechRecognition types (not in standard TS DOM lib) ────────────────────
 interface ISpeechRecognition extends EventTarget {
@@ -90,6 +107,7 @@ type AgentDef = {
 };
 
 const AGENTS_DATA: AgentDef[] = [
+  { key: 'agent-briefing',   label: 'Брифинг',           desc: 'Вводит в курс дела: что изменилось за последние дни в метриках и задачах', color: '#0D1F2D', Icon: CalendarOutlined,   trigger: 'Дай мне брифинг за последние 3 дня' },
   { key: 'agent-metrics',    label: 'Анализ метрик',     desc: 'Исследует аномалии и тренды, выявляет причины отклонений в данных',     color: '#0B2550', Icon: BarChartOutlined,   trigger: 'Проанализируй все текущие метрики' },
   { key: 'agent-qbr',       label: 'Ассистент QBR',     desc: 'Готовит ключевые инсайты и рекомендации для квартального обзора',        color: '#0B3325', Icon: FileTextOutlined,   trigger: 'Начни подготовку QBR отчёта' },
   { key: 'agent-tasks',     label: 'Постановщик задач', desc: 'Пишет и улучшает задачи в формате Jira, расставляет приоритеты',        color: '#25103A', Icon: CheckSquareOutlined },
@@ -404,6 +422,30 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
                     />
                   );
                 }
+                // Clickable task draft link
+                if (className === 'language-task-link') {
+                  let parsed: { id: string; title: string } | null = null;
+                  try { parsed = JSON.parse(String(children).trim()) as { id: string; title: string }; } catch { /* ignore */ }
+                  if (!parsed) return null;
+                  const { id: draftId, title: draftTitle } = parsed;
+                  return (
+                    <div
+                      onClick={() => onMetricClick(`__task__${draftId}`)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                        padding: '8px 14px', margin: '8px 0',
+                        background: 'rgba(74,130,247,0.1)', border: `1px solid rgba(74,130,247,0.35)`,
+                        borderRadius: 10, cursor: 'pointer', transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(74,130,247,0.18)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(74,130,247,0.1)'; }}
+                    >
+                      <CheckSquareOutlined style={{ color: ACCENT, fontSize: 15 }} />
+                      <span style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 500 }}>{draftTitle}</span>
+                      <span style={{ fontSize: 12, color: ACCENT, marginLeft: 4 }}>Открыть черновик →</span>
+                    </div>
+                  );
+                }
                 // QBR HTML report — render in iframe
                 if (className === 'language-html-report') {
                   const html = String(children);
@@ -411,6 +453,30 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
                     const w = window.open('', '_blank');
                     w?.document.write(html);
                     w?.document.close();
+                  };
+                  const downloadPdf = async () => {
+                    const W = 1280, H = 720;
+                    const container = document.createElement('div');
+                    container.style.cssText = `position:fixed;left:-9999px;top:0;width:${W}px;background:#fff;`;
+                    container.innerHTML = html;
+                    document.body.appendChild(container);
+                    try {
+                      const slides = Array.from(container.querySelectorAll<HTMLElement>('.slide'));
+                      const targets = slides.length > 0 ? slides : [container];
+                      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [W, H], hotfixes: ['px_scaling'] });
+                      for (let i = 0; i < targets.length; i++) {
+                        const el = targets[i] as HTMLElement;
+                        el.style.width = `${W}px`;
+                        el.style.height = `${H}px`;
+                        const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#fff', width: W, height: H });
+                        const imgData = canvas.toDataURL('image/png');
+                        if (i > 0) pdf.addPage([W, H], 'landscape');
+                        pdf.addImage(imgData, 'PNG', 0, 0, W, H);
+                      }
+                      pdf.save('QBR-Report.pdf');
+                    } finally {
+                      document.body.removeChild(container);
+                    }
                   };
                   return (
                     <div style={{ margin: '10px 0', borderRadius: 10, overflow: 'hidden', border: `1px solid ${BORDER_COLOR}` }}>
@@ -420,6 +486,13 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
                       }}>
                         <span style={{ fontSize: 12, color: TEXT_SECONDARY, fontWeight: 500 }}>QBR Отчёт</span>
                         <div style={{ display: 'flex', gap: 8 }}>
+                          <span
+                            onClick={downloadPdf}
+                            style={{ fontSize: 12, color: ACCENT, cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            Скачать PDF
+                          </span>
+                          <span style={{ fontSize: 12, color: BORDER_COLOR }}>|</span>
                           <span
                             onClick={openInTab}
                             style={{ fontSize: 12, color: ACCENT, cursor: 'pointer', userSelect: 'none' }}
@@ -431,7 +504,7 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
                       <iframe
                         srcDoc={html}
                         sandbox="allow-same-origin"
-                        style={{ width: '100%', height: 480, border: 'none', display: 'block', background: '#fff' }}
+                        style={{ width: '100%', aspectRatio: '16/9', border: 'none', display: 'block', background: '#fff' }}
                         title="QBR Report"
                       />
                     </div>
@@ -535,21 +608,6 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
   );
 }
 
-// ── Assistant typing dots ────────────────────────────────────────────────────
-function AssistantTyping() {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 16, height: 20 }}>
-      {[0, 1, 2].map((i) => (
-        <motion.div
-          key={i}
-          style={{ width: 6, height: 6, borderRadius: '50%', background: TEXT_SECONDARY }}
-          animate={{ opacity: [0.3, 1, 0.3] }}
-          transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
-        />
-      ))}
-    </div>
-  );
-}
 
 // ── History panel ────────────────────────────────────────────────────────────
 function HistoryPanel({ sessions, activeSessionId, onSelect }: {
@@ -561,7 +619,7 @@ function HistoryPanel({ sessions, activeSessionId, onSelect }: {
     new Date(ts).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '4px 10px 8px' }}>
+    <div className="content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 10px 8px' }}>
       <div style={{ fontSize: 11, color: TEXT_SECONDARY, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '6px 4px 8px' }}>
         История чатов
       </div>
@@ -676,7 +734,7 @@ function AssistantLeftSidebar({ sessions, activeSessionId, onNewChat, onSelectSe
       <div style={{ height: 1, background: BORDER_COLOR, flexShrink: 0 }} />
 
       {/* History list */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 12px' }}>
+      <div className="content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 12px' }}>
         {todays.length > 0 && (
           <>
             <SectionLabel label="Сегодня" />
@@ -748,10 +806,15 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   );
 
   const handleMetricClick = (id: string) => {
+    if (id.startsWith('__task__')) {
+      void navigate('/tasks');
+      return;
+    }
     setFocusedMetric(id);
-    navigate('/');
+    void navigate('/');
   };
 
+  const isGenerating = isThinking || messages.some(m => m.streaming);
   const hasMessages = messages.length > 0 || isThinking;
 
   useEffect(() => {
@@ -978,6 +1041,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
   // ── Dropdown items ───────────────────────────────────────────────────────
   const AGENT_ITEMS = [
+    { key: 'agent-briefing', label: 'Брифинг' },
     { key: 'agent-metrics', label: 'Анализ метрик' },
     { key: 'agent-qbr', label: 'Ассистент QBR' },
     { key: 'agent-tasks', label: 'Постановщик задач' },
@@ -1002,7 +1066,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     {
       key: 'agents',
       label: 'Агенты',
-      icon: <RobotOutlined />,
+      icon: <SparkleIcon size={14} color={TEXT_SECONDARY} />,
       children: AGENT_ITEMS,
     },
     {
@@ -1075,7 +1139,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
               height: 28, padding: '0 8px',
               background: '#1C1D1F', borderRadius: 8, marginBottom: 8,
             }}>
-              <RobotOutlined style={{ color: ACCENT, fontSize: 13 }} />
+              <SparkleIcon size={14} color={ACCENT} />
               <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, whiteSpace: 'nowrap' }}>
                 {AGENTS_DATA.find(a => a.key === selectedAgent)?.label ?? selectedAgent}
               </span>
@@ -1266,35 +1330,36 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   // ── Assistant page: 2-column layout ─────────────────────────────────────────
   if (isAssistantPage) {
     return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {TopBar}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          {/* Left sidebar: history + new chat */}
-          <AssistantLeftSidebar
-            sessions={sessions}
-            activeSessionId={activeSessionId}
-            onNewChat={() => { createSession(); setAttachedImages([]); setInputValue(''); setSelectedAgent(null); }}
-            onSelectSession={(id) => switchSession(id)}
-          />
+      <div style={{ height: '100%', display: 'flex', overflow: 'hidden' }}>
+        {/* Left sidebar: history — spans full height so borderRight goes edge to edge */}
+        <AssistantLeftSidebar
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          onNewChat={() => { createSession(); setAttachedImages([]); setInputValue(''); setSelectedAgent(null); }}
+          onSelectSession={(id) => switchSession(id)}
+        />
 
-          {/* Main content: centered column */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', alignItems: 'center' }}>
+        {/* Right: TopBar + content — glow lives here so it never bleeds into sidebar */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+          {!hasMessages && GlowBg}
+
+          {/* TopBar above the glow */}
+          <div style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>
+            {TopBar}
+          </div>
+
+          {/* Main content: centered column — above the glow */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', alignItems: 'center', position: 'relative', zIndex: 1 }}>
 
             {/* Center: messages / empty state */}
-            <div style={{ flex: 1, overflow: 'auto', width: '100%', maxWidth: 760, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, overflow: 'hidden', width: '100%', maxWidth: 760, display: 'flex', flexDirection: 'column' }}>
               {!hasMessages ? (
                 <div style={{
                   flex: 1, display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center',
-                  padding: '32px 24px', position: 'relative',
+                  padding: '32px 24px',
                 }}>
-                  <div style={{
-                    position: 'absolute', left: '50%', top: '38%',
-                    transform: 'translate(-50%, -50%)',
-                    width: 220, height: 220, background: '#09225C',
-                    borderRadius: 9999, filter: 'blur(80px)', pointerEvents: 'none',
-                  }} />
-                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, width: '100%' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, width: '100%' }}>
                     <span style={{ color: TEXT_PRIMARY, fontSize: 22, fontWeight: 600, textAlign: 'center', lineHeight: 1.4 }}>
                       Над чем будем<br />работать сегодня?
                     </span>
@@ -1302,20 +1367,20 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                   </div>
                 </div>
               ) : (
-                <div style={{ flex: 1, padding: '24px 24px 8px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
+                <div className="content-scroll" style={{ flex: 1, padding: '24px 24px 8px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
                   {messages.map((msg) =>
                     msg.role === 'user'
                       ? <UserBubble key={msg.id} msg={msg} />
                       : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
                   )}
-                  {isThinking && <AssistantTyping />}
-                  <div ref={messagesEndRef} />
+                                    <div ref={messagesEndRef} />
                 </div>
               )}
             </div>
 
             {/* Input — constrained, centered */}
             <div style={{ width: '100%', maxWidth: 760, padding: '0 24px 20px', flexShrink: 0 }}>
+              {isGenerating && <div className="ai-generating-bar" style={{ marginBottom: 10 }} />}
               {InputCard}
             </div>
           </div>
@@ -1330,13 +1395,13 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
   // ── Sidebar / floating layout ────────────────────────────────────────────────
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-      {TopBar}
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+      {!hasMessages && view !== 'history' && GlowBg}
+      <div style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>{TopBar}</div>
 
       {/* ── Center: history / empty state / message list ── */}
       <div style={{
-        flex: 1, overflow: 'auto', position: 'relative',
+        flex: 1, overflow: 'hidden', position: 'relative', zIndex: 1,
         display: 'flex', flexDirection: 'column',
       }}>
         {view === 'history' ? (
@@ -1352,14 +1417,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
             alignItems: 'center', justifyContent: 'center',
             padding: '24px 20px', position: 'relative',
           }}>
-            {/* Blue glow */}
-            <div style={{
-              position: 'absolute', left: '50%', top: '38%',
-              transform: 'translate(-50%, -50%)',
-              width: 156, height: 156, background: '#09225C',
-              borderRadius: 9999, filter: 'blur(62px)', pointerEvents: 'none',
-            }} />
-            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, width: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, width: '100%' }}>
               <JumpingDots />
               <span style={{ color: TEXT_PRIMARY, fontSize: 18, fontWeight: 600, textAlign: 'center', lineHeight: 1.4 }}>
                 Что вы хотите узнать?
@@ -1387,20 +1445,20 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           </div>
         ) : (
           /* Message list */
-          <div style={{ flex: 1, padding: '16px 14px 8px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
+          <div className="content-scroll" style={{ flex: 1, padding: '16px 14px 8px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
             {messages.map((msg) =>
               msg.role === 'user'
                 ? <UserBubble key={msg.id} msg={msg} />
                 : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
             )}
-            {isThinking && <AssistantTyping />}
-            <div ref={messagesEndRef} />
+                        <div ref={messagesEndRef} />
           </div>
         )}
       </div>
 
       {/* ── Bottom section ── */}
-      <div style={{ padding: '0 14px 12px', flexShrink: 0 }}>
+      <div style={{ padding: '0 14px 12px', flexShrink: 0, position: 'relative', zIndex: 1 }}>
+        {isGenerating && <div className="ai-generating-bar" style={{ marginBottom: 8 }} />}
         {InputCard}
       </div>
 
@@ -1416,6 +1474,19 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     </div>
   );
 }
+
+// ── Background glow element ──────────────────────────────────────────────────
+const GlowBg = (
+  <div style={{
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    height: '50%',
+    background: 'radial-gradient(ellipse at 50% 100%, #1a3a8a 0%, #0a1f5c 40%, transparent 70%)',
+    filter: 'blur(56px)', pointerEvents: 'none', zIndex: 0,
+    opacity: 0.25,
+  }} />
+);
+
+// Used inside PanelContent where hasMessages is known
 
 // ── Shell wrappers (sidebar / floating) ─────────────────────────────────────
 export default function AIPanelSider({ mode, onChangeMode, expanded, hideWindowControls }: AIPanelSiderProps) {
@@ -1473,15 +1544,12 @@ export function AIPanelFAB({ onClick }: { onClick: () => void }) {
     <Tooltip title="Открыть ИИ-помощник" placement="left">
       <button
         onClick={onClick}
-        style={{
-          position: 'fixed', bottom: 24, right: 24, width: 48, height: 48,
-          borderRadius: '50%', background: ACCENT, border: 'none',
-          cursor: 'pointer', zIndex: 999,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-        }}
+        className="ai-fab-btn"
+        style={{ position: 'fixed', bottom: 24, right: 24, width: 48, height: 48, borderRadius: '50%' }}
       >
-        <RobotOutlined style={{ fontSize: 22, color: '#fff' }} />
+        <span>
+          <SparkleIcon size={20} color="#fff" />
+        </span>
       </button>
     </Tooltip>
   );

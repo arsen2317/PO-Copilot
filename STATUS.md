@@ -91,6 +91,33 @@
 
 ---
 
+## Опции на будущее
+
+### Постоянное хранилище через Vercel + Neon (PostgreSQL)
+
+Когда понадобится сохранять данные между сессиями (задачи, проекты, настройки) — можно подключить **Neon** через Vercel Marketplace:
+
+```bash
+vercel install neon --plan free -e production -e preview
+```
+
+Vercel автоматически добавит `DATABASE_URL` в env-переменные. Стратегия миграции без риска — env-флаг:
+
+```ts
+// data/api/tasks.ts
+if (process.env.DATABASE_URL) {
+  return await db.query(...)  // реальная БД
+} else {
+  return fixtures.tasks       // фикстуры как fallback
+}
+```
+
+Это позволяет откатиться мгновенно (убрать env-var в Vercel) без передеплоя. Альтернативы: **Upstash** (Redis/KV — для простых структур), **Supabase** (PostgreSQL + Auth + Realtime — избыточно для старта).
+
+**Когда делать:** при реализации экрана Задач (`/tasks`) или другого раздела, где нужна реальная персистентность.
+
+---
+
 ## Журнал сессий
 
 > Новые записи добавляй сверху. Шаблон:

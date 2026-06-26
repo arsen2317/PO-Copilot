@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { TaskDraft } from '../data/types';
 
 export interface AttachedFile {
   name: string;
@@ -38,6 +39,10 @@ interface UIState {
   switchSession: (id: string) => void;
   setChatMessages: (msgs: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void;
   setSessionTitle: (sessionId: string, title: string) => void;
+
+  taskDrafts: TaskDraft[];
+  addTaskDraft: (draft: Omit<TaskDraft, 'id' | 'createdAt'>) => string;
+  removeTaskDraft: (id: string) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -67,4 +72,18 @@ export const useUIStore = create<UIState>((set) => ({
     set((state) => ({
       sessions: state.sessions.map((s) => (s.id === sessionId ? { ...s, title } : s)),
     })),
+
+  taskDrafts: [],
+  addTaskDraft: (draft) => {
+    const id = `draft-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    set((state) => ({
+      taskDrafts: [
+        { ...draft, id, createdAt: Date.now() },
+        ...state.taskDrafts,
+      ],
+    }));
+    return id;
+  },
+  removeTaskDraft: (id) =>
+    set((state) => ({ taskDrafts: state.taskDrafts.filter((d) => d.id !== id) })),
 }));

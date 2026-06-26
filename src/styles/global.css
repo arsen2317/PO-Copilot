@@ -19,6 +19,217 @@ body {
   overscroll-behavior: none;
 }
 
+/* ── AI FAB fancy button ─────────────────────────────────────────── */
+.ai-fab-btn {
+  --fancy-button-gradient-0: #2a5fd4;
+  --fancy-button-gradient-50: #4a82f7;
+  --fancy-button-gradient-100: #6fa3ff;
+  --fancy-button-inner-shadow-top: rgba(147, 197, 253, 0.25);
+  --fancy-button-inner-shadow-top-lg: rgba(9, 20, 80, 0.12);
+  --fancy-button-inner-shadow-bottom: rgba(111, 163, 255, 0.35);
+  --fancy-button-shine-top: #bfdbfe;
+  --fancy-button-shine-bottom: #93c5fd;
+
+  padding: 0;
+  margin: 0;
+  appearance: none;
+  border: none;
+  outline: none;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  z-index: 999;
+  color: #fff;
+  background-image: linear-gradient(
+    to bottom,
+    var(--fancy-button-gradient-0) 0%,
+    var(--fancy-button-gradient-50) 50%,
+    var(--fancy-button-gradient-100) 100%
+  );
+  box-shadow:
+    0px 4px 12px rgba(9, 12, 60, 0.15),
+    0px 2px 8px rgba(9, 12, 60, 0.15),
+    0px 1px 3px var(--fancy-button-inner-shadow-top-lg),
+    inset 0px 1px 1px var(--fancy-button-inner-shadow-top),
+    inset 0px -1px 3px var(--fancy-button-inner-shadow-bottom);
+}
+
+.ai-fab-btn::before,
+.ai-fab-btn::after {
+  content: "";
+  position: absolute;
+  border-radius: inherit;
+  will-change: transform;
+}
+
+.ai-fab-btn::before {
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--fancy-button-shine-top);
+  width: 40px;
+  height: 6px;
+  top: -3px;
+  opacity: 0.6;
+  filter: blur(6px);
+  transition: opacity 0.25s;
+}
+
+.ai-fab-btn::after {
+  inset: 0;
+  background-size: cover;
+  z-index: 2;
+  opacity: 0.3;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.ai-fab-btn span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
+  position: relative;
+  background-image: linear-gradient(
+    to bottom,
+    var(--fancy-button-shine-top),
+    transparent 8px
+  );
+  background-position: 0 -6px;
+  background-repeat: no-repeat;
+  z-index: 1;
+}
+
+.ai-fab-btn span::before,
+.ai-fab-btn span::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background-color: var(--fancy-button-shine-bottom);
+  transition: opacity 0.25s, transform 0.25s;
+  will-change: transform;
+}
+
+.ai-fab-btn span::before {
+  width: 44px;
+  height: 8px;
+  bottom: -4px;
+  opacity: 0.75;
+  filter: blur(6px);
+}
+
+.ai-fab-btn span::after {
+  width: 48px;
+  height: 1px;
+  bottom: 0;
+  opacity: 0.9;
+  filter: blur(1px);
+}
+
+.ai-fab-btn:hover span::before {
+  opacity: 0.8;
+  transform: translateX(-50%) scale(1.25);
+}
+
+.ai-fab-btn:hover span::after {
+  opacity: 1;
+}
+
+/* ── AI generating shimmer bar ──────────────────────────────────── */
+@keyframes ai-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.ai-generating-bar {
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent 0%, #4A82F7 40%, #93c5fd 60%, transparent 100%);
+  background-size: 200% 100%;
+  animation: ai-shimmer 1.6s linear infinite;
+  -webkit-mask: linear-gradient(90deg, transparent 0%, black 12%, black 88%, transparent 100%);
+  mask: linear-gradient(90deg, transparent 0%, black 12%, black 88%, transparent 100%);
+}
+
+/* ── AI thinking loader ──────────────────────────────────────────── */
+.ai-loader-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Inter", sans-serif;
+  font-size: 1.1em;
+  font-weight: 300;
+  color: white;
+  border-radius: 50%;
+  background-color: transparent;
+  user-select: none;
+}
+
+.ai-loader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background-color: transparent;
+  animation: ai-loader-rotate 2s linear infinite;
+  z-index: 0;
+}
+
+@keyframes ai-loader-rotate {
+  0% {
+    transform: rotate(90deg);
+    box-shadow:
+      0 10px 20px 0 #fff inset,
+      0 20px 30px 0 #5a9bff inset,
+      0 60px 60px 0 #1e4fcc inset;
+  }
+  50% {
+    transform: rotate(270deg);
+    box-shadow:
+      0 10px 20px 0 #fff inset,
+      0 20px 10px 0 #3b6fd4 inset,
+      0 40px 60px 0 #0d2d80 inset;
+  }
+  100% {
+    transform: rotate(450deg);
+    box-shadow:
+      0 10px 20px 0 #fff inset,
+      0 20px 30px 0 #5a9bff inset,
+      0 60px 60px 0 #1e4fcc inset;
+  }
+}
+
+.ai-loader-letter {
+  display: inline-block;
+  opacity: 0.4;
+  transform: translateY(0);
+  animation: ai-loader-letter-anim 2s infinite;
+  z-index: 1;
+}
+
+.ai-loader-letter:nth-child(1)  { animation-delay: 0s;   }
+.ai-loader-letter:nth-child(2)  { animation-delay: 0.1s; }
+.ai-loader-letter:nth-child(3)  { animation-delay: 0.2s; }
+.ai-loader-letter:nth-child(4)  { animation-delay: 0.3s; }
+.ai-loader-letter:nth-child(5)  { animation-delay: 0.4s; }
+.ai-loader-letter:nth-child(6)  { animation-delay: 0.5s; }
+.ai-loader-letter:nth-child(7)  { animation-delay: 0.6s; }
+.ai-loader-letter:nth-child(8)  { animation-delay: 0.7s; }
+.ai-loader-letter:nth-child(9)  { animation-delay: 0.8s; }
+.ai-loader-letter:nth-child(10) { animation-delay: 0.9s; }
+
+@keyframes ai-loader-letter-anim {
+  0%, 100% { opacity: 0.4; transform: translateY(0);    }
+  20%       { opacity: 1;   transform: scale(1.15);      }
+  40%       { opacity: 0.7; transform: translateY(0);    }
+}
+
 .content-scroll {
   scrollbar-width: thin;
   scrollbar-color: #2A2B2D transparent;

@@ -2,6 +2,7 @@ import { getMetricDefinitions, getMetricGroupDefs } from '../data/api/metric-def
 import { getTasks } from '../data/api/tasks';
 import { getAgents } from '../data/api/agents';
 import { getToken } from '../features/auth/auth';
+import { useUIStore } from '../store/uiStore';
 
 export const TOOL_DEFINITIONS = [
   {
@@ -29,6 +30,25 @@ export const TOOL_DEFINITIONS = [
     name: 'get_agents',
     description: 'Возвращает список доступных ИИ-агентов: название, описание, статус.',
     input_schema: { type: 'object' as const, properties: {}, required: [] },
+  },
+  {
+    name: 'create_task_draft',
+    description: 'Создаёт черновик задачи в разделе «Задачи → Черновики». Используй после того как согласовал структуру задачи с пользователем. Черновик появится на вкладке «Черновики» и пользователь сможет его принять или отредактировать.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string', description: 'Заголовок задачи (до 80 символов)' },
+        type: { type: 'string', enum: ['Story', 'Bug', 'Task', 'Spike'], description: 'Тип задачи' },
+        priority: { type: 'string', enum: ['P0', 'P1', 'P2', 'P3'], description: 'P0=блокер, P1=высокий, P2=средний, P3=низкий' },
+        storyPoints: { type: 'number', description: 'Оценка в story points (1/2/3/5/8/13)' },
+        description: { type: 'string', description: 'Описание в формате «Как [роль], я хочу [действие], чтобы [ценность]»' },
+        epicId: { type: 'string', description: 'ID эпика (необязательно)' },
+        labels: { type: 'array', items: { type: 'string' }, description: 'Метки (теги)' },
+        criteria: { type: 'array', items: { type: 'string' }, description: 'Критерии приёмки (5-8 штук, конкретные и проверяемые)' },
+        complianceNotes: { type: 'string', description: 'Комплаенс-заметки или требования (необязательно)' },
+      },
+      required: ['title', 'type', 'priority', 'criteria'],
+    },
   },
   {
     name: 'search_web',
@@ -80,6 +100,22 @@ export async function executeTool(
 
     case 'get_agents':
       return getAgents();
+
+    case 'create_task_draft': {
+      const draft: Parameters<ReturnType<typeof useUIStore.getState>['addTaskDraft']>[0] = {
+        title: String(input.title ?? ''),
+        type: (['Story', 'Bug', 'Task', 'Spike'].includes(String(input.type)) ? input.type : 'Task') as 'Story' | 'Bug' | 'Task' | 'Spike',
+        priority: (['P0', 'P1', 'P2', 'P3'].includes(String(input.priority)) ? input.priority : 'P2') as 'P0' | 'P1' | 'P2' | 'P3',
+        ...(typeof input.storyPoints === 'number' && { storyPoints: input.storyPoints }),
+        ...(typeof input.description === 'string' && { description: input.description }),
+        ...(typeof input.epicId === 'string' && { epicId: input.epicId }),
+        ...(typeof input.complianceNotes === 'string' && { complianceNotes: input.complianceNotes }),
+        labels: Array.isArray(input.labels) ? (input.labels as string[]) : [],
+        criteria: Array.isArray(input.criteria) ? (input.criteria as string[]) : [],
+      };
+      const draftId = useUIStore.getState().addTaskDraft(draft);
+      return { success: true, draftId, title: draft.title, message: `Черновик «${draft.title}» создан.` };
+    }
 
     case 'search_web': {
       const query = typeof input.query === 'string' ? input.query : '';
