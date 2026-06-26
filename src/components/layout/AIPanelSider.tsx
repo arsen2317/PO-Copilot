@@ -1357,10 +1357,10 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           }}>
             {/* Blue glow */}
             <div style={{
-              position: 'absolute', left: '50%', top: '38%',
-              transform: 'translate(-50%, -50%)',
-              width: 156, height: 156, background: '#09225C',
-              borderRadius: 9999, filter: 'blur(62px)', pointerEvents: 'none',
+              position: 'absolute', left: '50%', bottom: '-10%',
+              transform: 'translateX(-50%)',
+              width: 420, height: 280, background: 'radial-gradient(ellipse at center, #1a3a8a 0%, #0a1f5c 45%, transparent 75%)',
+              borderRadius: 9999, filter: 'blur(48px)', pointerEvents: 'none',
             }} />
             <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, width: '100%' }}>
               <JumpingDots />
