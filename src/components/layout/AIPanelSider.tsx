@@ -608,22 +608,6 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
   );
 }
 
-// ── AI thinking loader ───────────────────────────────────────────────────────
-const LOADER_TEXT = 'Анализирую';
-function AILoader({ size = 140 }: { size?: number }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, padding: '24px 0' }}>
-      <div className="ai-loader-wrapper" style={{ width: size, height: size }}>
-        <div className="ai-loader" />
-        <span style={{ position: 'relative', zIndex: 1, letterSpacing: '0.02em' }}>
-          {LOADER_TEXT.split('').map((ch, i) => (
-            <span key={i} className="ai-loader-letter">{ch}</span>
-          ))}
-        </span>
-      </div>
-    </div>
-  );
-}
 
 // ── History panel ────────────────────────────────────────────────────────────
 function HistoryPanel({ sessions, activeSessionId, onSelect }: {
@@ -802,7 +786,6 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
-  const [loaderActive, setLoaderActive] = useState(false);
   const [automateHovered, setAutomateHovered] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
@@ -813,7 +796,6 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const loaderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: metricDefinitions } = useQuery({
     queryKey: ['metric-definitions'],
@@ -832,22 +814,12 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     void navigate('/');
   };
 
-  const hasMessages = messages.length > 0 || isThinking || loaderActive;
-
-  // Keep loader visible for at least 3 s once it appears
-  useEffect(() => {
-    if (isThinking) {
-      setLoaderActive(true);
-      if (loaderTimerRef.current) clearTimeout(loaderTimerRef.current);
-      loaderTimerRef.current = setTimeout(() => setLoaderActive(false), 3000);
-    }
-  }, [isThinking]);
-
-  useEffect(() => () => { if (loaderTimerRef.current) clearTimeout(loaderTimerRef.current); }, []);
+  const isGenerating = isThinking || messages.some(m => m.streaming);
+  const hasMessages = messages.length > 0 || isThinking;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loaderActive]);
+  }, [messages, isThinking]);
 
   useEffect(() => {
     if (hasMessages) setAutomateHovered(false);
@@ -1401,14 +1373,14 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                       ? <UserBubble key={msg.id} msg={msg} />
                       : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
                   )}
-                  {loaderActive && <AILoader size={160} />}
-                  <div ref={messagesEndRef} />
+                                    <div ref={messagesEndRef} />
                 </div>
               )}
             </div>
 
             {/* Input — constrained, centered */}
             <div style={{ width: '100%', maxWidth: 760, padding: '0 24px 20px', flexShrink: 0 }}>
+              {isGenerating && <div className="ai-generating-bar" style={{ marginBottom: 10 }} />}
               {InputCard}
             </div>
           </div>
@@ -1479,14 +1451,14 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                 ? <UserBubble key={msg.id} msg={msg} />
                 : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
             )}
-            {loaderActive && <AILoader size={120} />}
-            <div ref={messagesEndRef} />
+                        <div ref={messagesEndRef} />
           </div>
         )}
       </div>
 
       {/* ── Bottom section ── */}
       <div style={{ padding: '0 14px 12px', flexShrink: 0, position: 'relative', zIndex: 1 }}>
+        {isGenerating && <div className="ai-generating-bar" style={{ marginBottom: 8 }} />}
         {InputCard}
       </div>
 

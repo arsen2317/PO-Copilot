@@ -139,6 +139,19 @@ body {
   opacity: 1;
 }
 
+/* ── AI generating shimmer bar ──────────────────────────────────── */
+@keyframes ai-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.ai-generating-bar {
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent 0%, #4A82F7 40%, #93c5fd 60%, transparent 100%);
+  background-size: 200% 100%;
+  animation: ai-shimmer 1.6s linear infinite;
+}
+
 /* ── AI thinking loader ──────────────────────────────────────────── */
 .ai-loader-wrapper {
   position: relative;
