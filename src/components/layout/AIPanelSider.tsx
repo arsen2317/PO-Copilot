@@ -1269,7 +1269,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   // ── Assistant page: 2-column layout ─────────────────────────────────────────
   if (isAssistantPage) {
     return (
-      <div style={{ height: '100%', display: 'flex', overflow: 'hidden' }}>
+      <div style={{ height: '100%', display: 'flex', overflow: 'hidden', position: 'relative' }}>
+        {!hasMessages && GlowBg}
         {/* Left sidebar: history — spans full height so borderRight goes edge to edge */}
         <AssistantLeftSidebar
           sessions={sessions}
@@ -1286,7 +1287,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', alignItems: 'center' }}>
 
             {/* Center: messages / empty state */}
-            <div style={{ flex: 1, overflow: 'auto', width: '100%', maxWidth: 760, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, overflow: 'hidden', width: '100%', maxWidth: 760, display: 'flex', flexDirection: 'column' }}>
               {!hasMessages ? (
                 <div style={{
                   flex: 1, display: 'flex', flexDirection: 'column',
@@ -1329,8 +1330,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
   // ── Sidebar / floating layout ────────────────────────────────────────────────
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+      {!hasMessages && view !== 'history' && GlowBg}
       {TopBar}
 
       {/* ── Center: history / empty state / message list ── */}
@@ -1420,6 +1421,8 @@ const GlowBg = (
   }} />
 );
 
+// Used inside PanelContent where hasMessages is known
+
 // ── Shell wrappers (sidebar / floating) ─────────────────────────────────────
 export default function AIPanelSider({ mode, onChangeMode, expanded, hideWindowControls }: AIPanelSiderProps) {
   const [pos, setPos] = useState(() => ({
@@ -1430,7 +1433,6 @@ export default function AIPanelSider({ mode, onChangeMode, expanded, hideWindowC
   const commonStyle: React.CSSProperties = {
     background: BG, display: 'flex', flexDirection: 'column',
     overflow: 'hidden', borderRadius: 12, border: `1px solid ${BORDER_COLOR}`,
-    position: 'relative',
   };
 
   const onDragBarMouseDown = (e: React.MouseEvent) => {
@@ -1460,20 +1462,14 @@ export default function AIPanelSider({ mode, onChangeMode, expanded, hideWindowC
         boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
         zIndex: 1000,
       }}>
-        {GlowBg}
-        <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <PanelContent mode={mode} onChangeMode={onChangeMode} onDragBarMouseDown={onDragBarMouseDown} />
-        </div>
+        <PanelContent mode={mode} onChangeMode={onChangeMode} onDragBarMouseDown={onDragBarMouseDown} />
       </div>
     );
   }
 
   return (
     <div style={{ ...commonStyle, ...(expanded ? { flex: 1 } : { width: 320, flexShrink: 0 }), height: '100%' }}>
-      {GlowBg}
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <PanelContent mode={mode} onChangeMode={onChangeMode} {...(hideWindowControls ? { hideWindowControls: true } : {})} />
-      </div>
+      <PanelContent mode={mode} onChangeMode={onChangeMode} {...(hideWindowControls ? { hideWindowControls: true } : {})} />
     </div>
   );
 }
