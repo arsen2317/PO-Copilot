@@ -561,7 +561,7 @@ function HistoryPanel({ sessions, activeSessionId, onSelect }: {
     new Date(ts).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '4px 10px 8px' }}>
+    <div className="content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 10px 8px' }}>
       <div style={{ fontSize: 11, color: TEXT_SECONDARY, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '6px 4px 8px' }}>
         История чатов
       </div>
@@ -676,7 +676,7 @@ function AssistantLeftSidebar({ sessions, activeSessionId, onNewChat, onSelectSe
       <div style={{ height: 1, background: BORDER_COLOR, flexShrink: 0 }} />
 
       {/* History list */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 12px' }}>
+      <div className="content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 12px' }}>
         {todays.length > 0 && (
           <>
             <SectionLabel label="Сегодня" />
@@ -1302,7 +1302,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                   </div>
                 </div>
               ) : (
-                <div style={{ flex: 1, padding: '24px 24px 8px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
+                <div className="content-scroll" style={{ flex: 1, padding: '24px 24px 8px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
                   {messages.map((msg) =>
                     msg.role === 'user'
                       ? <UserBubble key={msg.id} msg={msg} />
@@ -1387,7 +1387,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           </div>
         ) : (
           /* Message list */
-          <div style={{ flex: 1, padding: '16px 14px 8px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
+          <div className="content-scroll" style={{ flex: 1, padding: '16px 14px 8px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
             {messages.map((msg) =>
               msg.role === 'user'
                 ? <UserBubble key={msg.id} msg={msg} />
