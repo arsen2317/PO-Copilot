@@ -272,10 +272,89 @@ function UserBubble({ msg }: { msg: LocalMessage }) {
 }
 
 // ── Assistant message bubble ─────────────────────────────────────────────────
-function AssistantBubble({ msg, metricMap, onMetricClick }: {
+// ── Interactive metric selector for QBR ─────────────────────────────────────
+type MetricSelectorItem = {
+  id: string; name: string; currentValue: number; planValue: number;
+  lastPeriodValue: number; unit: string; fulfillmentPct: number; lowerIsBetter?: boolean;
+};
+
+function MetricSelector({ json, onConfirm }: { json: string; onConfirm: (ids: string[]) => void }) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  let items: MetricSelectorItem[] = [];
+  try { items = JSON.parse(json) as MetricSelectorItem[]; } catch { return null; }
+
+  const toggle = (id: string) => setSelected(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const pctColor = (pct: number) => pct >= 95 ? '#16A34A' : pct >= 80 ? '#D97706' : '#DC2626';
+
+  return (
+    <div style={{ margin: '8px 0', border: `1px solid ${BORDER_COLOR}`, borderRadius: 10, overflow: 'hidden' }}>
+      <div style={{ padding: '10px 14px', background: '#1C1D1F', borderBottom: `1px solid ${BORDER_COLOR}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 12, color: TEXT_SECONDARY, fontWeight: 500 }}>Выберите метрики для отчёта</span>
+        <span style={{ fontSize: 11, color: TEXT_PLACEHOLDER }}>выбрано: {selected.size}</span>
+      </div>
+      <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+        {items.map((m) => {
+          const active = selected.has(m.id);
+          const delta = m.lastPeriodValue ? ((m.currentValue - m.lastPeriodValue) / Math.abs(m.lastPeriodValue) * 100) : 0;
+          return (
+            <div
+              key={m.id}
+              onClick={() => toggle(m.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '9px 14px', cursor: 'pointer',
+                background: active ? 'rgba(74,130,247,0.08)' : 'transparent',
+                borderBottom: `1px solid ${BORDER_COLOR}`,
+                transition: 'background 0.12s',
+              }}
+              onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)'; }}
+              onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+            >
+              <div style={{
+                width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                border: `1.5px solid ${active ? ACCENT : '#3A3B3D'}`,
+                background: active ? ACCENT : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.12s',
+              }}>
+                {active && <span style={{ color: '#fff', fontSize: 10, lineHeight: 1 }}>✓</span>}
+              </div>
+              <span style={{ flex: 1, fontSize: 13, color: active ? TEXT_PRIMARY : TEXT_SECONDARY }}>{m.name}</span>
+              <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500 }}>{m.currentValue}{m.unit}</span>
+              <span style={{ fontSize: 11, color: pctColor(m.fulfillmentPct), minWidth: 40, textAlign: 'right' }}>{m.fulfillmentPct}%</span>
+              <span style={{ fontSize: 11, color: delta >= 0 ? '#16A34A' : '#DC2626', minWidth: 44, textAlign: 'right' }}>
+                {delta >= 0 ? '+' : ''}{delta.toFixed(1)}%
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ padding: '10px 14px', background: '#1C1D1F', display: 'flex', justifyContent: 'flex-end' }}>
+        <div
+          onClick={() => selected.size > 0 && onConfirm([...selected])}
+          style={{
+            padding: '6px 16px', borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: selected.size > 0 ? 'pointer' : 'not-allowed',
+            background: selected.size > 0 ? ACCENT : '#2A2B2D', color: selected.size > 0 ? '#fff' : TEXT_PLACEHOLDER,
+            transition: 'background 0.15s',
+          }}
+        >
+          Создать отчёт{selected.size > 0 ? ` (${selected.size})` : ''}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
   msg: LocalMessage;
   metricMap: Map<string, string>;
   onMetricClick: (id: string) => void;
+  onSend: (text: string) => void;
 }) {
   return (
     <div style={{ marginBottom: 16, minWidth: 0 }}>
@@ -316,6 +395,15 @@ function AssistantBubble({ msg, metricMap, onMetricClick }: {
             code: ({ children, className }) => {
               const isBlock = className?.startsWith('language-');
               if (isBlock) {
+                // QBR metric selector — interactive checklist
+                if (className === 'language-metric-selector') {
+                  return (
+                    <MetricSelector
+                      json={String(children).trim()}
+                      onConfirm={(ids) => onSend(`QBR: выбраны метрики: ${ids.join(', ')}`)}
+                    />
+                  );
+                }
                 // QBR HTML report — render in iframe
                 if (className === 'language-html-report') {
                   const html = String(children);
@@ -1218,7 +1306,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                   {messages.map((msg) =>
                     msg.role === 'user'
                       ? <UserBubble key={msg.id} msg={msg} />
-                      : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} />,
+                      : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
                   )}
                   {isThinking && <AssistantTyping />}
                   <div ref={messagesEndRef} />
@@ -1303,7 +1391,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
             {messages.map((msg) =>
               msg.role === 'user'
                 ? <UserBubble key={msg.id} msg={msg} />
-                : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} />,
+                : <AssistantBubble key={msg.id} msg={msg} metricMap={metricMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
             )}
             {isThinking && <AssistantTyping />}
             <div ref={messagesEndRef} />
