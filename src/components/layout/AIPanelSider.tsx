@@ -730,13 +730,18 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       const hasFiles = m.role === 'user' && m.files && m.files.length > 0;
       if (hasImages || hasFiles) {
         const parts: object[] = [];
-        // Attached documents (PDF, text, etc.)
+        // Attached documents (PDF, text, Office, etc.)
         if (m.files) {
           for (const f of m.files) {
-            if (f.type === 'application/pdf') {
-              parts.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.data }, title: f.name });
-            } else if (f.type.startsWith('text/')) {
-              // Decode base64 text and embed as text block
+            const isOffice =
+              f.type === 'application/msword' ||
+              f.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+              f.type === 'application/vnd.ms-excel' ||
+              f.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+            if (f.type === 'application/pdf' || isOffice) {
+              parts.push({ type: 'document', source: { type: 'base64', media_type: f.type, data: f.data }, title: f.name });
+            } else if (f.type.startsWith('text/') || f.type === 'application/json') {
               try {
                 const decoded = atob(f.data);
                 parts.push({ type: 'text', text: `[Файл: ${f.name}]\n${decoded}` });
@@ -1230,7 +1235,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
         {/* Hidden file inputs */}
         <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleImageFile} />
-        <input ref={fileDocInputRef} type="file" accept=".pdf,.txt,.md,.csv,.json" multiple style={{ display: 'none' }} onChange={handleDocFile} />
+        <input ref={fileDocInputRef} type="file" accept=".pdf,.txt,.md,.csv,.json,.doc,.docx,.xls,.xlsx" multiple style={{ display: 'none' }} onChange={handleDocFile} />
       </div>
     );
   }
