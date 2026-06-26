@@ -113,8 +113,8 @@ export async function executeTool(
         labels: Array.isArray(input.labels) ? (input.labels as string[]) : [],
         criteria: Array.isArray(input.criteria) ? (input.criteria as string[]) : [],
       };
-      useUIStore.getState().addTaskDraft(draft);
-      return { success: true, message: `Черновик «${draft.title}» добавлен в раздел Задачи → Черновики.` };
+      const draftId = useUIStore.getState().addTaskDraft(draft);
+      return { success: true, draftId, title: draft.title, message: `Черновик «${draft.title}» создан.` };
     }
 
     case 'search_web': {

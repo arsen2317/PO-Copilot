@@ -21,14 +21,14 @@ body {
 
 /* ── AI FAB fancy button ─────────────────────────────────────────── */
 .ai-fab-btn {
-  --fancy-button-gradient-0: #8d49fd;
-  --fancy-button-gradient-50: #7f56f3;
-  --fancy-button-gradient-100: #5691f3;
-  --fancy-button-inner-shadow-top: rgba(233, 209, 255, 0.2);
-  --fancy-button-inner-shadow-top-lg: rgba(9, 12, 60, 0.1);
-  --fancy-button-inner-shadow-bottom: rgba(137, 222, 246, 0.3);
-  --fancy-button-shine-top: #e9d1ff;
-  --fancy-button-shine-bottom: #adfff9;
+  --fancy-button-gradient-0: #2a5fd4;
+  --fancy-button-gradient-50: #4a82f7;
+  --fancy-button-gradient-100: #6fa3ff;
+  --fancy-button-inner-shadow-top: rgba(147, 197, 253, 0.25);
+  --fancy-button-inner-shadow-top-lg: rgba(9, 20, 80, 0.12);
+  --fancy-button-inner-shadow-bottom: rgba(111, 163, 255, 0.35);
+  --fancy-button-shine-top: #bfdbfe;
+  --fancy-button-shine-bottom: #93c5fd;
 
   padding: 0;
   margin: 0;

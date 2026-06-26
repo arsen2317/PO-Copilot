@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -36,6 +38,20 @@ import {
   TeamOutlined,
 } from '@ant-design/icons';
 import { Dropdown, Tooltip } from 'antd';
+
+// ── Sparkle / AI icon (three 4-pointed stars) ───────────────────────────────
+function SparkleIcon({ size = 20, color = 'currentColor' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill={color} xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+      {/* large star top-right */}
+      <path d="M14 1.5 L14.65 4.35 L17.5 5 L14.65 5.65 L14 8.5 L13.35 5.65 L10.5 5 L13.35 4.35 Z"/>
+      {/* medium star bottom-left */}
+      <path d="M6.5 10 L7 12 L9 12.5 L7 13 L6.5 15 L6 13 L4 12.5 L6 12 Z"/>
+      {/* small star top-left */}
+      <path d="M5 3 L5.3 4.2 L6.5 4.5 L5.3 4.8 L5 6 L4.7 4.8 L3.5 4.5 L4.7 4.2 Z"/>
+    </svg>
+  );
+}
 
 // ── SpeechRecognition types (not in standard TS DOM lib) ────────────────────
 interface ISpeechRecognition extends EventTarget {
@@ -406,6 +422,30 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
                     />
                   );
                 }
+                // Clickable task draft link
+                if (className === 'language-task-link') {
+                  let parsed: { id: string; title: string } | null = null;
+                  try { parsed = JSON.parse(String(children).trim()) as { id: string; title: string }; } catch { /* ignore */ }
+                  if (!parsed) return null;
+                  const { id: draftId, title: draftTitle } = parsed;
+                  return (
+                    <div
+                      onClick={() => onMetricClick(`__task__${draftId}`)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                        padding: '8px 14px', margin: '8px 0',
+                        background: 'rgba(74,130,247,0.1)', border: `1px solid rgba(74,130,247,0.35)`,
+                        borderRadius: 10, cursor: 'pointer', transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(74,130,247,0.18)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(74,130,247,0.1)'; }}
+                    >
+                      <CheckSquareOutlined style={{ color: ACCENT, fontSize: 15 }} />
+                      <span style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 500 }}>{draftTitle}</span>
+                      <span style={{ fontSize: 12, color: ACCENT, marginLeft: 4 }}>Открыть черновик →</span>
+                    </div>
+                  );
+                }
                 // QBR HTML report — render in iframe
                 if (className === 'language-html-report') {
                   const html = String(children);
@@ -414,11 +454,29 @@ function AssistantBubble({ msg, metricMap, onMetricClick, onSend }: {
                     w?.document.write(html);
                     w?.document.close();
                   };
-                  const downloadPdf = () => {
-                    const printHtml = html.replace('</body>', '<script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script></body>');
-                    const w = window.open('', '_blank');
-                    w?.document.write(printHtml);
-                    w?.document.close();
+                  const downloadPdf = async () => {
+                    // Render each slide via html2canvas → combine into jsPDF
+                    const container = document.createElement('div');
+                    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:960px;background:#fff;';
+                    container.innerHTML = html;
+                    document.body.appendChild(container);
+                    try {
+                      const slides = Array.from(container.querySelectorAll<HTMLElement>('.slide'));
+                      const targets = slides.length > 0 ? slides : [container];
+                      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [960, 540] });
+                      for (let i = 0; i < targets.length; i++) {
+                        const el = targets[i] as HTMLElement;
+                        el.style.width = '960px';
+                        el.style.height = '540px';
+                        const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#fff' });
+                        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                        if (i > 0) pdf.addPage([960, 540], 'landscape');
+                        pdf.addImage(imgData, 'JPEG', 0, 0, 960, 540);
+                      }
+                      pdf.save('QBR-Report.pdf');
+                    } finally {
+                      document.body.removeChild(container);
+                    }
                   };
                   return (
                     <div style={{ margin: '10px 0', borderRadius: 10, overflow: 'hidden', border: `1px solid ${BORDER_COLOR}` }}>
@@ -763,8 +821,12 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   );
 
   const handleMetricClick = (id: string) => {
+    if (id.startsWith('__task__')) {
+      void navigate('/tasks');
+      return;
+    }
     setFocusedMetric(id);
-    navigate('/');
+    void navigate('/');
   };
 
   const hasMessages = messages.length > 0 || isThinking;
@@ -1018,7 +1080,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     {
       key: 'agents',
       label: 'Агенты',
-      icon: <RobotOutlined />,
+      icon: <SparkleIcon size={14} color={TEXT_SECONDARY} />,
       children: AGENT_ITEMS,
     },
     {
@@ -1091,7 +1153,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
               height: 28, padding: '0 8px',
               background: '#1C1D1F', borderRadius: 8, marginBottom: 8,
             }}>
-              <RobotOutlined style={{ color: ACCENT, fontSize: 13 }} />
+              <SparkleIcon size={14} color={ACCENT} />
               <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, whiteSpace: 'nowrap' }}>
                 {AGENTS_DATA.find(a => a.key === selectedAgent)?.label ?? selectedAgent}
               </span>
@@ -1434,7 +1496,7 @@ const GlowBg = (
     height: '50%',
     background: 'radial-gradient(ellipse at 50% 100%, #1a3a8a 0%, #0a1f5c 40%, transparent 70%)',
     filter: 'blur(56px)', pointerEvents: 'none', zIndex: 0,
-    opacity: 0.15,
+    opacity: 0.25,
   }} />
 );
 
@@ -1500,7 +1562,7 @@ export function AIPanelFAB({ onClick }: { onClick: () => void }) {
         style={{ position: 'fixed', bottom: 24, right: 24, width: 48, height: 48, borderRadius: '50%' }}
       >
         <span>
-          <RobotOutlined style={{ fontSize: 20, color: '#fff', position: 'relative', zIndex: 3 }} />
+          <SparkleIcon size={20} color="#fff" />
         </span>
       </button>
     </Tooltip>

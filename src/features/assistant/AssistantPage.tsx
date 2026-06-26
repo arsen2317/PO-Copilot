@@ -31,7 +31,7 @@ export default function AssistantPage() {
         position: 'absolute', left: 220, right: 0, bottom: '-8%',
         height: '55%',
         background: 'radial-gradient(ellipse at 50% 100%, #1a3a8a 0%, #0a1f5c 40%, transparent 70%)',
-        filter: 'blur(72px)', pointerEvents: 'none', zIndex: 0, opacity: 0.4,
+        filter: 'blur(72px)', pointerEvents: 'none', zIndex: 0, opacity: 0.5,
       }} />
       <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', minWidth: 0, minHeight: 0 }}>
         <DialogList activeId={dialogId} />

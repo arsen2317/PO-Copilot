@@ -41,7 +41,7 @@ interface UIState {
   setSessionTitle: (sessionId: string, title: string) => void;
 
   taskDrafts: TaskDraft[];
-  addTaskDraft: (draft: Omit<TaskDraft, 'id' | 'createdAt'>) => void;
+  addTaskDraft: (draft: Omit<TaskDraft, 'id' | 'createdAt'>) => string;
   removeTaskDraft: (id: string) => void;
 }
 
@@ -74,13 +74,16 @@ export const useUIStore = create<UIState>((set) => ({
     })),
 
   taskDrafts: [],
-  addTaskDraft: (draft) =>
+  addTaskDraft: (draft) => {
+    const id = `draft-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     set((state) => ({
       taskDrafts: [
-        { ...draft, id: `draft-${Date.now()}-${Math.random().toString(36).slice(2)}`, createdAt: Date.now() },
+        { ...draft, id, createdAt: Date.now() },
         ...state.taskDrafts,
       ],
-    })),
+    }));
+    return id;
+  },
   removeTaskDraft: (id) =>
     set((state) => ({ taskDrafts: state.taskDrafts.filter((d) => d.id !== id) })),
 }));
