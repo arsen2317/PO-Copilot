@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import { createBrowserRouter, Outlet } from 'react-router-dom';
 import AppShell from '../components/layout/AppShell';
 import DashboardPage from '../features/dashboard/DashboardPage';
 import AssistantPage from '../features/assistant/AssistantPage';
@@ -35,8 +35,7 @@ export const router = createBrowserRouter([
         path: '/',
         element: <AppShell />,
         children: [
-          { index: true, element: <Navigate to="/assistant" replace /> },
-          { path: 'dashboard', element: <DashboardPage /> },
+          { index: true, element: <DashboardPage /> },
           { path: 'metrics', element: <MetricsPage /> },
           { path: 'assistant', element: <AssistantPage /> },
           { path: 'assistant/:dialogId', element: <AssistantDialogPage /> },

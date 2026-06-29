@@ -27,7 +27,7 @@ interface AppSidebarProps {
 const NAV_ITEMS = [
   { key: '__search__', icon: SearchOutlined, label: 'Поиск' },
   { key: '/assistant', icon: MessageOutlined, label: 'Ассистент' },
-  { key: '/dashboard', icon: DashboardOutlined, label: 'Дашборд' },
+  { key: '/', icon: DashboardOutlined, label: 'Дашборд' },
   { key: '/metrics', icon: LineChartOutlined, label: 'Метрики' },
   { key: '/services', icon: AppstoreOutlined, label: 'ИИ-сервисы' },
   { key: '/tasks', icon: CheckSquareOutlined, label: 'Задачи' },
@@ -52,8 +52,8 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
   const selectedKey: string =
     NAV_ITEMS.find((item) => {
       const k = item.key as string;
-      return !k.startsWith('__') && location.pathname.startsWith(k);
-    })?.key as string | undefined ?? '';
+      return k !== '/' && k !== '__search__' && location.pathname.startsWith(k);
+    })?.key as string | undefined ?? (location.pathname === '/' ? '/' : '');
 
   const handleNavClick = (key: string) => {
     if (key === '__search__') { setSearchOpen(true); return; }

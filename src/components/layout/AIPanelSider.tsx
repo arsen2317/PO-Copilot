@@ -57,11 +57,7 @@ interface AIPanelSiderProps {
 
 type LocalMessage = StoredChatMessage;
 
-function getSystemPrompt(): string {
-  const today = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-  return `Ты ИИ-ассистент встроенный в «Барометр» — платформу продуктовой аналитики для команды дебетовых карт. Помогаешь продуктовым менеджерам анализировать метрики, находить аномалии, приоритизировать задачи и принимать решения на основе данных.
-
-Сегодняшняя дата: ${today}. При поиске трендов, новостей и внешних данных используй ТОЛЬКО актуальную информацию — не старше 3 месяцев от этой даты. Не ищи данные за 2024 год и ранее, если не попросят явно.
+const SYSTEM_PROMPT = `Ты ИИ-ассистент встроенный в «Барометр» — платформу продуктовой аналитики для команды дебетовых карт. Помогаешь продуктовым менеджерам анализировать метрики, находить аномалии, приоритизировать задачи и принимать решения на основе данных.
 
 Правила форматирования:
 - Используй инструменты для получения данных перед ответом.
@@ -72,17 +68,10 @@ function getSystemPrompt(): string {
 - Числа и метрики — конкретно, с единицами измерения.
 
 Интерактивные ссылки на метрики:
-Когда ссылаешься на конкретную метрику из данных, ОБЯЗАТЕЛЬНО оборачивай её id в backticks.
+Когда ссылаешься на конкретную метрику из данных, оборачивай её id в backticks.
 Например: \`active_cards\`, \`nps_general\`, \`churn_rate\`.
 Это создаёт кликабельный чип — пользователь нажимает и попадает на эту метрику в дашборде.
-Используй id именно так, как он пришёл из инструмента get_metrics (поле id).
-Никогда не пиши id метрик просто текстом — только в backticks.
-
-Ссылки на внешние источники:
-При упоминании статей, отчётов, исследований или любых внешних источников — ВСЕГДА форматируй как markdown-ссылку: [Название источника](URL).
-Никогда не вставляй голый URL — только через markdown-синтаксис [текст](ссылка).
-Ссылки должны быть реальными и кликабельными.`;
-}
+Используй id именно так, как он пришёл из инструмента get_metrics (поле id).`;
 
 const SUGGESTIONS = [
   'Найти аномалии и исследовать причину',
@@ -303,16 +292,6 @@ function AssistantBubble({ msg, metricMap, onMetricClick }: {
             td: ({ children }) => (
               <td style={{ padding: '6px 10px', verticalAlign: 'top' }}>{children}</td>
             ),
-            a: ({ href, children }) => (
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: ACCENT, textDecoration: 'underline', textUnderlineOffset: 2 }}
-              >
-                {children}
-              </a>
-            ),
             hr: () => (
               <hr style={{ border: 'none', borderTop: `1px solid ${BORDER_COLOR}`, margin: '10px 0' }} />
             ),
@@ -493,7 +472,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown }: {
 
         const result = await streamChat({
           messages: apiMessages as ChatMessage[],
-          system: getSystemPrompt(),
+          system: SYSTEM_PROMPT,
           tools: TOOL_DEFINITIONS as unknown as object[],
           signal: abort.signal,
           onTextDelta: (delta) => {

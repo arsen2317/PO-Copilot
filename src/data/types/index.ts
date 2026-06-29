@@ -76,7 +76,6 @@ export interface Agent {
   isActive: boolean;
   lastFired?: string;
   eventCount24h: number;
-  systemPrompt?: string;
 }
 
 export type NotificationType =
