@@ -565,7 +565,7 @@ function TilesCarousel({
 
 export default function FunnelPage() {
   const { token } = useToken();
-  const [granularity, setGranularity] = useState('daily');
+  const [granularity, setGranularity] = useState('weekly');
   const [selectedId, setSelectedId] = useState<string>(OVERALL_ID);
 
   const { data: steps = [], isLoading } = useQuery({
