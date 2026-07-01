@@ -26,7 +26,7 @@ interface AppSidebarProps {
 }
 
 const ANALYTICS_SUBITEMS = [
-  { key: '/',          label: 'Дашборд' },
+  { key: '/dashboard', label: 'Дашборд' },
   { key: '/funnel',    label: 'Воронка' },
   { key: '/retention', label: 'Удержание' },
   { key: '/features',  label: 'Фичи' },
@@ -34,8 +34,9 @@ const ANALYTICS_SUBITEMS = [
 
 const ANALYTICS_KEYS = new Set(ANALYTICS_SUBITEMS.map((i) => i.key));
 
+const ASSISTANT_ITEM = { key: '/assistant', icon: MessageOutlined, label: 'Ассистент' } as const;
+
 const NAV_ITEMS = [
-  { key: '/assistant',  icon: MessageOutlined,       label: 'Ассистент' },
   { key: '/metrics',    icon: LineChartOutlined,     label: 'Метрики' },
   { key: '/services',   icon: AppstoreOutlined,      label: 'ИИ-сервисы' },
   { key: '/tasks',      icon: CheckSquareOutlined,   label: 'Задачи' },
@@ -57,13 +58,13 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
 
-  const isAnalyticsActive = ANALYTICS_KEYS.has(location.pathname as '/');
+  const isAnalyticsActive = ANALYTICS_KEYS.has(location.pathname as '/dashboard');
   const [analyticsOpen, setAnalyticsOpen] = useState(true);
 
   const selectedKey: string =
-    NAV_ITEMS.find((item) => {
+    [ASSISTANT_ITEM, ...NAV_ITEMS].find((item) => {
       const k = item.key as string;
-      return k !== '__search__' && location.pathname.startsWith(k);
+      return location.pathname.startsWith(k);
     })?.key as string | undefined ?? (isAnalyticsActive ? location.pathname : '');
 
   const handleNavClick = (key: string) => {
@@ -76,11 +77,11 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
     if (collapsed) {
       setCollapsed(false);
       setAnalyticsOpen(true);
-      void navigate('/');
+      void navigate('/dashboard');
       return;
     }
     // If not on an analytics route, navigate to dashboard; always toggle open
-    if (!isAnalyticsActive) void navigate('/');
+    if (!isAnalyticsActive) void navigate('/dashboard');
     setAnalyticsOpen((v) => !v);
   };
 
@@ -200,6 +201,25 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
             >
               <span style={iconStyle}><SearchOutlined /></span>
               {!collapsed && <span style={labelStyle}>Поиск</span>}
+            </div>
+          </Tooltip>
+
+          {/* ── Assistant ── */}
+          <Tooltip title={collapsed ? ASSISTANT_ITEM.label : ''} placement="right">
+            <div
+              style={navItemStyle(ASSISTANT_ITEM.key)}
+              onClick={() => handleNavClick(ASSISTANT_ITEM.key)}
+              onMouseEnter={() => setHoveredKey(ASSISTANT_ITEM.key)}
+              onMouseLeave={() => setHoveredKey(null)}
+            >
+              <span style={iconStyle}>
+                <ASSISTANT_ITEM.icon />
+              </span>
+              {!collapsed && (
+                <span style={{ ...labelStyle, color: ASSISTANT_ITEM.key === selectedKey ? '#D7D8DA' : '#9B9C9E' }}>
+                  {ASSISTANT_ITEM.label}
+                </span>
+              )}
             </div>
           </Tooltip>
 

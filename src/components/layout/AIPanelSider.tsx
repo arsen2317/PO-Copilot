@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { streamChat } from '../../lib/claude';
 import { TOOL_DEFINITIONS, executeTool } from '../../lib/tools';
 import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
-import { BASE_SYSTEM_PROMPT, AGENT_PROMPTS } from '../../lib/agentPrompts';
+import { getBaseSystemPrompt, AGENT_PROMPTS } from '../../lib/agentPrompts';
 import { getMetricDefinitions } from '../../data/api/metric-definitions';
 import { getFunnelAnalytics } from '../../data/api/funnel-analytics';
 import { useUIStore } from '../../store/uiStore';
@@ -833,7 +833,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       return;
     }
     setFocusedMetric(id);
-    void navigate('/');
+    void navigate('/dashboard');
   };
 
   const isGenerating = isThinking || messages.some(m => m.streaming);
@@ -951,8 +951,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
         const result = await streamChat({
           messages: apiMessages as ChatMessage[],
           system: selectedAgent && AGENT_PROMPTS[selectedAgent]
-            ? `${BASE_SYSTEM_PROMPT}\n\n${AGENT_PROMPTS[selectedAgent]}`
-            : BASE_SYSTEM_PROMPT,
+            ? `${getBaseSystemPrompt()}\n\n${AGENT_PROMPTS[selectedAgent]}`
+            : getBaseSystemPrompt(),
           tools: TOOL_DEFINITIONS as unknown as object[],
           signal: abort.signal,
           onTextDelta: (delta) => {
