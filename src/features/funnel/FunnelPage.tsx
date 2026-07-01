@@ -284,7 +284,7 @@ function aggregateByGranularity(points: MetricPoint[], granularity: string): Met
   for (let i = 0; i < points.length; i += bucketSize) {
     const slice = points.slice(i, i + bucketSize);
     const avg = slice.reduce((s, p) => s + p.value, 0) / slice.length;
-    result.push({ date: slice[0]!.date, value: Math.round(avg * 10) / 10 });
+    result.push({ date: slice[0]!.date, value: Math.round(avg) });
   }
   return result;
 }

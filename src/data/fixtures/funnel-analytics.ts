@@ -48,14 +48,14 @@ function makeHistoryStep3(): MetricPoint[] {
 
 // Шаг 4 — Карта выпущена
 // Стабильное плато апрель–14 июня → операционный сбой с 15 июня (день 75),
-// экспоненциальный обвал до конца квартала.
-// peak=210/день × 75 дней плато + ~1 050 с decay = 16 800 за квартал
+// постепенный спад ~3–4 недели (rate 0.10/день → за неделю –50%).
+// peak=200/день × 75 дней плато + ~1 677 с decay ≈ 16 800 за квартал
 function makeHistoryStep4(): MetricPoint[] {
   const INCIDENT_DAY = 75; // 15 июня
   return Array.from({ length: 91 }, (_, i) => {
     const value = i < INCIDENT_DAY
-      ? 210 * (1 + Math.sin(i * 0.62) * 0.04)
-      : 210 * Math.exp(-(i - INCIDENT_DAY) * 0.22);
+      ? 200 * (1 + Math.sin(i * 0.62) * 0.04)
+      : 200 * Math.exp(-(i - INCIDENT_DAY) * 0.10);
     return { date: dateStr(i), value: Math.max(0, Math.round(value)) };
   });
 }
