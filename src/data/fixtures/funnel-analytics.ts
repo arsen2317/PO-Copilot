@@ -1,78 +1,91 @@
 import type { FunnelAnalyticsStep, MetricPoint } from '../types';
 
 // Q2 финансовый квартал: 1 апреля — 30 июня 2026 (91 день)
-// users = квартальный итог; дневная история суммируется ≈ users
 function dateStr(offset: number): string {
   const d = new Date('2026-04-01');
   d.setDate(d.getDate() + offset);
   return d.toISOString().slice(0, 10);
 }
 
-// Шаг 1 — Просмотр предложения карты
-// Сезонный спад: пик в начале апреля, –16% к концу июня
-// peak=1000/день → сумма ≈ 84 000 за квартал
+// Детерминированный LCG-генератор шума — не меняется при каждом рендере
+function lcg(seed: number): () => number {
+  let s = seed | 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) | 0;
+    return (s >>> 0) / 4294967296;
+  };
+}
+
+// 1 апреля 2026 = среда (0=пн…6=вс, среда=2)
+function isWeekend(i: number): boolean {
+  return (i + 2) % 7 >= 5;
+}
+
+// Шаг 1 — Просмотр предложения карты (~84 000 за квартал)
+// Сезонный спад апрель→июнь −16%; выходные −18% (листают меньше)
 function makeHistoryStep1(): MetricPoint[] {
+  const rng = lcg(1001);
   return Array.from({ length: 91 }, (_, i) => {
-    const trend = 1 - i * 0.0018;
-    const osc = Math.sin(i * 0.42) * 0.05;
-    return { date: dateStr(i), value: Math.max(0, Math.round(1_000 * (trend + osc))) };
+    const trend = 1.08 - i * 0.0018;
+    const dow = isWeekend(i) ? 0.82 : 1.0;
+    const noise = (rng() - 0.5) * 0.12;
+    return { date: dateStr(i), value: Math.max(0, Math.round(1_000 * trend * dow * (1 + noise))) };
   });
 }
 
-// Шаг 2 — Начало заявки на карту
-// Маркетинговый спайк 7–20 апреля (+25%), затем нормализация к базе
-// base=388/день → сумма ≈ 28 000 за квартал
+// Шаг 2 — Начало заявки на карту (~28 000 за квартал)
+// Маркетинговый спайк 8–21 апреля; заявки почти не подают в выходные
 function makeHistoryStep2(): MetricPoint[] {
+  const rng = lcg(1002);
   return Array.from({ length: 91 }, (_, i) => {
-    let mult: number;
-    if (i < 7) {
-      mult = 0.85 + i * 0.015;
-    } else if (i < 21) {
-      mult = 0.95 + Math.sin((i - 7) * 0.45) * 0.25;
-    } else {
-      mult = 0.75 + Math.sin(i * 0.32) * 0.12;
-    }
-    return { date: dateStr(i), value: Math.max(0, Math.round(388 * mult)) };
+    let trend: number;
+    if (i < 7)       trend = 0.90 + i * 0.014;
+    else if (i < 21) trend = 1.75;
+    else             trend = 1.02 - (i - 21) * 0.003;
+    const dow = isWeekend(i) ? 0.42 : 1.0;
+    const noise = (rng() - 0.5) * 0.14;
+    return { date: dateStr(i), value: Math.max(0, Math.round(340 * trend * dow * (1 + noise))) };
   });
 }
 
-// Шаг 3 — Заявка одобрена
-// Стабильно (внутренний процесс одобрения), лёгкий восходящий тренд
-// peak=236/день → сумма ≈ 22 400 за квартал
+// Шаг 3 — Заявка одобрена (~22 400 за квартал)
+// Стабильный автоматизированный процесс; батч-задания реже запускают в выходные
 function makeHistoryStep3(): MetricPoint[] {
+  const rng = lcg(1003);
   return Array.from({ length: 91 }, (_, i) => {
-    const value = 236 * (1.0 + i * 0.001 + Math.sin(i * 0.28) * 0.03);
-    return { date: dateStr(i), value: Math.max(0, Math.round(value)) };
+    const trend = 1.0 + i * 0.0008;
+    const dow = isWeekend(i) ? 0.58 : 1.0;
+    const noise = (rng() - 0.5) * 0.10;
+    return { date: dateStr(i), value: Math.max(0, Math.round(280 * trend * dow * (1 + noise))) };
   });
 }
 
-// Шаг 4 — Карта выпущена
-// Стабильное плато апрель–14 июня → операционный сбой с 15 июня (день 75),
-// постепенный спад ~3–4 недели (rate 0.10/день → за неделю –50%).
-// peak=200/день × 75 дней плато + ~1 677 с decay ≈ 16 800 за квартал
+// Шаг 4 — Карта выпущена (~16 800 за квартал)
+// Стабильное плато → операционный сбой с 15 июня (день 75), постепенный спад
+// Выпуск карт — только в рабочие дни
 function makeHistoryStep4(): MetricPoint[] {
-  const INCIDENT_DAY = 75; // 15 июня
+  const rng = lcg(1004);
+  const INCIDENT_DAY = 75;
   return Array.from({ length: 91 }, (_, i) => {
-    const value = i < INCIDENT_DAY
-      ? 200 * (1 + Math.sin(i * 0.62) * 0.04)
-      : 200 * Math.exp(-(i - INCIDENT_DAY) * 0.10);
-    return { date: dateStr(i), value: Math.max(0, Math.round(value)) };
+    const incident = i < INCIDENT_DAY ? 1.0 : Math.exp(-(i - INCIDENT_DAY) * 0.10);
+    const dow = isWeekend(i) ? 0.12 : 1.0;
+    const noise = (rng() - 0.5) * 0.10;
+    return { date: dateStr(i), value: Math.max(0, Math.round(240 * incident * dow * (1 + noise))) };
   });
 }
 
-// Шаг 5 — Карта активирована
-// Рост онбординга весь квартал: апрель +0% → июнь +18%
-// base=132/день → сумма ≈ 11 760 за квартал
+// Шаг 5 — Карта активирована (~11 760 за квартал)
+// Рост онбординга весь квартал; активируют чаще вечером и в выходные
 function makeHistoryStep5(): MetricPoint[] {
+  const rng = lcg(1005);
   return Array.from({ length: 91 }, (_, i) => {
-    const value = i < 60
-      ? 132 * (0.88 + i * 0.002 + Math.sin(i * 0.78) * 0.07)
-      : 132 * (1.0 + (i - 60) * 0.003 + Math.sin(i * 0.78) * 0.05);
-    return { date: dateStr(i), value: Math.max(0, Math.round(value)) };
+    const trend = 0.88 + i * 0.0024;
+    const dow = isWeekend(i) ? 1.22 : 1.0;
+    const noise = (rng() - 0.5) * 0.13;
+    return { date: dateStr(i), value: Math.max(0, Math.round(145 * trend * dow * (1 + noise))) };
   });
 }
 
-// Квартальные итоги Q2 и дельты vs Q1
 export const funnelAnalyticsFixture: FunnelAnalyticsStep[] = [
   {
     id: 'step1',
