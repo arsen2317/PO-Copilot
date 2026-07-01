@@ -101,7 +101,6 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
           {steps.map((step, i) => {
             const currPct = step.users / totalUsers;
             const prevPct = i === 0 ? 1.0 : steps[i - 1]!.users / totalUsers;
-            const droppedCount = i === 0 ? 0 : steps[i - 1]!.users - step.users;
 
             const x = i * colW + barOff;
             const solidH = chartH * currPct;
