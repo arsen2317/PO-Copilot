@@ -130,14 +130,6 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
                       <rect x={x} y={hatchY} width={barW} height={hatchH}
                         style={{ fill: hatchOverlay, transition: 'fill 0.15s', pointerEvents: 'none' }} rx={3} />
                     )}
-                    {hatchH > 28 && droppedCount > 0 && (
-                      <text x={x + barW / 2} y={hatchY + hatchH / 2 + 4}
-                        textAnchor="middle" fill="rgba(255,255,255,0.40)"
-                        fontSize={11} fontFamily="Inter,sans-serif"
-                        style={{ pointerEvents: 'none' }}>
-                        −{droppedCount.toLocaleString('ru')}
-                      </text>
-                    )}
                     {/* transparent hit area */}
                     <rect x={x} y={hatchY} width={barW} height={hatchH}
                       fill="transparent" style={{ cursor: 'pointer' }}
