@@ -45,7 +45,6 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
   const barOff = (colW - barW) / 2;
 
   const toY = (pct: number) => chartH * (1 - pct / 100);
-  const toH = (pct: number) => chartH * (pct / 100);
 
   const yLabels = [0, 25, 50, 75, 100];
 
@@ -85,13 +84,20 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
           {/* Bars */}
           {steps.map((step, i) => {
             const x = i * colW + barOff;
-            // Conversion relative to PREVIOUS step (not first)
-            const prevUsers = i === 0 ? step.users : steps[i - 1]!.users;
-            const convFromPrev = i === 0 ? 100 : (step.users / prevUsers) * 100;
-            const droppedFromPrev = prevUsers - step.users;
-            const solidH = toH(convFromPrev);
-            const solidY = toY(convFromPrev);
-            const hatchH = toH(100 - convFromPrev);
+            const totalUsers = steps[0]!.users;
+
+            // Percentages relative to the FIRST step (0..1)
+            const currPct = step.users / totalUsers;
+            const prevPct = i === 0 ? 1.0 : steps[i - 1]!.users / totalUsers;
+            const droppedFromPrev = Math.round((prevPct - currPct) * totalUsers);
+
+            // Blue zone: bottom of chart up to currPct height
+            const solidH = chartH * currPct;
+            const solidY = chartH * (1 - currPct);
+
+            // Hatch zone: from top of previous bar's blue to top of current bar's blue
+            const hatchH = chartH * (prevPct - currPct);
+            const hatchY = chartH * (1 - prevPct); // = solidY of previous step
 
             // Two-line x-axis label
             const shortName = step.name.length > 18 ? step.name.slice(0, 17) + '…' : step.name;
@@ -103,23 +109,23 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
                 onMouseLeave={() => setTooltip(null)}
                 style={{ cursor: 'default' }}
               >
-                {/* Hatched zone (dropped from prev step) */}
+                {/* Hatched zone (dropped since previous step) */}
                 {hatchH > 0 && (
-                  <rect x={x} y={0} width={barW} height={hatchH} fill="url(#funnel-hatch)" rx={3} />
+                  <rect x={x} y={hatchY} width={barW} height={hatchH} fill="url(#funnel-hatch)" rx={3} />
                 )}
 
-                {/* Solid zone (converted from prev step) */}
+                {/* Solid zone (remaining from first step) */}
                 {solidH > 0 && (
                   <rect x={x} y={solidY} width={barW} height={solidH} fill="#4E6AF6" rx={3} />
                 )}
 
-                {/* Conversion % + user count label above solid zone */}
+                {/* % from first step + user count label above solid zone */}
                 <text
                   x={x + barW / 2} y={solidY - 16}
                   textAnchor="middle" fill="#fff"
                   fontSize={13} fontWeight={700} fontFamily="Inter,sans-serif"
                 >
-                  {convFromPrev.toFixed(1)}%
+                  {(currPct * 100).toFixed(1)}%
                 </text>
                 <text
                   x={x + barW / 2} y={solidY - 3}
@@ -129,10 +135,10 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
                   {step.users.toLocaleString('ru')}
                 </text>
 
-                {/* Drop count inside hatch zone */}
+                {/* Drop count in the middle of hatch zone */}
                 {hatchH > 30 && droppedFromPrev > 0 && (
                   <text
-                    x={x + barW / 2} y={hatchH / 2 + 4}
+                    x={x + barW / 2} y={hatchY + hatchH / 2 + 4}
                     textAnchor="middle" fill="rgba(255,255,255,0.45)"
                     fontSize={11} fontFamily="Inter,sans-serif"
                   >
@@ -154,9 +160,11 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
       {/* Custom tooltip */}
       {tooltip && (() => {
         const idx = steps.indexOf(tooltip.step);
-        const prevUsers = idx === 0 ? tooltip.step.users : steps[idx - 1]!.users;
-        const convFromPrev = idx === 0 ? 100 : (tooltip.step.users / prevUsers) * 100;
-        const droppedFromPrev = prevUsers - tooltip.step.users;
+        const totalUsers = steps[0]!.users;
+        const currPct = tooltip.step.users / totalUsers;
+        const prevPct = idx === 0 ? 1.0 : steps[idx - 1]!.users / totalUsers;
+        const convFromPrev = idx === 0 ? 100 : (tooltip.step.users / steps[idx - 1]!.users) * 100;
+        const droppedFromPrev = Math.round((prevPct - currPct) * totalUsers);
         return (
           <div
             style={{
@@ -178,11 +186,16 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
           >
             <div style={{ fontWeight: 600, marginBottom: 6 }}>{tooltip.step.name}</div>
             <div style={{ color: '#8DA4F5' }}>
-              От шага {idx}: <b style={{ color: '#fff' }}>{convFromPrev.toFixed(1)}%</b>
+              От первого шага: <b style={{ color: '#fff' }}>{(currPct * 100).toFixed(1)}%</b>
               <span style={{ color: 'rgba(255,255,255,0.45)', marginLeft: 6 }}>
                 {tooltip.step.users.toLocaleString('ru')} чел.
               </span>
             </div>
+            {idx > 0 && (
+              <div style={{ color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
+                От предыдущего шага: <b style={{ color: 'rgba(255,255,255,0.7)' }}>{convFromPrev.toFixed(1)}%</b>
+              </div>
+            )}
             {droppedFromPrev > 0 && (
               <div style={{ color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
                 Отсеялись: <b style={{ color: 'rgba(255,255,255,0.8)' }}>
