@@ -215,8 +215,7 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
             boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
             lineHeight: 1.7,
           }}>
-            <div style={{ fontWeight: 600, marginBottom: 2 }}>{step.name}</div>
-            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginBottom: 8 }}>{step.eventName}</div>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>{step.name}</div>
             {isBlue ? (
               <>
                 <div>
