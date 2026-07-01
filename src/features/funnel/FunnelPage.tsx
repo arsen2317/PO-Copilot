@@ -25,14 +25,15 @@ interface FunnelBarChartProps {
   size: { w: number; h: number };
 }
 
-interface TooltipState {
-  step: FunnelAnalyticsStep;
-  x: number;
-  y: number;
+interface HoverZone {
+  barIdx: number;
+  zone: 'blue' | 'hatch';
+  mouseX: number;
+  mouseY: number;
 }
 
 function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
-  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [hover, setHover] = useState<HoverZone | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const PAD = { top: 36, right: 24, bottom: 72, left: 52 };
@@ -47,11 +48,26 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
   const toY = (pct: number) => chartH * (1 - pct / 100);
 
   const yLabels = [0, 25, 50, 75, 100];
+  const totalUsers = steps[0]?.users ?? 1;
 
-  const handleMouseMove = (e: React.MouseEvent<SVGGElement>, step: FunnelAnalyticsStep) => {
-    const rect = svgRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setTooltip({ step, x: e.clientX - rect.left, y: e.clientY - rect.top });
+  const getBlueColor = (i: number): string => {
+    if (!hover) return '#4E6AF6';
+    if (hover.zone === 'blue' && hover.barIdx === i) return '#7B93FF';
+    if (hover.zone === 'hatch') return '#2E4099';
+    return '#4E6AF6';
+  };
+
+  const getHatchOverlay = (i: number): string | null => {
+    if (!hover) return null;
+    if (hover.zone === 'hatch' && hover.barIdx === i) return 'rgba(200,220,255,0.18)';
+    if (hover.zone === 'blue') return 'rgba(0,0,0,0.28)';
+    return null;
+  };
+
+  const handleMouse = (e: React.MouseEvent, barIdx: number, zone: 'blue' | 'hatch') => {
+    const svgRect = svgRef.current?.getBoundingClientRect();
+    if (!svgRect) return;
+    setHover({ barIdx, zone, mouseX: e.clientX - svgRect.left, mouseY: e.clientY - svgRect.top });
   };
 
   return (
@@ -59,8 +75,8 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
       <svg ref={svgRef} width={size.w} height={size.h} style={{ display: 'block' }}>
         <defs>
           <pattern id="funnel-hatch" patternUnits="userSpaceOnUse" width="9" height="9" patternTransform="rotate(-45 0 0)">
-            <rect width="9" height="9" fill="rgba(100,120,255,0.18)" />
-            <line x1="0" y1="0" x2="0" y2="9" stroke="rgba(255,255,255,0.45)" strokeWidth="3" />
+            <rect width="9" height="9" fill="rgba(100,130,255,0.28)" />
+            <line x1="0" y1="0" x2="0" y2="9" stroke="rgba(255,255,255,0.55)" strokeWidth="3" />
           </pattern>
         </defs>
 
@@ -83,70 +99,85 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
 
           {/* Bars */}
           {steps.map((step, i) => {
-            const x = i * colW + barOff;
-            const totalUsers = steps[0]!.users;
-
-            // Percentages relative to the FIRST step (0..1)
             const currPct = step.users / totalUsers;
             const prevPct = i === 0 ? 1.0 : steps[i - 1]!.users / totalUsers;
-            const droppedFromPrev = Math.round((prevPct - currPct) * totalUsers);
+            const droppedCount = i === 0 ? 0 : steps[i - 1]!.users - step.users;
 
-            // Blue zone: bottom of chart up to currPct height
+            const x = i * colW + barOff;
             const solidH = chartH * currPct;
             const solidY = chartH * (1 - currPct);
-
-            // Hatch zone: from top of previous bar's blue to top of current bar's blue
             const hatchH = chartH * (prevPct - currPct);
-            const hatchY = chartH * (1 - prevPct); // = solidY of previous step
+            const hatchY = chartH * (1 - prevPct);
 
-            // Two-line x-axis label
             const shortName = step.name.length > 18 ? step.name.slice(0, 17) + '…' : step.name;
+            const hatchOverlay = getHatchOverlay(i);
+
+            // Chip: centered on the hatch/blue boundary
+            const chipW = 68;
+            const chipH = 38;
+            const chipX = x + barW / 2 - chipW / 2;
+            const chipY = solidY - chipH / 2;
 
             return (
-              <g
-                key={step.id}
-                onMouseMove={(e) => handleMouseMove(e, step)}
-                onMouseLeave={() => setTooltip(null)}
-                style={{ cursor: 'default' }}
-              >
-                {/* Hatched zone (dropped since previous step) */}
+              <g key={step.id}>
+                {/* ── Hatch zone ── */}
                 {hatchH > 0 && (
-                  <rect x={x} y={hatchY} width={barW} height={hatchH} fill="url(#funnel-hatch)" rx={3} />
+                  <>
+                    <rect x={x} y={hatchY} width={barW} height={hatchH}
+                      fill="url(#funnel-hatch)"
+                      stroke="rgba(255,255,255,0.22)" strokeWidth={1} rx={3} />
+                    {hatchOverlay && (
+                      <rect x={x} y={hatchY} width={barW} height={hatchH}
+                        style={{ fill: hatchOverlay, transition: 'fill 0.15s', pointerEvents: 'none' }} rx={3} />
+                    )}
+                    {hatchH > 28 && droppedCount > 0 && (
+                      <text x={x + barW / 2} y={hatchY + hatchH / 2 + 4}
+                        textAnchor="middle" fill="rgba(255,255,255,0.40)"
+                        fontSize={11} fontFamily="Inter,sans-serif"
+                        style={{ pointerEvents: 'none' }}>
+                        −{droppedCount.toLocaleString('ru')}
+                      </text>
+                    )}
+                    {/* transparent hit area */}
+                    <rect x={x} y={hatchY} width={barW} height={hatchH}
+                      fill="transparent" style={{ cursor: 'pointer' }}
+                      onMouseMove={(e) => handleMouse(e, i, 'hatch')}
+                      onMouseLeave={() => setHover(null)} />
+                  </>
                 )}
 
-                {/* Solid zone (remaining from first step) */}
+                {/* ── Blue zone ── */}
                 {solidH > 0 && (
-                  <rect x={x} y={solidY} width={barW} height={solidH} fill="#4E6AF6" rx={3} />
+                  <>
+                    <rect x={x} y={solidY} width={barW} height={solidH}
+                      style={{ fill: getBlueColor(i), transition: 'fill 0.15s' }}
+                      stroke="rgba(255,255,255,0.22)" strokeWidth={1} rx={3} />
+                    {/* transparent hit area */}
+                    <rect x={x} y={solidY} width={barW} height={solidH}
+                      fill="transparent" style={{ cursor: 'pointer' }}
+                      onMouseMove={(e) => handleMouse(e, i, 'blue')}
+                      onMouseLeave={() => setHover(null)} />
+                  </>
                 )}
 
-                {/* % from first step + user count label above solid zone */}
-                <text
-                  x={x + barW / 2} y={solidY - 16}
-                  textAnchor="middle" fill="#fff"
-                  fontSize={13} fontWeight={700} fontFamily="Inter,sans-serif"
-                >
-                  {(currPct * 100).toFixed(1)}%
-                </text>
-                <text
-                  x={x + barW / 2} y={solidY - 3}
-                  textAnchor="middle" fill="rgba(255,255,255,0.65)"
-                  fontSize={11} fontFamily="Inter,sans-serif"
-                >
-                  {step.users.toLocaleString('ru')}
-                </text>
-
-                {/* Drop count in the middle of hatch zone */}
-                {hatchH > 30 && droppedFromPrev > 0 && (
-                  <text
-                    x={x + barW / 2} y={hatchY + hatchH / 2 + 4}
-                    textAnchor="middle" fill="rgba(255,255,255,0.45)"
-                    fontSize={11} fontFamily="Inter,sans-serif"
-                  >
-                    −{droppedFromPrev.toLocaleString('ru')}
+                {/* ── Chip label (% + users) ── */}
+                <g style={{ pointerEvents: 'none' }}>
+                  <rect x={chipX} y={chipY} width={chipW} height={chipH}
+                    rx={6} fill="rgba(8,10,20,0.84)"
+                    stroke="rgba(255,255,255,0.13)" strokeWidth={1} />
+                  <text x={x + barW / 2} y={chipY + 15}
+                    textAnchor="middle" fill="#fff"
+                    fontSize={13} fontWeight={700} fontFamily="Inter,sans-serif">
+                    {(currPct * 100).toFixed(1)}%
                   </text>
-                )}
+                  <text x={x + barW / 2} y={chipY + 29}
+                    textAnchor="middle" fill="rgba(255,255,255,0.50)"
+                    fontSize={11} fontFamily="Inter,sans-serif">
+                    {step.users.toLocaleString('ru')}
+                  </text>
+                </g>
 
-                {/* Two-line Russian x-axis label */}
+                {/* ── X-axis label ── */}
                 <text textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize={10} fontFamily="Inter,sans-serif">
                   <tspan x={x + barW / 2} y={chartH + 18}>Шаг {i + 1}</tspan>
                   <tspan x={x + barW / 2} dy={14}>{shortName}</tspan>
@@ -157,55 +188,78 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
         </g>
       </svg>
 
-      {/* Custom tooltip */}
-      {tooltip && (() => {
-        const idx = steps.indexOf(tooltip.step);
-        const totalUsers = steps[0]!.users;
-        const currPct = tooltip.step.users / totalUsers;
-        const prevPct = idx === 0 ? 1.0 : steps[idx - 1]!.users / totalUsers;
-        const convFromPrev = idx === 0 ? 100 : (tooltip.step.users / steps[idx - 1]!.users) * 100;
-        const droppedFromPrev = Math.round((prevPct - currPct) * totalUsers);
+      {/* ── Tooltip ── */}
+      {hover && (() => {
+        const step = steps[hover.barIdx]!;
+        const currPct = step.users / totalUsers;
+        const prevStep = hover.barIdx > 0 ? steps[hover.barIdx - 1]! : null;
+        const convFromPrev = prevStep ? (step.users / prevStep.users) * 100 : 100;
+        const dropPctFromPrev = 100 - convFromPrev;
+        const dropCountFromPrev = prevStep ? prevStep.users - step.users : 0;
+        const isBlue = hover.zone === 'blue';
+
         return (
-          <div
-            style={{
-              position: 'absolute',
-              left: Math.min(tooltip.x + 14, size.w - 230),
-              top: Math.max(tooltip.y - 60, 4),
-              background: '#1a1b1f',
-              border: '1px solid rgba(255,255,255,0.14)',
-              borderRadius: 8,
-              padding: '10px 14px',
-              fontSize: 12,
-              color: '#fff',
-              pointerEvents: 'none',
-              zIndex: 20,
-              minWidth: 200,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
-              lineHeight: 1.7,
-            }}
-          >
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>{tooltip.step.name}</div>
-            <div style={{ color: '#8DA4F5' }}>
-              От первого шага: <b style={{ color: '#fff' }}>{(currPct * 100).toFixed(1)}%</b>
-              <span style={{ color: 'rgba(255,255,255,0.45)', marginLeft: 6 }}>
-                {tooltip.step.users.toLocaleString('ru')} чел.
-              </span>
-            </div>
-            {idx > 0 && (
-              <div style={{ color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
-                От предыдущего шага: <b style={{ color: 'rgba(255,255,255,0.7)' }}>{convFromPrev.toFixed(1)}%</b>
-              </div>
+          <div style={{
+            position: 'absolute',
+            left: Math.min(hover.mouseX + 14, size.w - 240),
+            top: Math.max(hover.mouseY - 60, 4),
+            background: '#1a1b1f',
+            border: '1px solid rgba(255,255,255,0.14)',
+            borderRadius: 8,
+            padding: '10px 14px',
+            fontSize: 12,
+            color: '#fff',
+            pointerEvents: 'none',
+            zIndex: 20,
+            minWidth: 220,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+            lineHeight: 1.7,
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: 2 }}>{step.name}</div>
+            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginBottom: 8 }}>{step.eventName}</div>
+            {isBlue ? (
+              <>
+                <div>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: '#8DA4F5' }}>
+                    {(currPct * 100).toFixed(1)}%
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.50)', marginLeft: 6, fontSize: 12 }}>
+                    конверсия от первого шага
+                  </span>
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.50)', marginTop: 4 }}>
+                  <b style={{ color: '#fff' }}>
+                    {step.users.toLocaleString('ru')} / {totalUsers.toLocaleString('ru')}
+                  </b>
+                  <span style={{ marginLeft: 4 }}>уникальных конверсий</span>
+                </div>
+                {prevStep && (
+                  <div style={{ color: 'rgba(255,255,255,0.40)', marginTop: 2 }}>
+                    {convFromPrev.toFixed(1)}% от предыдущего шага
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: '#FF8A8A' }}>
+                    {dropPctFromPrev.toFixed(1)}%
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.50)', marginLeft: 6, fontSize: 12 }}>
+                    отсев от предыдущего шага
+                  </span>
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.50)', marginTop: 4 }}>
+                  <b style={{ color: '#fff' }}>
+                    {dropCountFromPrev.toLocaleString('ru')} / {(prevStep?.users ?? totalUsers).toLocaleString('ru')}
+                  </b>
+                  <span style={{ marginLeft: 4 }}>уникальных отсевов</span>
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.40)', marginTop: 2 }}>
+                  −{dropCountFromPrev.toLocaleString('ru')} чел. на этом шаге
+                </div>
+              </>
             )}
-            {droppedFromPrev > 0 && (
-              <div style={{ color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
-                Отсеялись: <b style={{ color: 'rgba(255,255,255,0.8)' }}>
-                  −{droppedFromPrev.toLocaleString('ru')} чел.
-                </b>
-              </div>
-            )}
-            <div style={{ color: 'rgba(255,255,255,0.3)', marginTop: 4, fontSize: 11 }}>
-              {tooltip.step.eventName}
-            </div>
           </div>
         );
       })()}
