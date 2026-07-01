@@ -65,6 +65,9 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
               placeholder="Логин"
               size="large"
               autoComplete="username"
+              spellCheck={false}
+              autoCorrect="off"
+              autoCapitalize="off"
             />
           </Form.Item>
           <Form.Item name="password" rules={[{ required: true, message: '' }]} style={{ marginBottom: 16 }}>
