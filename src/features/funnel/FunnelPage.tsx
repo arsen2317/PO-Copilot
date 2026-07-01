@@ -390,12 +390,13 @@ function ChartContainer({ selectedId, steps, granularity, loading }: ChartContai
 interface FunnelTileProps {
   label: string;
   value: string;
+  subLabel?: string;
   change: number;
   selected: boolean;
   onClick: () => void;
 }
 
-function FunnelTile({ label, value, change, selected, onClick }: FunnelTileProps) {
+function FunnelTile({ label, value, subLabel, change, selected, onClick }: FunnelTileProps) {
   const { token } = useToken();
   const [hovered, setHovered] = useState(false);
   const isPositive = change >= 0;
@@ -441,9 +442,14 @@ function FunnelTile({ label, value, change, selected, onClick }: FunnelTileProps
           {isPositive
             ? <ArrowUpOutlined style={{ fontSize: 9 }} />
             : <ArrowDownOutlined style={{ fontSize: 9 }} />}
-          {Math.abs(change)}
+          {Math.abs(change).toLocaleString('ru')}
         </span>
       </div>
+      {subLabel && (
+        <div style={{ fontSize: 11, color: token.colorTextQuaternary, marginTop: 4 }}>
+          {subLabel}
+        </div>
+      )}
     </div>
   );
 }
@@ -549,7 +555,8 @@ function TilesCarousel({
               <FunnelTile
                 key={s.id}
                 label={`Шаг ${idx + 1}: ${s.name}`}
-                value={String(s.users)}
+                value={s.users.toLocaleString('ru')}
+                subLabel="за квартал"
                 change={s.change}
                 selected={selectedId === s.id}
                 onClick={() => onSelect(s.id)}
@@ -662,7 +669,7 @@ export default function FunnelPage() {
             }}
           >
             <ReloadOutlined style={{ fontSize: 12 }} />
-            Данные от 22 мин назад
+            II квартал 2026 (апр–июн) · Данные от 22 мин назад
           </div>
         </div>
 
