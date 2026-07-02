@@ -99,6 +99,38 @@ const TEXT_SECONDARY = '#9B9C9E';
 const TEXT_PLACEHOLDER = '#757575';
 const ACCENT = '#4A82F7';
 
+// ── Aurora gradient config per agent ────────────────────────────────────────
+const AURORA_CFG: Record<string, { g1: string; g2: string; border: string; glow: string; iconBg: string; iconColor: string }> = {
+  'agent-briefing':   { g1: '#1a6fff', g2: '#0b2d8a', border: 'rgba(26,111,255,0.38)',  glow: 'rgba(26,111,255,0.18)',  iconBg: 'rgba(26,111,255,0.13)',  iconColor: '#6aadff' },
+  'agent-metrics':    { g1: '#0ea5e9', g2: '#0369a1', border: 'rgba(14,165,233,0.38)',  glow: 'rgba(14,165,233,0.18)',  iconBg: 'rgba(14,165,233,0.13)',  iconColor: '#38bdf8' },
+  'agent-qbr':        { g1: '#10b981', g2: '#065f46', border: 'rgba(16,185,129,0.38)',  glow: 'rgba(16,185,129,0.18)',  iconBg: 'rgba(16,185,129,0.13)',  iconColor: '#34d399' },
+  'agent-tasks':      { g1: '#a855f7', g2: '#4c1d95', border: 'rgba(168,85,247,0.38)', glow: 'rgba(168,85,247,0.18)', iconBg: 'rgba(168,85,247,0.13)', iconColor: '#c084fc' },
+  'agent-risks':      { g1: '#ef4444', g2: '#991b1b', border: 'rgba(239,68,68,0.38)',   glow: 'rgba(239,68,68,0.18)',   iconBg: 'rgba(239,68,68,0.13)',   iconColor: '#fca5a5' },
+  'agent-hypotheses': { g1: '#eab308', g2: '#713f12', border: 'rgba(234,179,8,0.38)',   glow: 'rgba(234,179,8,0.18)',   iconBg: 'rgba(234,179,8,0.13)',   iconColor: '#fde047' },
+  'agent-custdev':    { g1: '#06b6d4', g2: '#164e63', border: 'rgba(6,182,212,0.38)',   glow: 'rgba(6,182,212,0.18)',   iconBg: 'rgba(6,182,212,0.13)',   iconColor: '#22d3ee' },
+  'agent-trends':     { g1: '#8b5cf6', g2: '#3730a3', border: 'rgba(139,92,246,0.38)', glow: 'rgba(139,92,246,0.18)', iconBg: 'rgba(139,92,246,0.13)', iconColor: '#a78bfa' },
+};
+
+const AURORA_SHIMMER_CSS = `
+@keyframes aurora-card-shimmer {
+  0%   { transform: scale(1)    translate(0%,   0%);   opacity: 0.60; }
+  25%  { transform: scale(1.10) translate(4%,  -3%);   opacity: 0.92; }
+  50%  { transform: scale(1.18) translate(-3%, -5%);   opacity: 1;    }
+  75%  { transform: scale(1.10) translate(5%,  -2%);   opacity: 0.80; }
+  100% { transform: scale(1)    translate(0%,   0%);   opacity: 0.60; }
+}
+`;
+
+let _auroraStyleInjected = false;
+function ensureAuroraStyles() {
+  if (_auroraStyleInjected) return;
+  const el = document.createElement('style');
+  el.id = 'aurora-card-keyframes';
+  el.textContent = AURORA_SHIMMER_CSS;
+  document.head.appendChild(el);
+  _auroraStyleInjected = true;
+}
+
 type AgentDef = {
   key: string;
   label: string;
@@ -118,6 +150,80 @@ const AGENTS_DATA: AgentDef[] = [
   { key: 'agent-custdev',   label: 'CustDev',            desc: 'Подбирает методы исследования и помогает составить бриф',               color: '#0A2530', Icon: TeamOutlined },
   { key: 'agent-trends',    label: 'Трендвотчер',       desc: 'Мониторит фичи конкурентов и тренды банковского рынка со ссылками',     color: '#1A0A35', Icon: RiseOutlined,       trigger: 'Проведи мониторинг последних фич конкурентов в сегменте дебетовых карт' },
 ];
+
+// ── Single aurora agent card ─────────────────────────────────────────────────
+function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: string) => void }) {
+  const [hovered, setHovered] = useState(false);
+  const cfg = AURORA_CFG[agent.key] ?? { g1: '#4A82F7', g2: '#1a3a8a', border: 'rgba(74,130,247,0.38)', glow: 'rgba(74,130,247,0.18)', iconBg: 'rgba(74,130,247,0.13)', iconColor: '#7aa8f9' };
+
+  useEffect(() => { ensureAuroraStyles(); }, []);
+
+  return (
+    <div
+      onClick={() => onSelect(agent.key)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: 'relative',
+        flex: '0 0 calc(33.333% - 7px)',
+        minWidth: 0,
+        padding: '14px 14px 16px',
+        background: '#0a0e1a',
+        border: `1px solid ${hovered ? cfg.border : 'rgba(255,255,255,0.06)'}`,
+        boxShadow: hovered
+          ? `0 0 0 1px ${cfg.border}, 0 0 20px ${cfg.glow}, 0 0 40px ${cfg.glow}`
+          : '0 0 0 1px rgba(255,255,255,0.03)',
+        borderRadius: 14,
+        cursor: 'pointer',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        overflow: 'hidden',
+        transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+      }}
+    >
+      {/* Aurora gradient layer */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          borderRadius: 14,
+          background: `radial-gradient(ellipse 100% 60% at 50% 120%, ${cfg.g1} 0%, ${cfg.g2} 45%, transparent 70%)`,
+          opacity: hovered ? undefined : 0.55,
+          pointerEvents: 'none',
+          transformOrigin: '50% 100%',
+          animation: hovered ? 'aurora-card-shimmer 3s ease-in-out infinite' : 'none',
+          transition: 'opacity 0.3s ease',
+        }}
+      />
+
+      {/* Icon circle */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          background: cfg.iconBg,
+          border: `1px solid ${cfg.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <agent.Icon style={{ fontSize: 18, color: cfg.iconColor }} />
+      </div>
+
+      {/* Text */}
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: TEXT_PRIMARY, lineHeight: 1.3 }}>{agent.label}</span>
+        <span style={{ fontSize: 12, color: TEXT_SECONDARY, lineHeight: 1.5 }}>{agent.desc}</span>
+      </div>
+    </div>
+  );
+}
 
 // ── Agent cards carousel — 3 visible, icon-based ────────────────────────────
 function AgentCards({ onSelect }: { onSelect: (key: string) => void }) {
@@ -169,41 +275,7 @@ function AgentCards({ onSelect }: { onSelect: (key: string) => void }) {
         style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}
       >
         {AGENTS_DATA.map((agent) => (
-          <div
-            key={agent.key}
-            onClick={() => onSelect(agent.key)}
-            style={{
-              flex: '0 0 calc(33.333% - 7px)',
-              minWidth: 0,
-              padding: '14px 14px 16px',
-              background: '#18191B', border: `1px solid ${BORDER_COLOR}`,
-              borderRadius: 12, cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', gap: 12,
-              transition: 'border-color 0.15s, background 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              const el = e.currentTarget as HTMLDivElement;
-              el.style.borderColor = '#4A82F7';
-              el.style.background = '#1C1E22';
-            }}
-            onMouseLeave={(e) => {
-              const el = e.currentTarget as HTMLDivElement;
-              el.style.borderColor = BORDER_COLOR;
-              el.style.background = '#18191B';
-            }}
-          >
-            <div style={{
-              width: 44, height: 44, borderRadius: 10,
-              background: agent.color, border: `1px solid rgba(255,255,255,0.06)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <agent.Icon style={{ fontSize: 20, color: '#fff' }} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: TEXT_PRIMARY, lineHeight: 1.3 }}>{agent.label}</span>
-              <span style={{ fontSize: 12, color: TEXT_SECONDARY, lineHeight: 1.5 }}>{agent.desc}</span>
-            </div>
-          </div>
+          <AuroraCard key={agent.key} agent={agent} onSelect={onSelect} />
         ))}
       </div>
     </div>
