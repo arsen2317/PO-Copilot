@@ -62,8 +62,8 @@ jobs:
             # Ensure tsx is installed globally
             npm install -g tsx
 
-            # Restart PM2 process (keep existing process config)
-            pm2 describe po-copilot-api > /dev/null 2>&1 \
-              && pm2 restart po-copilot-api --update-env \
-              || (pm2 start tsx --name po-copilot-api --cwd /var/www/po-copilot -- scripts/dev-api-server.ts && pm2 save)
+            # Restart PM2 process using absolute tsx path
+            TSX_BIN=$(which tsx)
+            pm2 delete po-copilot-api 2>/dev/null || true
+            pm2 start "$TSX_BIN" --name po-copilot-api --cwd /var/www/po-copilot -- scripts/dev-api-server.ts
             pm2 save
