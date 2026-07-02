@@ -65,7 +65,7 @@ function toFrappeTasks(tasks: Task[], extraDeps: Dep[]): FrappeTask[] {
       t.status === 'review' ? 80 :
       t.status === 'in_progress' ? 40 :
       t.status === 'todo' ? 5 : 0;
-    const riskCls = t.riskLevel === 'critical' && t.status !== 'done' ? ' gs-critical' : '';
+    const isCritical = t.riskLevel === 'critical' && t.status !== 'done';
     return {
       id: t.id,
       name: t.title.replace(/^\[.*?\]\s*/, ''),
@@ -73,7 +73,7 @@ function toFrappeTasks(tasks: Task[], extraDeps: Dep[]): FrappeTask[] {
       end,
       progress,
       dependencies: allDeps.join(', '),
-      custom_class: `gs-${t.status}${riskCls}`,
+      custom_class: `gs-${t.status}${isCritical ? '-critical' : ''}`,
     };
   });
 }
@@ -110,7 +110,7 @@ function buildDarkCSS(primary: string): string {
 .gantt-dark-wrap .gantt .bar-wrapper.gs-review .bar      { fill: rgba(216,150,20,0.16);  stroke: rgba(216,150,20,0.32)  !important; }
 .gantt-dark-wrap .gantt .bar-wrapper.gs-todo .bar        { fill: rgba(255,255,255,0.05); }
 .gantt-dark-wrap .gantt .bar-wrapper.gs-backlog .bar     { fill: rgba(255,255,255,0.03); }
-.gantt-dark-wrap .gantt .bar-wrapper.gs-critical .bar    { stroke: rgba(255,80,80,0.55)  !important; }
+.gantt-dark-wrap .gantt .bar-wrapper[class*="-critical"] .bar { stroke: rgba(255,80,80,0.55) !important; }
 .gantt-dark-wrap .gantt .bar-wrapper:hover .bar          { stroke: rgba(255,255,255,0.22) !important; stroke-width: 1.5 !important; }
 .gantt-dark-wrap .gantt .bar-label { font-family: -apple-system, system-ui, sans-serif !important; }
 .gantt-dark-wrap .popup-wrapper { background: #1e2030 !important; border: 1px solid rgba(255,255,255,0.1) !important; box-shadow: 0 8px 24px #0008 !important; }
