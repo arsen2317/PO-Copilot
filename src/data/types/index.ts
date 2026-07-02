@@ -85,6 +85,7 @@ export interface Task {
   assignee?: User;
   priority: TaskPriority;
   riskLevel: RiskLevel;
+  startDate?: string;
   deadline?: string;
   description?: string;
   sprintId?: string;
@@ -96,8 +97,24 @@ export interface Task {
   compliance?: ComplianceCheck[];
   artifacts?: TaskArtifact[];
   relatedMetricIds?: string[];
+  dependencies?: string[];
+  teamId?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface Epic {
+  id: string;
+  name: string;
+  color: string;
+  teamId: string;
+  description?: string;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  productOwner: string;
 }
 
 export interface TaskDraft {

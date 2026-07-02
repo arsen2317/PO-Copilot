@@ -1,6 +1,6 @@
 import { getMetricDefinitions, getMetricGroupDefs } from '../data/api/metric-definitions';
 import { getFunnelAnalytics } from '../data/api/funnel-analytics';
-import { getTasks } from '../data/api/tasks';
+import { getTasks, getEpics, getTeams } from '../data/api/tasks';
 import { getAgents } from '../data/api/agents';
 import { getToken } from '../features/auth/auth';
 import { useUIStore } from '../store/uiStore';
@@ -29,8 +29,25 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'get_tasks',
-    description: 'Возвращает список задач из бэклога: название, статус, приоритет, исполнитель.',
-    input_schema: { type: 'object' as const, properties: {}, required: [] },
+    description: 'Возвращает список задач из бэклога: название, статус, приоритет, исполнитель, эпик, зависимости, даты.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        epicId: { type: 'string', description: 'Фильтр по ID эпика (необязательно). Например: EPIC-1, EPIC-2.' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_timeline',
+    description: 'Возвращает данные таймлайна: эпики, задачи с датами начала/конца, зависимости между задачами, информацию о командах. Используй для анализа критического пути, блокировок, влияния задержек на релиз.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        epicId: { type: 'string', description: 'Фильтр по ID эпика (необязательно). Если не указан — возвращает все эпики.' },
+      },
+      required: [],
+    },
   },
   {
     name: 'get_agents',
@@ -114,8 +131,96 @@ export async function executeTool(
       }));
     }
 
-    case 'get_tasks':
-      return getTasks();
+    case 'get_tasks': {
+      const tasks = await getTasks();
+      const epicId = typeof input.epicId === 'string' ? input.epicId : null;
+      const filtered = epicId ? tasks.filter((t) => t.epicId === epicId) : tasks;
+      return filtered.map((t) => ({
+        id: t.id,
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        riskLevel: t.riskLevel,
+        epicId: t.epicId,
+        teamId: t.teamId,
+        assignee: t.assignee?.name,
+        startDate: t.startDate,
+        deadline: t.deadline,
+        storyPoints: t.storyPoints,
+        dependencies: t.dependencies,
+        labels: t.labels,
+      }));
+    }
+
+    case 'get_timeline': {
+      const [tasks, epics, teams] = await Promise.all([getTasks(), getEpics(), getTeams()]);
+      const epicId = typeof input.epicId === 'string' ? input.epicId : null;
+
+      const relevantEpics = epicId ? epics.filter((e) => e.id === epicId) : epics;
+      const epicIds = new Set(relevantEpics.map((e) => e.id));
+      const relevantTasks = tasks.filter((t) => !epicId || epicIds.has(t.epicId ?? ''));
+
+      // Build dependency map
+      const depMap: Record<string, string[]> = {};
+      relevantTasks.forEach((t) => {
+        if (t.dependencies?.length) {
+          t.dependencies.forEach((dep) => {
+            if (!depMap[dep]) depMap[dep] = [];
+            depMap[dep].push(t.id);
+          });
+        }
+      });
+
+      // Find tasks on critical path (chains of dependencies)
+      const allDeps: { from: string; to: string }[] = [];
+      relevantTasks.forEach((t) => {
+        (t.dependencies ?? []).forEach((fromId) => {
+          allDeps.push({ from: fromId, to: t.id });
+        });
+      });
+
+      const today = '2026-07-02';
+
+      return {
+        epics: relevantEpics.map((e) => ({
+          id: e.id,
+          name: e.name,
+          teamId: e.teamId,
+          teamName: teams.find((t) => t.id === e.teamId)?.name ?? e.teamId,
+          isOurTeam: e.teamId === 'team-debit',
+        })),
+        tasks: relevantTasks.map((t) => ({
+          id: t.id,
+          title: t.title,
+          epicId: t.epicId,
+          status: t.status,
+          priority: t.priority,
+          riskLevel: t.riskLevel,
+          teamId: t.teamId,
+          assignee: t.assignee?.name,
+          startDate: t.startDate ?? t.createdAt,
+          deadline: t.deadline,
+          storyPoints: t.storyPoints,
+          isOverdue: t.deadline && t.deadline < today && t.status !== 'done',
+          dependencies: t.dependencies ?? [],
+          blockedBy: t.dependencies ?? [],
+          blocks: depMap[t.id] ?? [],
+        })),
+        dependencies: allDeps,
+        today,
+        summary: {
+          totalTasks: relevantTasks.length,
+          overdueTasks: relevantTasks.filter((t) => t.deadline && t.deadline < today && t.status !== 'done').length,
+          blockedTasks: relevantTasks.filter((t) => (t.dependencies ?? []).length > 0 && t.status === 'backlog').length,
+          criticalTasks: relevantTasks.filter((t) => t.priority === 'critical' && t.status !== 'done').length,
+          externalDependencies: allDeps.filter((d) => {
+            const fromTask = relevantTasks.find((t) => t.id === d.from);
+            const toTask = relevantTasks.find((t) => t.id === d.to);
+            return fromTask?.teamId !== toTask?.teamId;
+          }).length,
+        },
+      };
+    }
 
     case 'get_agents':
       return getAgents();
