@@ -15,9 +15,11 @@ import {
   PlusOutlined,
   QuestionCircleOutlined,
   RobotOutlined,
+  ScheduleOutlined,
   SortAscendingOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import TimelineView from './TimelineView';
 import {
   DndContext,
   DragOverlay,
@@ -565,12 +567,13 @@ function DraftsView({ bdr, highlightId }: { bdr: string; highlightId?: string })
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-type TabId = 'kanban' | 'list' | 'backlog' | 'drafts';
+type TabId = 'kanban' | 'list' | 'backlog' | 'timeline' | 'drafts';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'kanban', label: 'Канбан', icon: <AppstoreOutlined /> },
   { id: 'list', label: 'Список', icon: <BarsOutlined /> },
   { id: 'backlog', label: 'Бэклог', icon: <SortAscendingOutlined /> },
+  { id: 'timeline', label: 'Таймлайн', icon: <ScheduleOutlined /> },
   { id: 'drafts', label: 'Черновики', icon: <RobotOutlined /> },
 ];
 
@@ -580,7 +583,7 @@ export default function TasksPage() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabId>(() => {
     const tab = searchParams.get('tab');
-    return (tab === 'drafts' || tab === 'kanban' || tab === 'list' || tab === 'backlog') ? tab : 'kanban';
+    return (['drafts', 'kanban', 'list', 'backlog', 'timeline'] as const).includes(tab as TabId) ? tab as TabId : 'kanban';
   });
   const [highlightDraftId] = useState<string | null>(() => searchParams.get('draft'));
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
@@ -599,7 +602,7 @@ export default function TasksPage() {
     new Map(fetchedTasks.filter((t) => t.assignee).map((t) => [t.assignee!.id, t.assignee!])).values(),
   );
 
-  const showFilters = activeTab !== 'drafts';
+  const showFilters = activeTab !== 'drafts' && activeTab !== 'timeline';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -695,6 +698,7 @@ export default function TasksPage() {
         {activeTab === 'kanban' && <KanbanView tasks={filtered} isLoading={isLoading} bdr={BDR} />}
         {activeTab === 'list' && <ListView tasks={filtered} isLoading={isLoading} />}
         {activeTab === 'backlog' && <BacklogView tasks={filtered} isLoading={isLoading} bdr={BDR} />}
+        {activeTab === 'timeline' && <div className="content-scroll" style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}><TimelineView bdr={BDR} /></div>}
         {activeTab === 'drafts' && <div className="content-scroll" style={{ flex: 1, overflowY: 'auto' }}>{highlightDraftId ? <DraftsView bdr={BDR} highlightId={highlightDraftId} /> : <DraftsView bdr={BDR} />}</div>}
       </div>
     </div>
