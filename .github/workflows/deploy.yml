@@ -49,7 +49,7 @@ jobs:
             echo "APP_PASSWORD=${{ secrets.APP_PASSWORD }}" >> .env.local
             echo "APP_SESSION_SECRET=${{ secrets.APP_SESSION_SECRET }}" >> .env.local
             echo "BRAVE_SEARCH_API_KEY=${{ secrets.BRAVE_SEARCH_API_KEY }}" >> .env.local
-            echo "SOCKS_PROXY=${{ secrets.SOCKS_PROXY }}" >> .env.local
+            echo "ANTHROPIC_PROXY_URL=${{ secrets.ANTHROPIC_PROXY_URL }}" >> .env.local
 
             # Pull latest scripts
             git fetch origin main
