@@ -15,6 +15,7 @@
     "start": "PORT=3002 tsx scripts/dev-api-server.ts"
   },
   "dependencies": {
+    "socks-proxy-agent": "^8.0.5",
     "@ant-design/icons": "^5.6.1",
     "@ant-design/plots": "^2.6.8",
     "@anthropic-ai/sdk": "^0.106.0",

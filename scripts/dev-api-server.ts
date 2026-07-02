@@ -1,5 +1,6 @@
 import express from 'express';
 import Anthropic from '@anthropic-ai/sdk';
+import { SocksProxyAgent } from 'socks-proxy-agent';
 import fs from 'fs';
 import path from 'path';
 import { signToken, verifyToken } from '../api/_lib/token';
@@ -79,7 +80,11 @@ app.post('/api/chat', async (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('X-Accel-Buffering', 'no');
 
-  const client = new Anthropic({ apiKey });
+  const socksProxy = process.env.SOCKS_PROXY;
+  const client = new Anthropic({
+    apiKey,
+    ...(socksProxy ? { httpAgent: new SocksProxyAgent(socksProxy) } : {}),
+  });
 
   try {
     const stream = await client.messages.stream({ model, max_tokens: 4096, system, messages, tools });
