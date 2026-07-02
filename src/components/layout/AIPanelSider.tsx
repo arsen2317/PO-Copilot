@@ -99,36 +99,54 @@ const TEXT_SECONDARY = '#9B9C9E';
 const TEXT_PLACEHOLDER = '#757575';
 const ACCENT = '#4A82F7';
 
-// ── Aurora gradient config per agent ────────────────────────────────────────
-const AURORA_CFG: Record<string, { g1: string; g2: string; border: string; glow: string; iconBg: string; iconColor: string }> = {
-  'agent-briefing':   { g1: '#1a6fff', g2: '#0b2d8a', border: 'rgba(26,111,255,0.38)',  glow: 'rgba(26,111,255,0.18)',  iconBg: 'rgba(26,111,255,0.13)',  iconColor: '#6aadff' },
-  'agent-metrics':    { g1: '#0ea5e9', g2: '#0369a1', border: 'rgba(14,165,233,0.38)',  glow: 'rgba(14,165,233,0.18)',  iconBg: 'rgba(14,165,233,0.13)',  iconColor: '#38bdf8' },
-  'agent-qbr':        { g1: '#10b981', g2: '#065f46', border: 'rgba(16,185,129,0.38)',  glow: 'rgba(16,185,129,0.18)',  iconBg: 'rgba(16,185,129,0.13)',  iconColor: '#34d399' },
-  'agent-tasks':      { g1: '#a855f7', g2: '#4c1d95', border: 'rgba(168,85,247,0.38)', glow: 'rgba(168,85,247,0.18)', iconBg: 'rgba(168,85,247,0.13)', iconColor: '#c084fc' },
-  'agent-risks':      { g1: '#ef4444', g2: '#991b1b', border: 'rgba(239,68,68,0.38)',   glow: 'rgba(239,68,68,0.18)',   iconBg: 'rgba(239,68,68,0.13)',   iconColor: '#fca5a5' },
-  'agent-hypotheses': { g1: '#eab308', g2: '#713f12', border: 'rgba(234,179,8,0.38)',   glow: 'rgba(234,179,8,0.18)',   iconBg: 'rgba(234,179,8,0.13)',   iconColor: '#fde047' },
-  'agent-custdev':    { g1: '#06b6d4', g2: '#164e63', border: 'rgba(6,182,212,0.38)',   glow: 'rgba(6,182,212,0.18)',   iconBg: 'rgba(6,182,212,0.13)',   iconColor: '#22d3ee' },
-  'agent-trends':     { g1: '#8b5cf6', g2: '#3730a3', border: 'rgba(139,92,246,0.38)', glow: 'rgba(139,92,246,0.18)', iconBg: 'rgba(139,92,246,0.13)', iconColor: '#a78bfa' },
+// ── Aurora blob config per agent ─────────────────────────────────────────────
+interface AuroraCfg {
+  b1: string;   // primary blob colour
+  b2: string;   // secondary blob colour
+  b3: string;   // accent blob colour
+  border: string;
+  glow: string;
+  iconBg: string;
+  iconColor: string;
+}
+const AURORA_CFG: Record<string, AuroraCfg> = {
+  'agent-briefing':   { b1: '#1a6fff', b2: '#0040cc', b3: '#00aaff', border: 'rgba(26,111,255,0.40)',  glow: 'rgba(26,111,255,0.20)',  iconBg: 'rgba(26,111,255,0.13)',  iconColor: '#6aadff' },
+  'agent-metrics':    { b1: '#0ea5e9', b2: '#0058b0', b3: '#38d4ff', border: 'rgba(14,165,233,0.40)',  glow: 'rgba(14,165,233,0.20)',  iconBg: 'rgba(14,165,233,0.13)',  iconColor: '#38bdf8' },
+  'agent-qbr':        { b1: '#10b981', b2: '#047857', b3: '#34d399', border: 'rgba(16,185,129,0.40)',  glow: 'rgba(16,185,129,0.20)',  iconBg: 'rgba(16,185,129,0.13)',  iconColor: '#34d399' },
+  'agent-tasks':      { b1: '#a855f7', b2: '#7c3aed', b3: '#e040fb', border: 'rgba(168,85,247,0.40)', glow: 'rgba(168,85,247,0.20)', iconBg: 'rgba(168,85,247,0.13)', iconColor: '#c084fc' },
+  'agent-risks':      { b1: '#ef4444', b2: '#b91c1c', b3: '#f97316', border: 'rgba(239,68,68,0.40)',   glow: 'rgba(239,68,68,0.20)',   iconBg: 'rgba(239,68,68,0.13)',   iconColor: '#fca5a5' },
+  'agent-hypotheses': { b1: '#eab308', b2: '#d97706', b3: '#fde047', border: 'rgba(234,179,8,0.40)',   glow: 'rgba(234,179,8,0.20)',   iconBg: 'rgba(234,179,8,0.13)',   iconColor: '#fde047' },
+  'agent-custdev':    { b1: '#06b6d4', b2: '#0891b2', b3: '#818cf8', border: 'rgba(6,182,212,0.40)',   glow: 'rgba(6,182,212,0.20)',   iconBg: 'rgba(6,182,212,0.13)',   iconColor: '#22d3ee' },
+  'agent-trends':     { b1: '#8b5cf6', b2: '#6d28d9', b3: '#ec4899', border: 'rgba(139,92,246,0.40)', glow: 'rgba(139,92,246,0.20)', iconBg: 'rgba(139,92,246,0.13)', iconColor: '#a78bfa' },
 };
 
-const AURORA_SHIMMER_CSS = `
-@keyframes aurora-card-shimmer {
-  0%   { transform: scale(1)    translate(0%,   0%);   opacity: 0.60; }
-  25%  { transform: scale(1.10) translate(4%,  -3%);   opacity: 0.92; }
-  50%  { transform: scale(1.18) translate(-3%, -5%);   opacity: 1;    }
-  75%  { transform: scale(1.10) translate(5%,  -2%);   opacity: 0.80; }
-  100% { transform: scale(1)    translate(0%,   0%);   opacity: 0.60; }
+// Blob-based wavy aurora CSS — blobs translate (never scale beyond card bounds)
+const AURORA_BLOB_CSS = `
+@keyframes aurora-blob-a {
+  0%,100% { transform: translate(0px, 0px); }
+  30%     { transform: translate(14px, -18px); }
+  60%     { transform: translate(-10px, -24px); }
+}
+@keyframes aurora-blob-b {
+  0%,100% { transform: translate(0px, 0px); }
+  35%     { transform: translate(-16px, -12px); }
+  70%     { transform: translate(12px, -20px); }
+}
+@keyframes aurora-blob-c {
+  0%,100% { transform: translate(0px, 0px); }
+  40%     { transform: translate(18px, -8px); }
+  75%     { transform: translate(-8px, -18px); }
 }
 `;
 
-let _auroraStyleInjected = false;
+let _auroraBlobStyleInjected = false;
 function ensureAuroraStyles() {
-  if (_auroraStyleInjected) return;
+  if (_auroraBlobStyleInjected) return;
   const el = document.createElement('style');
-  el.id = 'aurora-card-keyframes';
-  el.textContent = AURORA_SHIMMER_CSS;
+  el.id = 'aurora-blob-keyframes';
+  el.textContent = AURORA_BLOB_CSS;
   document.head.appendChild(el);
-  _auroraStyleInjected = true;
+  _auroraBlobStyleInjected = true;
 }
 
 type AgentDef = {
@@ -154,9 +172,16 @@ const AGENTS_DATA: AgentDef[] = [
 // ── Single aurora agent card ─────────────────────────────────────────────────
 function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: string) => void }) {
   const [hovered, setHovered] = useState(false);
-  const cfg = AURORA_CFG[agent.key] ?? { g1: '#4A82F7', g2: '#1a3a8a', border: 'rgba(74,130,247,0.38)', glow: 'rgba(74,130,247,0.18)', iconBg: 'rgba(74,130,247,0.13)', iconColor: '#7aa8f9' };
+  const cfg: AuroraCfg = AURORA_CFG[agent.key] ?? {
+    b1: '#4A82F7', b2: '#1a3a8a', b3: '#7aa8f9',
+    border: 'rgba(74,130,247,0.40)', glow: 'rgba(74,130,247,0.20)',
+    iconBg: 'rgba(74,130,247,0.13)', iconColor: '#7aa8f9',
+  };
 
   useEffect(() => { ensureAuroraStyles(); }, []);
+
+  // Slower at rest, faster on hover — same keyframes, different duration
+  const dur = hovered ? '3s' : '8s';
 
   return (
     <div
@@ -168,51 +193,73 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         flex: '0 0 calc(33.333% - 7px)',
         minWidth: 0,
         padding: '14px 14px 16px',
-        background: '#0a0e1a',
-        border: `1px solid ${hovered ? cfg.border : 'rgba(255,255,255,0.06)'}`,
+        background: '#07080f',
+        border: `1px solid ${hovered ? cfg.border : 'rgba(255,255,255,0.07)'}`,
         boxShadow: hovered
-          ? `0 0 0 1px ${cfg.border}, 0 0 20px ${cfg.glow}, 0 0 40px ${cfg.glow}`
-          : '0 0 0 1px rgba(255,255,255,0.03)',
+          ? `0 0 16px ${cfg.glow}, inset 0 0 24px rgba(0,0,0,0.4)`
+          : 'none',
         borderRadius: 14,
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
         gap: 12,
-        overflow: 'hidden',
-        transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+        overflow: 'hidden',          // blobs are clipped here — no overflow
+        transition: 'border-color 0.35s ease, box-shadow 0.35s ease',
       }}
     >
-      {/* Aurora gradient layer */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: 14,
-          background: `radial-gradient(ellipse 100% 60% at 50% 120%, ${cfg.g1} 0%, ${cfg.g2} 45%, transparent 70%)`,
-          opacity: hovered ? undefined : 0.55,
-          pointerEvents: 'none',
-          transformOrigin: '50% 100%',
-          animation: hovered ? 'aurora-card-shimmer 3s ease-in-out infinite' : 'none',
-          transition: 'opacity 0.3s ease',
-        }}
-      />
+      {/* ── Blob A — large, bottom-center ── */}
+      <div style={{
+        position: 'absolute', pointerEvents: 'none',
+        width: 130, height: 90,
+        borderRadius: '50%',
+        background: cfg.b1,
+        filter: 'blur(32px)',
+        opacity: hovered ? 0.75 : 0.40,
+        bottom: -30, left: '50%', marginLeft: -65,
+        animation: `aurora-blob-a ${dur} ease-in-out infinite`,
+        transition: 'opacity 0.35s ease',
+        willChange: 'transform',
+      }} />
+
+      {/* ── Blob B — medium, bottom-right ── */}
+      <div style={{
+        position: 'absolute', pointerEvents: 'none',
+        width: 100, height: 75,
+        borderRadius: '50%',
+        background: cfg.b2,
+        filter: 'blur(28px)',
+        opacity: hovered ? 0.65 : 0.30,
+        bottom: -20, right: -20,
+        animation: `aurora-blob-b ${dur} ease-in-out infinite`,
+        animationDelay: '-1.5s',
+        transition: 'opacity 0.35s ease',
+        willChange: 'transform',
+      }} />
+
+      {/* ── Blob C — small accent, bottom-left ── */}
+      <div style={{
+        position: 'absolute', pointerEvents: 'none',
+        width: 70, height: 60,
+        borderRadius: '50%',
+        background: cfg.b3,
+        filter: 'blur(22px)',
+        opacity: hovered ? 0.55 : 0.20,
+        bottom: -10, left: -15,
+        animation: `aurora-blob-c ${dur} ease-in-out infinite`,
+        animationDelay: '-3s',
+        transition: 'opacity 0.35s ease',
+        willChange: 'transform',
+      }} />
 
       {/* Icon circle */}
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 1,
-          width: 40,
-          height: 40,
-          borderRadius: '50%',
-          background: cfg.iconBg,
-          border: `1px solid ${cfg.border}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-        }}
-      >
+      <div style={{
+        position: 'relative', zIndex: 1,
+        width: 40, height: 40, borderRadius: '50%',
+        background: cfg.iconBg,
+        border: `1px solid ${cfg.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
         <agent.Icon style={{ fontSize: 18, color: cfg.iconColor }} />
       </div>
 
