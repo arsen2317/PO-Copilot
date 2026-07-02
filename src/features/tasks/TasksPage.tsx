@@ -698,7 +698,7 @@ export default function TasksPage() {
         {activeTab === 'kanban' && <KanbanView tasks={filtered} isLoading={isLoading} bdr={BDR} />}
         {activeTab === 'list' && <ListView tasks={filtered} isLoading={isLoading} />}
         {activeTab === 'backlog' && <BacklogView tasks={filtered} isLoading={isLoading} bdr={BDR} />}
-        {activeTab === 'timeline' && <div className="content-scroll" style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}><TimelineView bdr={BDR} /></div>}
+        {activeTab === 'timeline' && <TimelineView bdr={BDR} />}
         {activeTab === 'drafts' && <div className="content-scroll" style={{ flex: 1, overflowY: 'auto' }}>{highlightDraftId ? <DraftsView bdr={BDR} highlightId={highlightDraftId} /> : <DraftsView bdr={BDR} />}</div>}
       </div>
     </div>

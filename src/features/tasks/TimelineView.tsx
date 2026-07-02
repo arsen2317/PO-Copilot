@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Button, Modal, Select, Segmented, Skeleton, Tag, theme, Typography,
+  Button, Modal, Select, Skeleton, Tag, Tooltip, theme,
 } from 'antd';
 import {
-  LinkOutlined, DeleteOutlined, PlusOutlined, CalendarOutlined, TeamOutlined,
+  DeleteOutlined, FilterOutlined, LinkOutlined, PlusOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { getEpics, getTasks } from '../../data/api/tasks';
@@ -20,6 +20,7 @@ interface TimelineTask extends Task {
   start: Date;
   end: Date;
   row: number;
+  isOtherTeam: boolean;
 }
 
 interface Dep {
@@ -29,20 +30,31 @@ interface Dep {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const VIEW_LABELS: Record<ViewRange, string> = {
-  sprint: 'Спринт', month: 'Месяц', quarter: 'Квартал', halfyear: 'Полугодие', year: 'Год',
+const VIEW_OPTIONS: { value: ViewRange; label: string }[] = [
+  { value: 'sprint', label: 'Спринт (2 нед.)' },
+  { value: 'month', label: 'Месяц' },
+  { value: 'quarter', label: 'Квартал' },
+  { value: 'halfyear', label: 'Полугодие' },
+  { value: 'year', label: 'Год' },
+];
+
+const AVATAR_COLORS: Record<string, string> = {
+  u1: '#1668dc', u2: '#49aa19', u3: '#d89614',
+  u4: '#722ed1', u5: '#eb2f96', u6: '#13c2c2',
+  u7: '#fa8c16', u8: '#c41d7f', u9: '#0958d9', u10: '#389e0d',
 };
 
 const DAY_PX = 28;
 const ROW_H = 40;
-const ROW_GAP = 8;
+const ROW_GAP = 12;
 const ROW_STRIDE = ROW_H + ROW_GAP;
-const LEFT_COL = 220;
 const HEADER_H = 44;
 const BAR_RADIUS = 6;
 const RESIZE_ZONE = 8;
-
+const PORT_R = 6;
 const TODAY = new Date('2026-07-02');
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function addDays(d: Date, n: number): Date {
   const r = new Date(d);
@@ -51,8 +63,8 @@ function addDays(d: Date, n: number): Date {
 }
 
 function parseDate(s: string): Date {
-  const parts = s.split('-').map(Number);
-  return new Date(parts[0]!, (parts[1] ?? 1) - 1, parts[2] ?? 1);
+  const p = s.split('-').map(Number);
+  return new Date(p[0]!, (p[1] ?? 1) - 1, p[2] ?? 1);
 }
 
 function formatDate(d: Date): string {
@@ -64,8 +76,6 @@ function daysBetween(a: Date, b: Date): number {
 }
 
 function rangeWindow(range: ViewRange): [Date, Date] {
-  const start = new Date(TODAY);
-  start.setDate(1);
   switch (range) {
     case 'sprint':
       return [addDays(TODAY, -3), addDays(TODAY, 11)];
@@ -87,16 +97,14 @@ function rangeWindow(range: ViewRange): [Date, Date] {
   }
 }
 
-function buildDayTicks(start: Date, end: Date, range: ViewRange): { date: Date; label: string; isMonthStart: boolean }[] {
+function buildDayTicks(start: Date, end: Date, range: ViewRange) {
   const ticks: { date: Date; label: string; isMonthStart: boolean }[] = [];
   const totalDays = daysBetween(start, end) + 1;
-
   let step = 1;
   if (range === 'quarter') step = 3;
   else if (range === 'halfyear') step = 7;
   else if (range === 'year') step = 14;
   else if (range === 'month') step = 2;
-
   for (let i = 0; i < totalDays; i += step) {
     const d = addDays(start, i);
     const isMonthStart = d.getDate() === 1;
@@ -108,7 +116,6 @@ function buildDayTicks(start: Date, end: Date, range: ViewRange): { date: Date; 
   return ticks;
 }
 
-// Assign rows so tasks don't visually overlap
 function assignRows(tasks: TimelineTask[]): TimelineTask[] {
   const sorted = [...tasks].sort((a, b) => a.start.getTime() - b.start.getTime());
   const rowEnds: Date[] = [];
@@ -120,31 +127,26 @@ function assignRows(tasks: TimelineTask[]): TimelineTask[] {
   });
 }
 
-// ─── Dependency arrow (SVG) ───────────────────────────────────────────────────
+// ─── Mini avatar (inside bar) ─────────────────────────────────────────────────
 
-function DepArrow({
-  from, to, color,
-}: {
-  from: { x: number; y: number };
-  to: { x: number; y: number };
-  color: string;
-}) {
-  const dx = to.x - from.x;
-  const midX = from.x + dx * 0.5;
-
-  const d = `M ${from.x} ${from.y} C ${midX} ${from.y}, ${midX} ${to.y}, ${to.x} ${to.y}`;
+function MiniAvatar({ user, size = 22 }: { user: { id: string; name: string }; size?: number }) {
+  const initials = user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
   return (
-    <g>
-      <path d={d} fill="none" stroke={color} strokeWidth={1.5} strokeDasharray="4 3" markerEnd={`url(#arrow-${color.replace('#', '')})`} />
-    </g>
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: AVATAR_COLORS[user.id] ?? '#555',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: Math.floor(size * 0.38), fontWeight: 700, color: '#fff',
+      flexShrink: 0, border: '1.5px solid rgba(255,255,255,0.2)',
+    }}>
+      {initials}
+    </div>
   );
 }
 
-// ─── Manage dependencies modal ────────────────────────────────────────────────
+// ─── Manage deps modal ────────────────────────────────────────────────────────
 
-function ManageDepsModal({
-  open, onClose, tasks, deps, onChange,
-}: {
+function ManageDepsModal({ open, onClose, tasks, deps, onChange }: {
   open: boolean;
   onClose: () => void;
   tasks: Task[];
@@ -154,49 +156,34 @@ function ManageDepsModal({
   const { token } = useToken();
   const [fromId, setFromId] = useState<string | null>(null);
   const [toId, setToId] = useState<string | null>(null);
-
   const taskOptions = tasks.map((t) => ({ value: t.id, label: `${t.id} — ${t.title.slice(0, 50)}` }));
 
   const addDep = () => {
     if (!fromId || !toId || fromId === toId) return;
     if (deps.some((d) => d.fromId === fromId && d.toId === toId)) return;
     onChange([...deps, { fromId, toId }]);
-    setFromId(null);
-    setToId(null);
+    setFromId(null); setToId(null);
   };
 
-  const removeDep = (i: number) => onChange(deps.filter((_, idx) => idx !== i));
-
   return (
-    <Modal
-      open={open}
-      title="Управление зависимостями"
-      onCancel={onClose}
-      footer={null}
-      width={640}
-    >
+    <Modal open={open} title="Управление зависимостями" onCancel={onClose} footer={null} width={640}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Select
-            placeholder="Блокирующая задача (FROM)"
-            showSearch optionFilterProp="label"
-            style={{ flex: 1 }} options={taskOptions}
-            value={fromId} onChange={setFromId}
+            placeholder="Блокирующая задача (FROM)" showSearch optionFilterProp="label"
+            style={{ flex: 1 }} options={taskOptions} value={fromId} onChange={setFromId}
           />
-          <span style={{ color: token.colorTextTertiary, fontSize: 13 }}>→</span>
+          <span style={{ color: token.colorTextTertiary, fontSize: 16 }}>→</span>
           <Select
-            placeholder="Зависимая задача (TO)"
-            showSearch optionFilterProp="label"
-            style={{ flex: 1 }} options={taskOptions}
-            value={toId} onChange={setToId}
+            placeholder="Зависимая задача (TO)" showSearch optionFilterProp="label"
+            style={{ flex: 1 }} options={taskOptions} value={toId} onChange={setToId}
           />
           <Button icon={<PlusOutlined />} type="primary" onClick={addDep} disabled={!fromId || !toId} />
         </div>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {deps.length === 0 && (
             <div style={{ color: token.colorTextTertiary, fontSize: 13, textAlign: 'center', padding: '20px 0' }}>
-              Зависимостей нет. Добавьте выше.
+              Зависимостей нет. Добавьте выше или протяните связь между задачами на таймлайне.
             </div>
           )}
           {deps.map((dep, i) => {
@@ -206,14 +193,15 @@ function ManageDepsModal({
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: token.colorFillSecondary, borderRadius: 6 }}>
                 <Tag style={{ margin: 0, fontFamily: 'monospace', fontSize: 11 }}>{dep.fromId}</Tag>
                 <span style={{ fontSize: 12, color: token.colorTextSecondary, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {from?.title.slice(0, 35)}
+                  {from?.title.slice(0, 30)}
                 </span>
-                <span style={{ color: token.colorTextTertiary, fontSize: 13 }}>→</span>
+                <span style={{ color: token.colorTextTertiary }}>→</span>
                 <Tag style={{ margin: 0, fontFamily: 'monospace', fontSize: 11 }}>{dep.toId}</Tag>
                 <span style={{ fontSize: 12, color: token.colorTextSecondary, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {to?.title.slice(0, 35)}
+                  {to?.title.slice(0, 30)}
                 </span>
-                <Button size="small" type="text" danger icon={<DeleteOutlined />} onClick={() => removeDep(i)} />
+                <Button size="small" type="text" danger icon={<DeleteOutlined />}
+                  onClick={() => onChange(deps.filter((_, j) => j !== i))} />
               </div>
             );
           })}
@@ -223,196 +211,39 @@ function ManageDepsModal({
   );
 }
 
-// ─── Timeline canvas ──────────────────────────────────────────────────────────
-
-function TimelineCanvas({
-  tasks, deps, epicColor, rangeStart, rangeEnd, onTaskResize,
-}: {
-  tasks: TimelineTask[];
-  deps: Dep[];
-  epicColor: string;
-  rangeStart: Date;
-  rangeEnd: Date;
-  onTaskResize: (taskId: string, newEnd: Date) => void;
-}) {
-  const { token } = useToken();
-  const navigate = useNavigate();
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const resizeRef = useRef<{ taskId: string; startX: number; origEnd: Date } | null>(null);
-
-  const totalDays = daysBetween(rangeStart, rangeEnd) + 1;
-  const totalW = totalDays * DAY_PX;
-  const numRows = tasks.length > 0 ? Math.max(...tasks.map((t) => t.row)) + 1 : 1;
-  const canvasH = numRows * ROW_STRIDE + ROW_GAP;
-
-  const xOf = (d: Date): number => {
-    const days = daysBetween(rangeStart, d);
-    return Math.max(0, Math.min(days * DAY_PX, totalW));
-  };
-
-  const todayX = xOf(TODAY);
-
-  const statusColor = (t: Task): string => {
-    if (t.status === 'done') return token.colorSuccess;
-    if (t.riskLevel === 'critical') return token.colorError;
-    if (t.riskLevel === 'warning') return token.colorWarning;
-    if (t.status === 'in_progress') return token.colorPrimary;
-    if (t.status === 'review') return '#d89614';
-    return token.colorFillSecondary;
-  };
-
-  const onMouseDown = useCallback((e: React.MouseEvent, taskId: string, origEnd: Date) => {
-    e.stopPropagation();
-    e.preventDefault();
-    resizeRef.current = { taskId, startX: e.clientX, origEnd };
-
-    const onMove = (me: MouseEvent) => {
-      if (!resizeRef.current) return;
-      const deltaDays = Math.round((me.clientX - resizeRef.current.startX) / DAY_PX);
-      if (deltaDays === 0) return;
-      const newEnd = addDays(resizeRef.current.origEnd, deltaDays);
-      if (newEnd <= addDays(resizeRef.current.origEnd, -29)) return;
-      onTaskResize(resizeRef.current.taskId, newEnd);
-    };
-    const onUp = () => {
-      resizeRef.current = null;
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  }, [onTaskResize]);
-
-  // Build dep arrows
-  const arrows = useMemo(() => {
-    return deps.map((dep) => {
-      const from = tasks.find((t) => t.id === dep.fromId);
-      const to = tasks.find((t) => t.id === dep.toId);
-      if (!from || !to) return null;
-
-      const fromX = xOf(from.end) + DAY_PX;
-      const fromY = from.row * ROW_STRIDE + ROW_H / 2;
-      const toX = xOf(to.start);
-      const toY = to.row * ROW_STRIDE + ROW_H / 2;
-
-      return { dep, from, to, fromX, fromY, toX, toY };
-    }).filter(Boolean);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, deps, rangeStart]);
-
-  const arrowColor = token.colorTextQuaternary;
-
-  return (
-    <div ref={canvasRef} style={{ position: 'relative', width: totalW, height: canvasH, userSelect: 'none' }}>
-      {/* Today line */}
-      <div style={{ position: 'absolute', top: 0, left: todayX, width: 2, height: canvasH, background: token.colorPrimary, opacity: 0.7, zIndex: 3, pointerEvents: 'none' }} />
-
-      {/* Row backgrounds */}
-      {Array.from({ length: numRows }, (_, r) => (
-        <div key={r} style={{ position: 'absolute', top: r * ROW_STRIDE, left: 0, right: 0, height: ROW_H, background: r % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent', borderRadius: 4 }} />
-      ))}
-
-      {/* SVG dep arrows */}
-      <svg style={{ position: 'absolute', top: 0, left: 0, width: totalW, height: canvasH, pointerEvents: 'none', zIndex: 2 }}>
-        <defs>
-          <marker id={`arrow-${arrowColor.replace('#', '')}`} markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-            <path d="M0,0 L6,3 L0,6 Z" fill={arrowColor} />
-          </marker>
-        </defs>
-        {arrows.map((a, i) => a && (
-          <DepArrow
-            key={i}
-            from={{ x: a.fromX, y: a.fromY }}
-            to={{ x: a.toX, y: a.toY }}
-            color={arrowColor}
-          />
-        ))}
-      </svg>
-
-      {/* Task bars */}
-      {tasks.map((t) => {
-        const x = xOf(t.start);
-        const w = Math.max(DAY_PX, xOf(t.end) - x + DAY_PX);
-        const y = t.row * ROW_STRIDE;
-        const color = epicColor;
-        const isDone = t.status === 'done';
-        const barBg = isDone ? `${color}55` : color;
-        const isOverdue = t.end < TODAY && !isDone;
-        const border = isOverdue ? `1.5px solid ${token.colorError}` : isDone ? '1.5px solid transparent' : '1.5px solid transparent';
-
-        return (
-          <div
-            key={t.id}
-            title={`${t.id}: ${t.title}\n${formatDate(t.start)} → ${formatDate(t.end)}`}
-            onClick={() => navigate(`/tasks/${t.id}`)}
-            style={{
-              position: 'absolute',
-              left: x,
-              top: y,
-              width: w,
-              height: ROW_H,
-              background: barBg,
-              borderRadius: BAR_RADIUS,
-              border,
-              cursor: 'pointer',
-              zIndex: 4,
-              display: 'flex',
-              alignItems: 'center',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ flex: 1, overflow: 'hidden', padding: '0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              {/* Status dot */}
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: statusColor(t), flexShrink: 0 }} />
-              {w > 80 && (
-                <span style={{ fontSize: 11, fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {t.title.length > Math.floor(w / 7) ? t.title.slice(0, Math.floor(w / 7)) + '…' : t.title}
-                </span>
-              )}
-            </div>
-            {/* Resize handle */}
-            <div
-              onMouseDown={(e) => onMouseDown(e, t.id, t.end)}
-              style={{
-                width: RESIZE_ZONE,
-                height: '100%',
-                cursor: 'ew-resize',
-                background: 'rgba(255,255,255,0.15)',
-                borderRadius: `0 ${BAR_RADIUS}px ${BAR_RADIUS}px 0`,
-                flexShrink: 0,
-              }}
-            />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 // ─── Main timeline view ───────────────────────────────────────────────────────
 
 export default function TimelineView({ bdr }: { bdr: string }) {
   const { token } = useToken();
+  const navigate = useNavigate();
+
   const [range, setRange] = useState<ViewRange>('quarter');
   const [selectedEpicId, setSelectedEpicId] = useState<string>('EPIC-1');
   const [extraDeps, setExtraDeps] = useState<Dep[]>([]);
   const [removedDeps, setRemovedDeps] = useState<Set<string>>(new Set());
   const [depsModalOpen, setDepsModalOpen] = useState(false);
   const [taskDates, setTaskDates] = useState<Record<string, { start?: string; end?: string }>>({});
+
+  // Node-style connection drag state
+  const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
+  const [connectingFrom, setConnectingFrom] = useState<{ taskId: string; x: number; y: number } | null>(null);
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+  const [dragTargetId, setDragTargetId] = useState<string | null>(null);
+
+  const canvasRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const resizeRef = useRef<{ taskId: string; startX: number; origEnd: Date } | null>(null);
 
   const { data: allTasks = [], isLoading: tasksLoading } = useQuery({ queryKey: ['tasks'], queryFn: getTasks });
   const { data: epics = [], isLoading: epicsLoading } = useQuery({ queryKey: ['epics'], queryFn: getEpics });
-
   const isLoading = tasksLoading || epicsLoading;
 
-  // Derive deps from task fixtures + user additions - user removals
+  // ── Deps state ──────────────────────────────────────────────────────────────
+
   const fixturedDeps = useMemo<Dep[]>(() => {
     const result: Dep[] = [];
     allTasks.forEach((t) => {
-      (t.dependencies ?? []).forEach((fromId) => {
-        result.push({ fromId, toId: t.id });
-      });
+      (t.dependencies ?? []).forEach((fromId) => result.push({ fromId, toId: t.id }));
     });
     return result;
   }, [allTasks]);
@@ -421,112 +252,220 @@ export default function TimelineView({ bdr }: { bdr: string }) {
     const key = (d: Dep) => `${d.fromId}→${d.toId}`;
     const combined = [...fixturedDeps, ...extraDeps].filter((d) => !removedDeps.has(key(d)));
     const seen = new Set<string>();
-    return combined.filter((d) => {
-      const k = key(d);
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
+    return combined.filter((d) => { const k = key(d); if (seen.has(k)) return false; seen.add(k); return true; });
   }, [fixturedDeps, extraDeps, removedDeps]);
 
   const setDeps = useCallback((newDeps: Dep[]) => {
-    const fixtureKeys = new Set(fixturedDeps.map((d) => `${d.fromId}→${d.toId}`));
-    const extras = newDeps.filter((d) => !fixtureKeys.has(`${d.fromId}→${d.toId}`));
-    const removedKeys = fixturedDeps
-      .filter((d) => !newDeps.some((nd) => nd.fromId === d.fromId && nd.toId === d.toId))
-      .map((d) => `${d.fromId}→${d.toId}`);
-    setExtraDeps(extras);
-    setRemovedDeps(new Set(removedKeys));
+    const fk = new Set(fixturedDeps.map((d) => `${d.fromId}→${d.toId}`));
+    setExtraDeps(newDeps.filter((d) => !fk.has(`${d.fromId}→${d.toId}`)));
+    setRemovedDeps(new Set(
+      fixturedDeps
+        .filter((d) => !newDeps.some((nd) => nd.fromId === d.fromId && nd.toId === d.toId))
+        .map((d) => `${d.fromId}→${d.toId}`),
+    ));
   }, [fixturedDeps]);
 
+  const addDep = useCallback((dep: Dep) => {
+    if (deps.some((d) => d.fromId === dep.fromId && d.toId === dep.toId)) return;
+    setExtraDeps((prev) => [...prev, dep]);
+  }, [deps]);
+
+  // ── Data derivation ─────────────────────────────────────────────────────────
+
   const selectedEpic = epics.find((e) => e.id === selectedEpicId);
+  const epicTeamId = selectedEpic?.teamId ?? 'team-debit';
+  const epicColor = selectedEpic?.color ?? token.colorPrimary;
 
   const [rangeStart, rangeEnd] = useMemo(() => rangeWindow(range), [range]);
   const totalDays = daysBetween(rangeStart, rangeEnd) + 1;
   const totalW = totalDays * DAY_PX;
-
   const dayTicks = useMemo(() => buildDayTicks(rangeStart, rangeEnd, range), [rangeStart, rangeEnd, range]);
 
-  // Tasks for selected epic
-  const epicTasks = useMemo(
-    () => allTasks.filter((t) => t.epicId === selectedEpicId),
-    [allTasks, selectedEpicId],
-  );
+  const epicTasks = useMemo(() => allTasks.filter((t) => t.epicId === selectedEpicId), [allTasks, selectedEpicId]);
+  const epicTaskIds = useMemo(() => new Set(epicTasks.map((t) => t.id)), [epicTasks]);
 
-  // Resolve task dates (fixture + overrides)
+  const crossTeamTasks = useMemo(() => {
+    const crossIds = new Set<string>();
+    deps.forEach((d) => {
+      if (epicTaskIds.has(d.toId) && !epicTaskIds.has(d.fromId)) crossIds.add(d.fromId);
+      if (epicTaskIds.has(d.fromId) && !epicTaskIds.has(d.toId)) crossIds.add(d.toId);
+    });
+    return allTasks.filter((t) => crossIds.has(t.id));
+  }, [allTasks, deps, epicTaskIds]);
+
   const resolveTask = useCallback((t: Task): TimelineTask => {
     const override = taskDates[t.id];
     const startStr = override?.start ?? t.startDate ?? t.createdAt ?? '2026-07-01';
     const endStr = override?.end ?? t.deadline ?? addDays(parseDate(startStr), 7).toISOString().slice(0, 10);
     const start = parseDate(startStr);
     const end = parseDate(endStr);
-    return { ...t, start: start < end ? start : end, end: start < end ? end : start, row: 0 };
-  }, [taskDates]);
+    return { ...t, start: start <= end ? start : end, end: start <= end ? end : start, row: 0, isOtherTeam: t.teamId !== epicTeamId };
+  }, [taskDates, epicTeamId]);
 
-  // Dep-connected tasks (tasks that have dependencies linking to selected epic tasks)
-  const epicTaskIds = new Set(epicTasks.map((t) => t.id));
-  const connectedTaskIds = new Set<string>();
-  deps.forEach((d) => {
-    if (epicTaskIds.has(d.toId) && !epicTaskIds.has(d.fromId)) connectedTaskIds.add(d.fromId);
-    if (epicTaskIds.has(d.fromId) && !epicTaskIds.has(d.toId)) connectedTaskIds.add(d.toId);
-  });
-  const connectedTasks = allTasks.filter((t) => connectedTaskIds.has(t.id));
+  const allVisible = useMemo(
+    () => assignRows([...epicTasks, ...crossTeamTasks].map(resolveTask)),
+    [epicTasks, crossTeamTasks, resolveTask],
+  );
 
-  // Tasks with dependencies (linked tasks)
-  const linkedTaskIds = new Set<string>();
-  epicTasks.forEach((t) => {
-    const hasDep = deps.some((d) => d.fromId === t.id || d.toId === t.id);
-    if (hasDep) linkedTaskIds.add(t.id);
-  });
+  const allVisibleIds = useMemo(() => new Set(allVisible.map((t) => t.id)), [allVisible]);
+  const visibleDeps = useMemo(
+    () => deps.filter((d) => allVisibleIds.has(d.fromId) && allVisibleIds.has(d.toId)),
+    [deps, allVisibleIds],
+  );
 
-  const withDeps = epicTasks.filter((t) => linkedTaskIds.has(t.id));
-  const withoutDeps = epicTasks.filter((t) => !linkedTaskIds.has(t.id));
+  const numRows = allVisible.length > 0 ? Math.max(...allVisible.map((t) => t.row)) + 1 : 1;
+  const canvasH = numRows * ROW_STRIDE + ROW_GAP * 3;
 
-  const resolvedWithDeps = useMemo(() => assignRows(withDeps.map(resolveTask)), [withDeps, resolveTask]);
-  const resolvedWithoutDeps = useMemo(() => assignRows(withoutDeps.map(resolveTask)), [withoutDeps, resolveTask]);
-  const resolvedConnected = useMemo(() => assignRows(connectedTasks.map(resolveTask)), [connectedTasks, resolveTask]);
+  // ── Position helpers ────────────────────────────────────────────────────────
 
-  // Visible deps for this epic
-  const allVisibleIds = new Set([...epicTasks.map((t) => t.id), ...connectedTasks.map((t) => t.id)]);
-  const visibleDeps = deps.filter((d) => allVisibleIds.has(d.fromId) && allVisibleIds.has(d.toId));
+  const xOf = useCallback((d: Date): number => {
+    return Math.max(0, Math.min(daysBetween(rangeStart, d) * DAY_PX, totalW));
+  }, [rangeStart, totalW]);
+
+  const todayX = xOf(TODAY);
+
+  const findTaskAtPos = useCallback((x: number, y: number): string | null => {
+    for (const t of allVisible) {
+      const tx = xOf(t.start);
+      const tw = Math.max(DAY_PX, xOf(t.end) - tx + DAY_PX);
+      const ty = t.row * ROW_STRIDE;
+      if (x >= tx && x <= tx + tw && y >= ty && y <= ty + ROW_H) return t.id;
+    }
+    return null;
+  }, [allVisible, xOf]);
+
+  // ── Cascade resize ──────────────────────────────────────────────────────────
 
   const handleResize = useCallback((taskId: string, newEnd: Date) => {
     setTaskDates((prev) => {
       const next = { ...prev };
       const orig = allTasks.find((t) => t.id === taskId);
       const startStr = prev[taskId]?.start ?? orig?.startDate ?? orig?.createdAt ?? '2026-07-01';
+      const oldEndStr = prev[taskId]?.end ?? orig?.deadline ?? addDays(parseDate(startStr), 7).toISOString().slice(0, 10);
+      const delta = daysBetween(parseDate(oldEndStr), newEnd);
       next[taskId] = { ...prev[taskId], start: startStr, end: newEnd.toISOString().slice(0, 10) };
-
-      // Cascade: shift tasks that depend on this one
-      const delta = daysBetween(parseDate(next[taskId].end!), newEnd);
       if (Math.abs(delta) > 0) {
         const cascade = (fromId: string, shift: number) => {
           deps.forEach((dep) => {
             if (dep.fromId !== fromId) return;
-            const dependent = allTasks.find((t) => t.id === dep.toId);
-            if (!dependent) return;
-            const depStart = prev[dep.toId]?.start ?? dependent.startDate ?? dependent.createdAt ?? '2026-07-01';
-            const depEnd = prev[dep.toId]?.end ?? dependent.deadline ?? addDays(parseDate(depStart), 7).toISOString().slice(0, 10);
+            const dep_ = allTasks.find((t) => t.id === dep.toId);
+            if (!dep_) return;
+            const ds = prev[dep.toId]?.start ?? dep_.startDate ?? dep_.createdAt ?? '2026-07-01';
+            const de = prev[dep.toId]?.end ?? dep_.deadline ?? addDays(parseDate(ds), 7).toISOString().slice(0, 10);
             next[dep.toId] = {
-              start: addDays(parseDate(depStart), shift).toISOString().slice(0, 10),
-              end: addDays(parseDate(depEnd), shift).toISOString().slice(0, 10),
+              start: addDays(parseDate(ds), shift).toISOString().slice(0, 10),
+              end: addDays(parseDate(de), shift).toISOString().slice(0, 10),
             };
             cascade(dep.toId, shift);
           });
         };
         cascade(taskId, delta);
       }
-
       return next;
     });
   }, [allTasks, deps]);
 
-  // Scroll to today on mount
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent, taskId: string, origEnd: Date) => {
+    e.stopPropagation();
+    e.preventDefault();
+    resizeRef.current = { taskId, startX: e.clientX, origEnd };
+    const onMove = (me: MouseEvent) => {
+      if (!resizeRef.current) return;
+      const deltaDays = Math.round((me.clientX - resizeRef.current.startX) / DAY_PX);
+      if (deltaDays === 0) return;
+      handleResize(resizeRef.current.taskId, addDays(resizeRef.current.origEnd, deltaDays));
+    };
+    const onUp = () => {
+      resizeRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [handleResize]);
+
+  // ── Node-style connection events ────────────────────────────────────────────
+
+  const handlePortMouseDown = useCallback((e: React.MouseEvent, taskId: string, px: number, py: number) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setConnectingFrom({ taskId, x: px, y: py });
+    setCursorPos({ x: px, y: py });
+  }, []);
+
+  const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!connectingFrom || !canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setCursorPos({ x, y });
+    setDragTargetId(findTaskAtPos(x, y));
+  }, [connectingFrom, findTaskAtPos]);
+
+  const handleCanvasMouseUp = useCallback((e: React.MouseEvent) => {
+    if (!connectingFrom || !canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const targetId = findTaskAtPos(e.clientX - rect.left, e.clientY - rect.top);
+    if (targetId && targetId !== connectingFrom.taskId) {
+      addDep({ fromId: connectingFrom.taskId, toId: targetId });
+    }
+    setConnectingFrom(null);
+    setCursorPos(null);
+    setDragTargetId(null);
+  }, [connectingFrom, findTaskAtPos, addDep]);
+
+  useEffect(() => {
+    if (!connectingFrom) return;
+    const cancel = () => { setConnectingFrom(null); setCursorPos(null); setDragTargetId(null); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') cancel(); };
+    window.addEventListener('mouseup', cancel);
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('mouseup', cancel); window.removeEventListener('keydown', onKey); };
+  }, [connectingFrom]);
+
+  // Scroll to today on mount / range change
   useEffect(() => {
     if (!scrollRef.current) return;
-    const todayOffset = daysBetween(rangeStart, TODAY) * DAY_PX - 100;
-    scrollRef.current.scrollLeft = Math.max(0, todayOffset);
-  }, [rangeStart, range]);
+    scrollRef.current.scrollLeft = Math.max(0, daysBetween(rangeStart, TODAY) * DAY_PX - 120);
+  }, [rangeStart]);
+
+  // ── Style helpers ───────────────────────────────────────────────────────────
+
+  const barBg = (t: TimelineTask): string => {
+    if (t.isOtherTeam) return 'rgba(140,140,160,0.08)';
+    if (t.status === 'done') return 'rgba(73,170,25,0.10)';
+    if (t.status === 'in_progress') return 'rgba(22,104,220,0.15)';
+    if (t.status === 'review') return 'rgba(216,150,20,0.13)';
+    return 'rgba(255,255,255,0.05)';
+  };
+
+  const barBorder = (t: TimelineTask, isTarget: boolean): string => {
+    if (isTarget) return `2px solid ${token.colorPrimary}`;
+    if (t.isOtherTeam) return '1px dashed rgba(255,255,255,0.10)';
+    if (t.riskLevel === 'critical' && t.status !== 'done') return `1.5px solid ${token.colorError}50`;
+    if (t.status === 'done') return '1px solid rgba(73,170,25,0.25)';
+    return '1px solid rgba(255,255,255,0.07)';
+  };
+
+  const statusDotColor = (t: Task): string => {
+    if (t.status === 'done') return token.colorSuccess;
+    if (t.riskLevel === 'critical') return token.colorError;
+    if (t.riskLevel === 'warning') return token.colorWarning;
+    if (t.status === 'in_progress') return token.colorPrimary;
+    if (t.status === 'review') return '#d89614';
+    return token.colorTextQuaternary;
+  };
+
+  // ── Port for hovered bar ────────────────────────────────────────────────────
+
+  const hoveredTask = !connectingFrom && hoveredBarId ? allVisible.find((t) => t.id === hoveredBarId) : null;
+  const portPos = hoveredTask
+    ? { x: xOf(hoveredTask.end) + DAY_PX, y: hoveredTask.row * ROW_STRIDE + ROW_H / 2 }
+    : null;
+
+  const arrowColor = 'rgba(180,180,210,0.4)';
+
+  // ── Loading ─────────────────────────────────────────────────────────────────
 
   if (isLoading) return <Skeleton active paragraph={{ rows: 8 }} />;
 
@@ -534,7 +473,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
     value: e.id,
     label: (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ width: 10, height: 10, borderRadius: '50%', background: e.color, flexShrink: 0, display: 'inline-block' }} />
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: e.color, flexShrink: 0, display: 'inline-block' }} />
         <span>{e.name}</span>
         {e.teamId !== 'team-debit' && (
           <Tag style={{ margin: 0, fontSize: 10, padding: '0 4px' }} color="default">другая команда</Tag>
@@ -543,177 +482,260 @@ export default function TimelineView({ bdr }: { bdr: string }) {
     ),
   }));
 
-  const epicColor = selectedEpic?.color ?? token.colorPrimary;
-
-  const renderSection = (
-    label: string,
-    tasks: TimelineTask[],
-    deps: Dep[],
-    isExternal?: boolean,
-  ) => {
-    if (tasks.length === 0) return null;
-    const numRows = tasks.length > 0 ? Math.max(...tasks.map((t) => t.row)) + 1 : 1;
-    const sectionH = numRows * ROW_STRIDE + ROW_GAP;
-
-    return (
-      <div style={{ marginBottom: 24 }}>
-        {/* Section label */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          {isExternal && <TeamOutlined style={{ color: token.colorTextTertiary, fontSize: 12 }} />}
-          <span style={{ fontSize: 11, fontWeight: 600, color: token.colorTextTertiary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            {label}
-          </span>
-          <span style={{ fontSize: 11, color: token.colorTextQuaternary }}>({tasks.length})</span>
-        </div>
-
-        {/* Timeline row */}
-        <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: bdr }}>
-          {/* Left names column */}
-          <div style={{ width: LEFT_COL, flexShrink: 0, background: '#16171a', borderRight: bdr }}>
-            <div style={{ height: HEADER_H, borderBottom: bdr }} />
-            {tasks.map((t) => (
-              <div
-                key={t.id}
-                style={{
-                  height: ROW_H,
-                  marginTop: t.row > 0 ? ROW_GAP : ROW_GAP,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '0 10px',
-                  cursor: 'pointer',
-                  overflow: 'hidden',
-                }}
-                onClick={() => window.location.pathname.includes('/tasks') && (window.location.href = `/tasks/${t.id}`)}
-              >
-                <span style={{ fontFamily: 'monospace', fontSize: 10, color: token.colorTextTertiary, flexShrink: 0 }}>{t.id}</span>
-                <span style={{ fontSize: 12, color: token.colorText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {t.title}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Scroll area */}
-          <div ref={scrollRef} style={{ flex: 1, overflowX: 'auto', background: '#13141a', position: 'relative' }}>
-            <div style={{ width: totalW, minWidth: totalW }}>
-              {/* Header: day ticks */}
-              <div style={{ height: HEADER_H, borderBottom: bdr, display: 'flex', alignItems: 'flex-end', position: 'sticky', top: 0, zIndex: 10, background: '#13141a' }}>
-                {dayTicks.map((tick, i) => {
-                  const x = daysBetween(rangeStart, tick.date) * DAY_PX;
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        position: 'absolute',
-                        left: x,
-                        bottom: 6,
-                        fontSize: tick.isMonthStart ? 11 : 10,
-                        fontWeight: tick.isMonthStart ? 600 : 400,
-                        color: tick.isMonthStart ? token.colorTextSecondary : token.colorTextQuaternary,
-                        whiteSpace: 'nowrap',
-                        pointerEvents: 'none',
-                      }}
-                    >
-                      {tick.label}
-                    </div>
-                  );
-                })}
-                {/* Today marker label */}
-                <div style={{ position: 'absolute', left: daysBetween(rangeStart, TODAY) * DAY_PX + 3, bottom: 6, fontSize: 10, fontWeight: 700, color: token.colorPrimary, whiteSpace: 'nowrap' }}>
-                  Сегодня
-                </div>
-              </div>
-
-              {/* Canvas */}
-              <div style={{ position: 'relative', height: sectionH }}>
-                <TimelineCanvas
-                  tasks={tasks}
-                  deps={deps}
-                  epicColor={isExternal ? token.colorTextQuaternary : epicColor}
-                  rangeStart={rangeStart}
-                  rangeEnd={rangeEnd}
-                  onTaskResize={handleResize}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-      {/* Controls bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        {/* Epic selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <CalendarOutlined style={{ color: token.colorTextTertiary, fontSize: 13 }} />
-          <Select
-            value={selectedEpicId}
-            onChange={setSelectedEpicId}
-            style={{ width: 280 }}
-            options={epicOptions}
-            showSearch={false}
-          />
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
-        {/* Range selector */}
-        <Segmented
+      {/* ── Filter bar (consistent with Kanban/Backlog) ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexShrink: 0 }}>
+        <FilterOutlined style={{ color: token.colorTextTertiary, fontSize: 13 }} />
+        <Select
+          value={selectedEpicId}
+          onChange={setSelectedEpicId}
+          style={{ width: 260 }}
+          size="small"
+          options={epicOptions}
+          placeholder="Эпик"
+        />
+        <Select
           value={range}
           onChange={(v) => setRange(v as ViewRange)}
-          options={Object.entries(VIEW_LABELS).map(([value, label]) => ({ value, label }))}
+          style={{ width: 160 }}
           size="small"
+          options={VIEW_OPTIONS}
         />
-
         <div style={{ flex: 1 }} />
-
-        {/* Manage deps button */}
-        <Button
-          size="small"
-          icon={<LinkOutlined />}
-          onClick={() => setDepsModalOpen(true)}
-          style={{ fontSize: 12 }}
-        >
+        <Button size="small" icon={<LinkOutlined />} onClick={() => setDepsModalOpen(true)} style={{ fontSize: 12 }}>
           Зависимости
         </Button>
       </div>
 
-      {/* Epic info */}
+      {/* ── Epic info bar ── */}
       {selectedEpic && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '8px 12px', background: `${epicColor}18`, borderRadius: 8, border: `1px solid ${epicColor}35` }}>
-          <span style={{ width: 12, height: 12, borderRadius: '50%', background: epicColor, flexShrink: 0 }} />
-          <Typography.Text style={{ fontSize: 13, fontWeight: 600, color: token.colorText }}>
-            {selectedEpic.name}
-          </Typography.Text>
-          <Typography.Text style={{ fontSize: 12, color: token.colorTextSecondary }}>
-            {selectedEpic.description}
-          </Typography.Text>
-          {selectedEpic.teamId !== 'team-debit' && (
-            <Tag color="warning" style={{ margin: 0, fontSize: 11 }}>Другая команда</Tag>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '6px 12px', background: `${epicColor}10`, borderRadius: 8, border: `1px solid ${epicColor}28`, flexShrink: 0 }}>
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: epicColor, flexShrink: 0 }} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: token.colorText }}>{selectedEpic.name}</span>
+          {selectedEpic.description && (
+            <span style={{ fontSize: 12, color: token.colorTextSecondary }}>{selectedEpic.description}</span>
           )}
+          <span style={{ fontSize: 12, color: token.colorTextTertiary, marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+            {epicTasks.length} задач{crossTeamTasks.length > 0 ? ` · ${crossTeamTasks.length} из других команд` : ''}
+          </span>
         </div>
       )}
 
-      {/* No tasks placeholder */}
-      {epicTasks.length === 0 && (
+      {epicTasks.length === 0 && !isLoading && (
         <div style={{ padding: '48px 0', textAlign: 'center', color: token.colorTextTertiary, fontSize: 14 }}>
           В этом эпике нет задач с датами
         </div>
       )}
 
-      {/* Section: linked tasks (with dependencies) */}
-      {renderSection('Связанные задачи', resolvedWithDeps, visibleDeps)}
+      {/* ── Timeline canvas (unified, handles both scroll axes) ── */}
+      <div
+        ref={scrollRef}
+        style={{ flex: 1, overflow: 'auto', borderRadius: 10, border: bdr, background: '#13141a', minHeight: 0 }}
+      >
+        <div style={{ width: totalW, minWidth: totalW, position: 'relative' }}>
 
-      {/* Section: independent tasks */}
-      {renderSection('Независимые задачи', resolvedWithoutDeps, [])}
+          {/* Sticky header with day ticks */}
+          <div style={{
+            height: HEADER_H,
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            background: '#13141a',
+            borderBottom: bdr,
+            pointerEvents: 'none',
+          }}>
+            {dayTicks.map((tick, i) => {
+              const x = daysBetween(rangeStart, tick.date) * DAY_PX;
+              return (
+                <div key={i} style={{
+                  position: 'absolute', left: x, bottom: 6,
+                  fontSize: tick.isMonthStart ? 11 : 10,
+                  fontWeight: tick.isMonthStart ? 600 : 400,
+                  color: tick.isMonthStart ? token.colorTextSecondary : token.colorTextQuaternary,
+                  whiteSpace: 'nowrap',
+                }}>
+                  {tick.label}
+                </div>
+              );
+            })}
+            <div style={{ position: 'absolute', left: todayX + 3, bottom: 6, fontSize: 10, fontWeight: 700, color: token.colorPrimary, whiteSpace: 'nowrap' }}>
+              Сегодня
+            </div>
+          </div>
 
-      {/* Section: tasks from other teams (connected via deps) */}
-      {resolvedConnected.length > 0 &&
-        renderSection('Задачи других команд', resolvedConnected, visibleDeps, true)}
+          {/* Canvas: bars + SVG arrows */}
+          <div
+            ref={canvasRef}
+            style={{
+              position: 'relative',
+              height: canvasH,
+              userSelect: 'none',
+              cursor: connectingFrom ? 'crosshair' : 'default',
+            }}
+            onMouseMove={handleCanvasMouseMove}
+            onMouseUp={handleCanvasMouseUp}
+            onMouseLeave={() => { if (!connectingFrom) setHoveredBarId(null); }}
+          >
+            {/* Today line */}
+            <div style={{ position: 'absolute', top: 0, left: todayX, width: 2, height: canvasH, background: token.colorPrimary, opacity: 0.45, zIndex: 3, pointerEvents: 'none' }} />
 
-      {/* Manage deps modal */}
+            {/* Alternating row backgrounds */}
+            {Array.from({ length: numRows }, (_, r) => (
+              <div key={r} style={{ position: 'absolute', top: r * ROW_STRIDE + ROW_GAP, left: 0, right: 0, height: ROW_H, background: r % 2 === 0 ? 'rgba(255,255,255,0.012)' : 'transparent' }} />
+            ))}
+
+            {/* SVG: dep arrows + in-progress connection line */}
+            <svg style={{ position: 'absolute', top: 0, left: 0, width: totalW, height: canvasH, pointerEvents: 'none', zIndex: 5 }}>
+              <defs>
+                <marker id="tl-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <path d="M0,0 L6,3 L0,6 Z" fill={arrowColor} />
+                </marker>
+                <marker id="tl-arrow-active" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+                  <path d="M0,0 L7,3.5 L0,7 Z" fill={token.colorPrimary} />
+                </marker>
+              </defs>
+
+              {visibleDeps.map((dep, i) => {
+                const from = allVisible.find((t) => t.id === dep.fromId);
+                const to = allVisible.find((t) => t.id === dep.toId);
+                if (!from || !to) return null;
+                const fx = xOf(from.end) + DAY_PX;
+                const fy = from.row * ROW_STRIDE + ROW_GAP + ROW_H / 2;
+                const tx = xOf(to.start);
+                const ty = to.row * ROW_STRIDE + ROW_GAP + ROW_H / 2;
+                const mid = (fx + tx) / 2;
+                return (
+                  <path key={i}
+                    d={`M ${fx} ${fy} C ${mid} ${fy}, ${mid} ${ty}, ${tx} ${ty}`}
+                    fill="none" stroke={arrowColor} strokeWidth={1.5} strokeDasharray="4 3"
+                    markerEnd="url(#tl-arrow)"
+                  />
+                );
+              })}
+
+              {connectingFrom && cursorPos && (
+                <path
+                  d={`M ${connectingFrom.x} ${connectingFrom.y} C ${(connectingFrom.x + cursorPos.x) / 2} ${connectingFrom.y}, ${(connectingFrom.x + cursorPos.x) / 2} ${cursorPos.y}, ${cursorPos.x} ${cursorPos.y}`}
+                  fill="none" stroke={token.colorPrimary} strokeWidth={2} strokeDasharray="4 3"
+                  markerEnd="url(#tl-arrow-active)"
+                />
+              )}
+            </svg>
+
+            {/* Connection port DOM element (shown on bar hover) */}
+            {portPos && hoveredTask && (
+              <div
+                onMouseDown={(e) => handlePortMouseDown(e, hoveredTask.id, portPos.x, portPos.y)}
+                style={{
+                  position: 'absolute',
+                  left: portPos.x - PORT_R,
+                  top: portPos.y - PORT_R,
+                  width: PORT_R * 2,
+                  height: PORT_R * 2,
+                  borderRadius: '50%',
+                  background: '#1a1b22',
+                  border: `2px solid ${token.colorPrimary}`,
+                  cursor: 'crosshair',
+                  zIndex: 8,
+                  boxShadow: `0 0 6px ${token.colorPrimary}80`,
+                }}
+              />
+            )}
+
+            {/* Task bars */}
+            {allVisible.map((t) => {
+              const x = xOf(t.start);
+              const w = Math.max(DAY_PX, xOf(t.end) - x + DAY_PX);
+              const y = t.row * ROW_STRIDE + ROW_GAP;
+              const isTarget = !!(dragTargetId === t.id && connectingFrom && t.id !== connectingFrom.taskId);
+              const isHovered = hoveredBarId === t.id;
+              const tooltipContent = (
+                <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 2 }}>{t.id}: {t.title}</div>
+                  <div style={{ color: 'rgba(255,255,255,0.65)' }}>
+                    {formatDate(t.start)} → {formatDate(t.end)}
+                  </div>
+                  {t.assignee && <div style={{ color: 'rgba(255,255,255,0.65)' }}>{t.assignee.name}</div>}
+                  {t.isOtherTeam && <div style={{ color: token.colorTextQuaternary, fontSize: 11, marginTop: 2 }}>Другая команда</div>}
+                </div>
+              );
+
+              return (
+                <Tooltip key={t.id} title={tooltipContent} placement="top" open={connectingFrom ? false : undefined}>
+                  <div
+                    onMouseEnter={() => { if (!connectingFrom) setHoveredBarId(t.id); }}
+                    onMouseLeave={() => setHoveredBarId(null)}
+                    onClick={() => { if (!connectingFrom) navigate(`/tasks/${t.id}`); }}
+                    style={{
+                      position: 'absolute',
+                      left: x,
+                      top: y,
+                      width: w,
+                      height: ROW_H,
+                      background: barBg(t),
+                      borderRadius: BAR_RADIUS,
+                      border: barBorder(t, isTarget),
+                      cursor: connectingFrom ? 'crosshair' : 'pointer',
+                      zIndex: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      overflow: 'hidden',
+                      outline: isTarget ? `2px solid ${token.colorPrimary}40` : isHovered ? '1px solid rgba(255,255,255,0.15)' : 'none',
+                      outlineOffset: isTarget ? 2 : 0,
+                      transition: 'outline 0.1s, border-color 0.1s',
+                    }}
+                  >
+                    <div style={{ flex: 1, overflow: 'hidden', padding: '0 8px', display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                      {/* Status dot */}
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: statusDotColor(t), flexShrink: 0 }} />
+                      {/* Title */}
+                      {w > 48 && (
+                        <span style={{
+                          fontSize: 11, fontWeight: 500,
+                          color: t.isOtherTeam ? token.colorTextTertiary : 'rgba(255,255,255,0.80)',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1,
+                        }}>
+                          {t.title}
+                        </span>
+                      )}
+                    </div>
+                    {/* Assignee avatar */}
+                    {w > 72 && t.assignee && (
+                      <div style={{ paddingRight: 6, flexShrink: 0 }}>
+                        <MiniAvatar user={t.assignee} size={24} />
+                      </div>
+                    )}
+                    {/* Resize handle */}
+                    <div
+                      onMouseDown={(e) => handleResizeMouseDown(e, t.id, t.end)}
+                      title="Потяните, чтобы изменить срок"
+                      style={{
+                        width: RESIZE_ZONE,
+                        height: '100%',
+                        cursor: 'ew-resize',
+                        background: isHovered ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.04)',
+                        borderRadius: `0 ${BAR_RADIUS}px ${BAR_RADIUS}px 0`,
+                        flexShrink: 0,
+                        transition: 'background 0.1s',
+                      }}
+                    />
+                  </div>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Hint when connecting */}
+      {connectingFrom && (
+        <div style={{ marginTop: 8, fontSize: 12, color: token.colorTextTertiary, flexShrink: 0 }}>
+          Отпустите над задачей, чтобы создать зависимость · Нажмите Esc для отмены
+        </div>
+      )}
+
       <ManageDepsModal
         open={depsModalOpen}
         onClose={() => setDepsModalOpen(false)}
