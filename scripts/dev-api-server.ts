@@ -133,6 +133,7 @@ app.post('/api/search', async (req, res) => {
   }
 });
 
-app.listen(3001, () => {
-  console.log('[dev-api] listening on http://localhost:3001');
+const PORT = parseInt(process.env.PORT ?? '3001', 10);
+app.listen(PORT, () => {
+  console.log(`[api] listening on http://localhost:${PORT}`);
 });
