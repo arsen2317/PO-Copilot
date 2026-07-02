@@ -216,7 +216,17 @@ export default function TimelineView({ bdr }: { bdr: string }) {
 
     const viewMode = GANTT_VIEW[range];
 
-    if (!ganttRef.current) {
+    // Detect first init OR remount after navigation (old $svg is detached)
+    const needsInit =
+      !ganttRef.current ||
+      !containerRef.current.contains(ganttRef.current.$svg);
+
+    if (needsInit) {
+      // Clean up stale instance if it exists
+      if (ganttRef.current) {
+        try { ganttRef.current.clear(); } catch (_) { /* ignore */ }
+      }
+      containerRef.current.innerHTML = '';
       ganttRef.current = new Gantt(containerRef.current, frappeTasks, {
         view_mode: viewMode,
         language: 'ru',
@@ -247,16 +257,6 @@ export default function TimelineView({ bdr }: { bdr: string }) {
       ganttRef.current.refresh(frappeTasks);
     }
   }, [frappeTasks, range, navigate, addDep, deleteDep, token.colorPrimary]);
-
-  // Reset gantt instance when epic changes (so it re-initializes)
-  useEffect(() => {
-    if (ganttRef.current && containerRef.current) {
-      ganttRef.current.clear();
-      containerRef.current.innerHTML = '';
-      ganttRef.current = null;
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEpicId]);
 
   if (isLoading) return <Skeleton active paragraph={{ rows: 8 }} />;
 
