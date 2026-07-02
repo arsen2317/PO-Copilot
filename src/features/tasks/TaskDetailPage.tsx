@@ -139,7 +139,7 @@ export default function TaskDetailPage() {
           icon={<ArrowLeftOutlined />}
           size="small"
           style={{ color: token.colorTextTertiary, fontSize: 13, padding: '0 4px', marginBottom: 12 }}
-          onClick={() => navigate('/tasks')}
+          onClick={() => navigate(-1)}
         >
           Задачи
         </Button>

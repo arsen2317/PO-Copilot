@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Badge, Button, message, Select, Skeleton, Table, Tag, theme, Tooltip, Typography,
@@ -582,11 +582,15 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 export default function TasksPage() {
   const { token } = useToken();
   const BDR = `1px solid ${token.colorBorderSecondary}`;
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabId>(() => {
     const tab = searchParams.get('tab');
     return (['drafts', 'kanban', 'list', 'backlog', 'timeline'] as const).includes(tab as TabId) ? tab as TabId : 'kanban';
   });
+  const handleTabChange = useCallback((tab: TabId) => {
+    setActiveTab(tab);
+    setSearchParams((p) => { p.set('tab', tab); return p; }, { replace: true });
+  }, [setSearchParams]);
   const [highlightDraftId] = useState<string | null>(() => searchParams.get('draft'));
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
@@ -643,7 +647,7 @@ export default function TasksPage() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               style={{
                 background: 'none', border: 'none',
                 borderBottom: isActive ? `2px solid ${token.colorPrimary}` : '2px solid transparent',
