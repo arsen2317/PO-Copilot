@@ -190,20 +190,23 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
       onMouseLeave={() => setHovered(false)}
       style={{
         position: 'relative',
-        flex: '0 0 calc(33.333% - 7px)',
+        // (containerWidth - 2×gap) / 3  — pixel-perfect, no clipping
+        flex: '0 0 calc((100% - 20px) / 3)',
         minWidth: 0,
-        padding: '14px 14px 16px',
+        padding: '16px 14px 22px',
+        minHeight: 185,
         background: '#07080f',
         border: `1px solid ${hovered ? cfg.border : 'rgba(255,255,255,0.07)'}`,
+        // inset shadow only — external glow would be clipped by the scroll container
         boxShadow: hovered
-          ? `0 0 16px ${cfg.glow}, inset 0 0 24px rgba(0,0,0,0.4)`
+          ? `inset 0 0 28px rgba(0,0,0,0.5), inset 0 -1px 0 ${cfg.border}`
           : 'none',
         borderRadius: 14,
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
         gap: 12,
-        overflow: 'hidden',          // blobs are clipped here — no overflow
+        overflow: 'hidden',
         transition: 'border-color 0.35s ease, box-shadow 0.35s ease',
       }}
     >
@@ -266,7 +269,12 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
       {/* Text */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: TEXT_PRIMARY, lineHeight: 1.3 }}>{agent.label}</span>
-        <span style={{ fontSize: 12, color: TEXT_SECONDARY, lineHeight: 1.5 }}>{agent.desc}</span>
+        <span style={{
+          fontSize: 12,
+          color: hovered ? 'rgba(255,255,255,0.72)' : TEXT_SECONDARY,
+          lineHeight: 1.5,
+          transition: 'color 0.35s ease',
+        }}>{agent.desc}</span>
       </div>
     </div>
   );
@@ -319,7 +327,7 @@ function AgentCards({ onSelect }: { onSelect: (key: string) => void }) {
       <div
         ref={scrollRef}
         onScroll={updateArrows}
-        style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 4 }}
+        style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 6, paddingTop: 2 }}
       >
         {AGENTS_DATA.map((agent) => (
           <AuroraCard key={agent.key} agent={agent} onSelect={onSelect} />
