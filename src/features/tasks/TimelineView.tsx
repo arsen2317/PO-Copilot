@@ -47,10 +47,11 @@ const DAY_PX = 32;
 const ROW_H = 36;
 const ROW_GAP = 10;
 const ROW_STRIDE = ROW_H + ROW_GAP;
-const HEADER_H = 48;
+const HEADER_H = 60;
+const MONTH_ROW_H = 20;
 const BAR_R = 6;
 const HANDLE_W = 7;
-const PORT_R = 5;
+const PORT_R = 7;
 const TODAY = new Date('2026-07-02');
 
 // ─── Calendar helpers (business days only) ────────────────────────────────────
@@ -104,16 +105,24 @@ function buildTicks(bizDays: Date[], range: ViewRange) {
   return bizDays
     .map((d, i) => ({ d, i }))
     .filter(({ i }) => i % step === 0)
-    .map(({ d, i }) => {
-      const isMS = d.getDate() === 1;
-      return {
-        x: i * DAY_PX,
-        label: isMS
-          ? d.toLocaleDateString('ru', { month: 'short', year: 'numeric' })
-          : d.toLocaleDateString('ru', { day: 'numeric', month: 'short' }),
-        isMonthStart: isMS,
-      };
-    });
+    .map(({ d, i }) => ({
+      x: i * DAY_PX,
+      label: d.toLocaleDateString('ru', { day: 'numeric', month: 'short' }),
+    }));
+}
+
+function buildMonthBands(bizDays: Date[]): { x: number; label: string; width: number }[] {
+  const bands: { x: number; label: string; width: number }[] = [];
+  let prevMonth = -1;
+  bizDays.forEach((d, i) => {
+    if (d.getMonth() !== prevMonth) {
+      if (bands.length > 0) bands[bands.length - 1]!.width = i * DAY_PX - bands[bands.length - 1]!.x;
+      bands.push({ x: i * DAY_PX, label: d.toLocaleDateString('ru', { month: 'long', year: 'numeric' }), width: 0 });
+      prevMonth = d.getMonth();
+    }
+  });
+  if (bands.length > 0) bands[bands.length - 1]!.width = bizDays.length * DAY_PX - bands[bands.length - 1]!.x;
+  return bands;
 }
 
 // ─── Row assignment: 1 task per row, dep-connected tasks grouped ──────────────
@@ -153,8 +162,11 @@ function assignRows(tasks: TimelineTask[], deps: Dep[]): TimelineTask[] {
 
 // ─── Small components ─────────────────────────────────────────────────────────
 
-function MiniAvatar({ user, size = 22 }: { user: { id: string; name: string }; size?: number }) {
+function MiniAvatar({ user, size = 22 }: { user: { id: string; name: string; avatar?: string }; size?: number }) {
   const initials = user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+  if (user.avatar) {
+    return <img src={user.avatar} alt={user.name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, display: 'block' }} />;
+  }
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', background: AVATAR_COLORS[user.id] ?? '#555',
@@ -302,6 +314,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
   const bizDays = useMemo(() => buildBizDays(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
   const totalW = Math.max(bizDays.length * DAY_PX, 400);
   const ticks = useMemo(() => buildTicks(bizDays, range), [bizDays, range]);
+  const monthBands = useMemo(() => buildMonthBands(bizDays), [bizDays]);
 
   // Maps date → pixel x (left edge of that business day column)
   const xOf = useCallback((d: Date): number => {
@@ -492,14 +505,6 @@ export default function TimelineView({ bdr }: { bdr: string }) {
     return '1px solid rgba(255,255,255,0.08)';
   };
 
-  // Port at bottom-center of bar
-  const hoveredTask = !connectingFrom ? allVisible.find((t) => t.id === hoveredBarId) ?? null : null;
-  const portPos = hoveredTask ? (() => {
-    const bx = xOf(hoveredTask.start);
-    const bw = Math.max(DAY_PX, xOf(hoveredTask.end) - bx + DAY_PX);
-    return { x: bx + bw / 2, y: hoveredTask.row * ROW_STRIDE + ROW_H };
-  })() : null;
-
   const arrowColor = 'rgba(180,180,220,0.32)';
 
   if (isLoading) return <Skeleton active paragraph={{ rows: 8 }} />;
@@ -549,20 +554,29 @@ export default function TimelineView({ bdr }: { bdr: string }) {
 
           {/* Sticky header */}
           <div style={{ height: HEADER_H, position: 'sticky', top: 0, zIndex: 10, background: '#13141a', borderBottom: bdr, pointerEvents: 'none' }}>
+            {/* Month band (upper row) */}
+            {monthBands.map((band, i) => (
+              <div key={i} style={{
+                position: 'absolute', left: band.x, top: 0, width: band.width, height: MONTH_ROW_H,
+                borderRight: `1px solid rgba(255,255,255,0.07)`,
+                borderBottom: `1px solid rgba(255,255,255,0.07)`,
+                display: 'flex', alignItems: 'center', paddingLeft: 8,
+                fontSize: 11, fontWeight: 600, color: token.colorTextSecondary,
+                overflow: 'hidden', whiteSpace: 'nowrap',
+              }}>
+                {band.label}
+              </div>
+            ))}
+            {/* Day/week ticks (lower row) */}
             {ticks.map((tick, i) => (
               <div key={i} style={{
-                position: 'absolute', left: tick.x + 4, bottom: 8,
-                fontSize: tick.isMonthStart ? 11 : 10,
-                fontWeight: tick.isMonthStart ? 600 : 400,
-                color: tick.isMonthStart ? token.colorTextSecondary : token.colorTextQuaternary,
-                whiteSpace: 'nowrap',
-                borderLeft: tick.isMonthStart ? `1px solid ${token.colorBorderSecondary}` : 'none',
-                paddingLeft: tick.isMonthStart ? 6 : 0,
+                position: 'absolute', left: tick.x + 4, top: MONTH_ROW_H + 4,
+                fontSize: 10, fontWeight: 400, color: token.colorTextQuaternary, whiteSpace: 'nowrap',
               }}>
                 {tick.label}
               </div>
             ))}
-            <div style={{ position: 'absolute', left: todayX + 4, top: 8, fontSize: 10, fontWeight: 700, color: token.colorPrimary, whiteSpace: 'nowrap' }}>
+            <div style={{ position: 'absolute', left: todayX + 4, top: MONTH_ROW_H + 4, fontSize: 10, fontWeight: 700, color: token.colorPrimary, whiteSpace: 'nowrap' }}>
               Сегодня
             </div>
           </div>
@@ -589,11 +603,11 @@ export default function TimelineView({ bdr }: { bdr: string }) {
             {/* SVG: dep arrows + live line */}
             <svg style={{ position: 'absolute', top: 0, left: 0, width: totalW, height: canvasH, pointerEvents: 'none', overflow: 'visible', zIndex: 5 }}>
               <defs>
-                <marker id="tl-arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                  <path d="M0,0 L6,3 L0,6 Z" fill={arrowColor} />
+                <marker id="tl-arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+                  <path d="M0,0 L7,3.5 L0,7 Z" fill={arrowColor} />
                 </marker>
-                <marker id="tl-arr-live" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                  <path d="M0,0 L6,3 L0,6 Z" fill={token.colorPrimary} />
+                <marker id="tl-arr-live" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+                  <path d="M0,0 L7,3.5 L0,7 Z" fill={token.colorPrimary} />
                 </marker>
               </defs>
 
@@ -601,15 +615,24 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                 const fr = allVisible.find((t) => t.id === dep.fromId);
                 const to = allVisible.find((t) => t.id === dep.toId);
                 if (!fr || !to) return null;
+                // exit from right edge of from-bar, enter left edge of to-bar
                 const fx = xOf(fr.end) + DAY_PX;
-                const fy = fr.row * ROW_STRIDE + ROW_H / 2 + ROW_GAP / 2;
+                const fy = fr.row * ROW_STRIDE + ROW_GAP / 2 + ROW_H / 2;
                 const tx = xOf(to.start);
-                const ty = to.row * ROW_STRIDE + ROW_H / 2 + ROW_GAP / 2;
-                // L-shaped routing: right from parent → down/up → left to child
-                const midX = fx < tx ? fx + (tx - fx) / 2 : fx + 16;
+                const ty = to.row * ROW_STRIDE + ROW_GAP / 2 + ROW_H / 2;
+                let d: string;
+                if (tx >= fx + 4) {
+                  // forward: simple L-elbow
+                  const mx = fx + (tx - fx) / 2;
+                  d = `M ${fx} ${fy} H ${mx} V ${ty} H ${tx}`;
+                } else {
+                  // backward dep: route above both bars so arrow still arrives left→right
+                  const gap = 14;
+                  const routeY = Math.min(fy, ty) - ROW_H / 2 - 6;
+                  d = `M ${fx} ${fy} H ${fx + gap} V ${routeY} H ${tx - gap} V ${ty} H ${tx}`;
+                }
                 return (
-                  <path key={i}
-                    d={`M ${fx} ${fy} H ${midX} V ${ty} H ${tx}`}
+                  <path key={i} d={d}
                     fill="none" stroke={arrowColor} strokeWidth={1.5}
                     markerEnd="url(#tl-arr)"
                   />
@@ -618,28 +641,12 @@ export default function TimelineView({ bdr }: { bdr: string }) {
 
               {connectingFrom && cursorPos && (
                 <path
-                  d={`M ${connectingFrom.x} ${connectingFrom.y} C ${connectingFrom.x} ${connectingFrom.y + 24}, ${cursorPos.x} ${cursorPos.y - 24}, ${cursorPos.x} ${cursorPos.y}`}
+                  d={`M ${connectingFrom.x} ${connectingFrom.y} C ${connectingFrom.x + 60},${connectingFrom.y} ${cursorPos.x - 60},${cursorPos.y} ${cursorPos.x},${cursorPos.y}`}
                   fill="none" stroke={token.colorPrimary} strokeWidth={2} strokeDasharray="5 3"
                   markerEnd="url(#tl-arr-live)"
                 />
               )}
             </svg>
-
-            {/* Port dot */}
-            {portPos && hoveredTask && (
-              <div
-                onMouseDown={(e) => handlePortDown(e, hoveredTask.id, portPos.x, portPos.y)}
-                style={{
-                  position: 'absolute',
-                  left: portPos.x - PORT_R, top: portPos.y - PORT_R,
-                  width: PORT_R * 2, height: PORT_R * 2,
-                  borderRadius: '50%', background: '#1a1b22',
-                  border: `2px solid ${token.colorPrimary}`,
-                  cursor: 'crosshair', zIndex: 9,
-                  boxShadow: `0 0 8px ${token.colorPrimary}55`,
-                }}
-              />
-            )}
 
             {/* Task bars */}
             {allVisible.map((t) => {
@@ -665,7 +672,9 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                       position: 'absolute', left: bx, top: by, width: bw, height: ROW_H,
                       background: barBg(t), borderRadius: BAR_R, border: barBorder(t, isTarget),
                       cursor: connectingFrom ? 'crosshair' : 'pointer',
-                      zIndex: 4, display: 'flex', alignItems: 'center', overflow: 'hidden',
+                      zIndex: 4, display: 'flex', alignItems: 'center',
+                      // overflow:visible so the port dot can stick out to the right
+                      overflow: 'visible',
                       outline: isHov && !isTarget ? '1px solid rgba(255,255,255,0.12)' : 'none',
                       outlineOffset: 1,
                     }}
@@ -680,14 +689,12 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                       }}
                     />
 
-                    {/* Bar content */}
+                    {/* Bar content — inner overflow:hidden clips text */}
                     <div style={{ flex: 1, overflow: 'hidden', padding: '0 4px', display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                      {/* Priority dot */}
                       <span style={{
                         width: 7, height: 7, borderRadius: '50%',
                         background: PRIORITY_COLORS[t.priority], flexShrink: 0,
                       }} />
-                      {/* Title */}
                       {bw > 52 && (
                         <span style={{
                           fontSize: 11, fontWeight: 500,
@@ -715,6 +722,32 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                         borderRadius: `0 ${BAR_R}px ${BAR_R}px 0`,
                       }}
                     />
+
+                    {/* Port dot — child of bar so onMouseLeave doesn't fire when hovering it */}
+                    {isHov && !connectingFrom && (
+                      <div
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handlePortDown(e, t.id, bx + bw, by + ROW_H / 2);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          right: -PORT_R,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: PORT_R * 2,
+                          height: PORT_R * 2,
+                          borderRadius: '50%',
+                          background: '#0e0f14',
+                          border: `2.5px solid ${token.colorPrimary}`,
+                          cursor: 'crosshair',
+                          zIndex: 15,
+                          boxShadow: `0 0 10px ${token.colorPrimary}88`,
+                          pointerEvents: 'all',
+                        }}
+                      />
+                    )}
                   </div>
                 </Tooltip>
               );
