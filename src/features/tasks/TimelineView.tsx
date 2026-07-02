@@ -5,7 +5,7 @@ import { FilterOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 // @ts-expect-error – no official types for frappe-gantt
 import Gantt from 'frappe-gantt';
-import 'frappe-gantt/dist/frappe-gantt.css';
+import './frappe-gantt.css';
 import { getEpics, getTasks } from '../../data/api/tasks';
 import type { Task } from '../../data/types';
 
