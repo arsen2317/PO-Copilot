@@ -308,6 +308,8 @@ export default function TimelineView({ bdr }: { bdr: string }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const snapRef = useRef<Record<string, { start?: string; end?: string }>>({});
+  const taskDatesRef = useRef<Record<string, { start?: string; end?: string }>>({});
+  useEffect(() => { taskDatesRef.current = taskDates; }, [taskDates]);
 
   const DAY_PX = DAY_PX_MAP[range];
 
@@ -408,8 +410,8 @@ export default function TimelineView({ bdr }: { bdr: string }) {
       const tx = xOf(t.start);
       const tw = Math.max(DAY_PX * 3, xOf(t.end) - tx + DAY_PX);
       const ty = t.row * ROW_STRIDE + ROW_GAP / 2;
-      // extend hit area downward to cover port dot
-      if (x >= tx && x <= tx + tw && y >= ty - ROW_GAP / 2 && y <= ty + ROW_H + PORT_R * 2) return t.id;
+      // extend hit area rightward to cover port dot
+      if (x >= tx && x <= tx + tw + PORT_R * 2 && y >= ty && y <= ty + ROW_H) return t.id;
     }
     return null;
   }, [allVisible, xOf, DAY_PX]);
@@ -432,7 +434,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
     e.stopPropagation(); e.preventDefault();
     const startClientX = e.clientX;
     const parentCons = edge === 'start' ? getParentConstraint(taskId) : null;
-    snapRef.current = { ...taskDates };
+    snapRef.current = { ...taskDatesRef.current };
 
     const cascade = (next: Record<string, { start?: string; end?: string }>, fromId: string, bizDelta: number) => {
       deps.forEach((dep) => {
@@ -473,7 +475,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
     const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-  }, [allTasks, deps, getParentConstraint, taskDates, DAY_PX]);
+  }, [allTasks, deps, getParentConstraint, DAY_PX]);
 
   // ── Whole bar drag (move) ────────────────────────────────────────────────────
 
@@ -482,7 +484,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
   ) => {
     e.stopPropagation(); e.preventDefault();
     const startClientX = e.clientX;
-    snapRef.current = { ...taskDates };
+    snapRef.current = { ...taskDatesRef.current };
     let didMove = false;
 
     const cascade = (next: Record<string, { start?: string; end?: string }>, fromId: string, bizDelta: number) => {
@@ -524,7 +526,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-  }, [allTasks, deps, getParentConstraint, taskDates, DAY_PX, navigate]);
+  }, [allTasks, deps, getParentConstraint, DAY_PX, navigate]);
 
   // ── Connection drag ─────────────────────────────────────────────────────────
 
@@ -671,7 +673,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
             ))}
 
             {/* SVG: dep arrows + live line */}
-            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', minWidth: totalW, height: canvasH, overflow: 'visible', zIndex: 5 }}>
+            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', minWidth: totalW, height: canvasH, overflow: 'visible', zIndex: 5, pointerEvents: 'none' }}>
               <defs>
                 <marker id="tl-arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
                   <path d="M0,0 L7,3.5 L0,7 Z" fill={arrowColor} />
@@ -691,29 +693,30 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                 const depKey = `${dep.fromId}→${dep.toId}`;
                 const isHovDep = hoveredDepKey === depKey;
 
-                const frBw = Math.max(DAY_PX * 3, xOf(fr.end) - xOf(fr.start) + DAY_PX);
-                const toBw = Math.max(DAY_PX * 3, xOf(to.end) - xOf(to.start) + DAY_PX);
-                // Exit: bottom-center of from-bar
-                const fx = xOf(fr.start) + frBw / 2;
-                const fy = fr.row * ROW_STRIDE + ROW_GAP / 2 + ROW_H;
-                // Enter: top-center of to-bar
-                const tx = xOf(to.start) + toBw / 2;
-                const ty = to.row * ROW_STRIDE + ROW_GAP / 2;
+                const frBx = xOf(fr.start);
+                const frBw = Math.max(DAY_PX * 3, xOf(fr.end) - frBx + DAY_PX);
+                const toBx = xOf(to.start);
+                // Exit: right-center of from-bar
+                const fx = frBx + frBw;
+                const fy = fr.row * ROW_STRIDE + ROW_GAP / 2 + ROW_H / 2;
+                // Enter: left-center of to-bar
+                const tx = toBx;
+                const ty = to.row * ROW_STRIDE + ROW_GAP / 2 + ROW_H / 2;
 
-                // Right-angle elbow: down → horizontal → down
-                const midY = (fy + ty) / 2;
-                const d = `M ${fx} ${fy} L ${fx} ${midY} L ${tx} ${midY} L ${tx} ${ty}`;
+                // Frappe-style elbow: right → vertical → horizontal into target
+                const elbowX = fx + Math.max(DAY_PX * 1.5, (tx - fx) / 2);
+                const d = `M ${fx} ${fy} L ${elbowX} ${fy} L ${elbowX} ${ty} L ${tx} ${ty}`;
 
-                // Delete button at midpoint of horizontal segment
-                const mx = (fx + tx) / 2;
-                const my = midY;
+                // Delete button at midpoint of final horizontal segment
+                const mx = (elbowX + tx) / 2;
+                const my = ty;
 
                 return (
                   <g key={depKey}>
                     {/* Wide invisible hit area */}
                     <path
                       d={d} fill="none" stroke="transparent" strokeWidth={12}
-                      style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
+                      style={{ cursor: 'pointer', pointerEvents: 'visibleStroke' }}
                       onMouseEnter={() => setHoveredDepKey(depKey)}
                       onMouseLeave={() => setHoveredDepKey(null)}
                     />
@@ -729,7 +732,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                     {isHovDep && (
                       <g
                         transform={`translate(${mx}, ${my})`}
-                        style={{ cursor: 'pointer' }}
+                        style={{ cursor: 'pointer', pointerEvents: 'all' }}
                         onMouseEnter={() => setHoveredDepKey(depKey)}
                         onMouseLeave={() => setHoveredDepKey(null)}
                         onClick={(e) => { e.stopPropagation(); removeDep(dep.fromId, dep.toId); setHoveredDepKey(null); }}
@@ -858,15 +861,15 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                       onMouseDown={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
-                        const centerX = bx + bw / 2;
-                        const bottomY = by + ROW_H;
-                        handlePortDown(e, t.id, centerX, bottomY);
+                        const rightX = bx + bw;
+                        const centerY = by + ROW_H / 2;
+                        handlePortDown(e, t.id, rightX, centerY);
                       }}
                       style={{
                         position: 'absolute',
-                        bottom: -PORT_R,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
+                        top: '50%',
+                        right: -PORT_R,
+                        transform: 'translateY(-50%)',
                         width: PORT_R * 2,
                         height: PORT_R * 2,
                         borderRadius: '50%',
