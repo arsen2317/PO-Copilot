@@ -44,7 +44,7 @@ jobs:
             cd /var/www/po-copilot
 
             # Write env file from secrets
-            cat > .env.local << 'ENVEOF'
+            cat > .env.local << ENVEOF
             ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
             APP_LOGIN=${{ secrets.APP_LOGIN }}
             APP_PASSWORD=${{ secrets.APP_PASSWORD }}
@@ -52,12 +52,15 @@ jobs:
             BRAVE_SEARCH_API_KEY=${{ secrets.BRAVE_SEARCH_API_KEY }}
             ENVEOF
 
-            # Pull latest code (scripts, configs)
+            # Pull latest code
             git fetch origin main
             git checkout origin/main -- scripts/ ecosystem.config.cjs package.json package-lock.json
 
-            # Install/update dependencies
-            npm ci --omit=dev --ignore-scripts || npm ci --ignore-scripts
+            # Install all dependencies (including devDependencies for tsx)
+            npm ci --ignore-scripts
+
+            # Ensure tsx is installed globally
+            npm install -g tsx
 
             # Restart or start PM2 process
             pm2 describe po-copilot-api > /dev/null 2>&1 \
