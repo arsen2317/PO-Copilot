@@ -447,20 +447,6 @@ export default function DashboardPage() {
           </Tooltip>
           <button
             style={{
-              padding: '5px 14px',
-              background: 'transparent',
-              border: BDR,
-              borderRadius: 6,
-              cursor: 'pointer',
-              color: token.colorText,
-              fontSize: 13,
-              fontFamily: 'inherit',
-            }}
-          >
-            Поделиться
-          </button>
-          <button
-            style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,

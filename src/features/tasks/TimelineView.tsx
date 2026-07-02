@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Modal, Select, Skeleton, Tag, Tooltip, theme } from 'antd';
-import { ClockCircleOutlined, DeleteOutlined, FilterOutlined, LinkOutlined, PlusOutlined } from '@ant-design/icons';
+import { Select, Skeleton, Tooltip, theme } from 'antd';
+import { FilterOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { getEpics, getTasks } from '../../data/api/tasks';
-import type { Task, TaskPriority } from '../../data/types';
+import type { Task, TaskStatus } from '../../data/types';
 
 const { useToken } = theme;
 
@@ -31,19 +31,36 @@ const VIEW_OPTIONS = [
   { value: 'year' as ViewRange, label: 'Год' },
 ];
 
-const PRIORITY_COLORS: Record<TaskPriority, string> = {
-  critical: '#ff4d4f', high: '#fa8c16', medium: '#1668dc', low: '#555',
+const DAY_PX_MAP: Record<ViewRange, number> = {
+  sprint: 32,
+  month: 26,
+  quarter: 18,
+  halfyear: 12,
+  year: 8,
 };
-const PRIORITY_LABEL: Record<TaskPriority, string> = {
-  critical: 'Критический', high: 'Высокий', medium: 'Средний', low: 'Низкий',
+
+const STATUS_COLORS: Record<TaskStatus, string> = {
+  backlog: '#555',
+  todo: '#1668dc',
+  in_progress: '#1677ff',
+  review: '#d89614',
+  done: '#49aa19',
 };
+
+const STATUS_LABEL: Record<TaskStatus, string> = {
+  backlog: 'Бэклог',
+  todo: 'К выполнению',
+  in_progress: 'В работе',
+  review: 'На ревью',
+  done: 'Готово',
+};
+
 const AVATAR_COLORS: Record<string, string> = {
   u1: '#1668dc', u2: '#49aa19', u3: '#d89614', u4: '#722ed1',
   u5: '#eb2f96', u6: '#13c2c2', u7: '#fa8c16', u8: '#c41d7f',
   u9: '#0958d9', u10: '#389e0d', u11: '#08979c',
 };
 
-const DAY_PX = 32;
 const ROW_H = 36;
 const ROW_GAP = 10;
 const ROW_STRIDE = ROW_H + ROW_GAP;
@@ -54,7 +71,7 @@ const HANDLE_W = 7;
 const PORT_R = 7;
 const TODAY = new Date('2026-07-02');
 
-// ─── Calendar helpers (business days only) ────────────────────────────────────
+// ─── Calendar helpers ─────────────────────────────────────────────────────────
 
 function isWeekend(d: Date): boolean { const w = d.getDay(); return w === 0 || w === 6; }
 
@@ -69,7 +86,6 @@ function addCal(d: Date, n: number): Date { const r = new Date(d); r.setDate(r.g
 
 function addBiz(d: Date, n: number): Date {
   const r = new Date(d);
-  // snap to weekday first
   while (isWeekend(r)) r.setDate(r.getDate() + 1);
   if (n === 0) return r;
   const step = n > 0 ? 1 : -1;
@@ -96,7 +112,7 @@ function rangeWindow(r: ViewRange): [Date, Date] {
   }
 }
 
-function buildTicks(bizDays: Date[], range: ViewRange) {
+function buildTicks(bizDays: Date[], range: ViewRange, dayPx: number) {
   let step = 1;
   if (range === 'quarter') step = 5;
   else if (range === 'halfyear') step = 9;
@@ -106,26 +122,26 @@ function buildTicks(bizDays: Date[], range: ViewRange) {
     .map((d, i) => ({ d, i }))
     .filter(({ i }) => i % step === 0)
     .map(({ d, i }) => ({
-      x: i * DAY_PX,
+      x: i * dayPx,
       label: d.toLocaleDateString('ru', { day: 'numeric', month: 'short' }),
     }));
 }
 
-function buildMonthBands(bizDays: Date[]): { x: number; label: string; width: number }[] {
+function buildMonthBands(bizDays: Date[], dayPx: number): { x: number; label: string; width: number }[] {
   const bands: { x: number; label: string; width: number }[] = [];
   let prevMonth = -1;
   bizDays.forEach((d, i) => {
     if (d.getMonth() !== prevMonth) {
-      if (bands.length > 0) bands[bands.length - 1]!.width = i * DAY_PX - bands[bands.length - 1]!.x;
-      bands.push({ x: i * DAY_PX, label: d.toLocaleDateString('ru', { month: 'long', year: 'numeric' }), width: 0 });
+      if (bands.length > 0) bands[bands.length - 1]!.width = i * dayPx - bands[bands.length - 1]!.x;
+      bands.push({ x: i * dayPx, label: d.toLocaleDateString('ru', { month: 'long', year: 'numeric' }), width: 0 });
       prevMonth = d.getMonth();
     }
   });
-  if (bands.length > 0) bands[bands.length - 1]!.width = bizDays.length * DAY_PX - bands[bands.length - 1]!.x;
+  if (bands.length > 0) bands[bands.length - 1]!.width = bizDays.length * dayPx - bands[bands.length - 1]!.x;
   return bands;
 }
 
-// ─── Row assignment: 1 task per row, dep-connected tasks grouped ──────────────
+// ─── Row assignment ───────────────────────────────────────────────────────────
 
 function assignRows(tasks: TimelineTask[], deps: Dep[]): TimelineTask[] {
   if (!tasks.length) return [];
@@ -160,6 +176,76 @@ function assignRows(tasks: TimelineTask[], deps: Dep[]): TimelineTask[] {
   return tasks.map((t) => ({ ...t, row: rmap.get(t.id) ?? 0 }));
 }
 
+// ─── Topological date enforcement ─────────────────────────────────────────────
+
+function resolveDatesTopo(
+  tasks: Task[],
+  deps: Dep[],
+  taskDates: Record<string, { start?: string; end?: string }>,
+): Map<string, { start: Date; end: Date }> {
+  // Initial dates from overrides or fixture
+  const dateMap = new Map<string, { start: Date; end: Date }>();
+  tasks.forEach((t) => {
+    const ov = taskDates[t.id];
+    const startStr = ov?.start ?? t.startDate ?? t.createdAt ?? '2026-07-01';
+    const endStr = ov?.end ?? t.deadline ?? toStr(addCal(parseDate(startStr), 7));
+    let s = parseDate(startStr), e = parseDate(endStr);
+    if (s > e) { const tmp = s; s = e; e = tmp; }
+    dateMap.set(t.id, { start: s, end: e });
+  });
+
+  // Build adjacency: parent → [children]
+  const children = new Map<string, string[]>();
+  const parentCount = new Map<string, number>();
+  tasks.forEach((t) => { children.set(t.id, []); parentCount.set(t.id, 0); });
+  deps.forEach((d) => {
+    if (children.has(d.fromId) && children.has(d.toId)) {
+      children.get(d.fromId)!.push(d.toId);
+      parentCount.set(d.toId, (parentCount.get(d.toId) ?? 0) + 1);
+    }
+  });
+
+  // Kahn's topological sort
+  const queue: string[] = [];
+  tasks.forEach((t) => { if ((parentCount.get(t.id) ?? 0) === 0) queue.push(t.id); });
+  const order: string[] = [];
+  const remaining = new Map(parentCount);
+  const queued = new Set<string>(queue);
+  while (queue.length) {
+    const id = queue.shift()!;
+    order.push(id);
+    for (const childId of (children.get(id) ?? [])) {
+      const cnt = (remaining.get(childId) ?? 1) - 1;
+      remaining.set(childId, cnt);
+      if (cnt === 0 && !queued.has(childId)) { queued.add(childId); queue.push(childId); }
+    }
+  }
+  // Append any remaining (cycles)
+  tasks.forEach((t) => { if (!queued.has(t.id)) order.push(t.id); });
+
+  // Enforce parent-before-child
+  order.forEach((id) => {
+    const parentDeps = deps.filter((d) => d.toId === id && dateMap.has(d.fromId));
+    if (!parentDeps.length) return;
+    let maxParentEnd: Date | null = null;
+    parentDeps.forEach((d) => {
+      const pd = dateMap.get(d.fromId);
+      if (pd && (!maxParentEnd || pd.end > maxParentEnd)) maxParentEnd = pd.end;
+    });
+    if (!maxParentEnd) return;
+    const maxEnd = maxParentEnd as Date;
+    const cur = dateMap.get(id)!;
+    if (cur.start.getTime() <= maxEnd.getTime()) {
+      const durMs = cur.end.getTime() - cur.start.getTime();
+      const newStart = addBiz(maxEnd, 1);
+      const newEnd = addCal(newStart, Math.max(1, Math.round(durMs / 86400000)));
+      dateMap.set(id, { start: newStart, end: newEnd });
+    }
+  });
+
+  return dateMap;
+}
+
 // ─── Small components ─────────────────────────────────────────────────────────
 
 function MiniAvatar({ user, size = 22 }: { user: { id: string; name: string; avatar?: string }; size?: number }) {
@@ -180,9 +266,9 @@ function TooltipCard({ task }: { task: TimelineTask }) {
   return (
     <div style={{ fontSize: 12, lineHeight: 1.6, minWidth: 200, maxWidth: 280 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: PRIORITY_COLORS[task.priority], flexShrink: 0 }} />
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: STATUS_COLORS[task.status], flexShrink: 0 }} />
         <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>{task.id}</span>
-        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginLeft: 'auto' }}>{PRIORITY_LABEL[task.priority]}</span>
+        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginLeft: 'auto' }}>{STATUS_LABEL[task.status]}</span>
       </div>
       <div style={{ fontWeight: 600, color: '#fff', marginBottom: 6, lineHeight: 1.4 }}>{task.title}</div>
       {task.assignee && (
@@ -192,7 +278,6 @@ function TooltipCard({ task }: { task: TimelineTask }) {
         </div>
       )}
       <div style={{ display: 'flex', gap: 6, color: 'rgba(255,255,255,0.45)', fontSize: 11, alignItems: 'center' }}>
-        <ClockCircleOutlined style={{ fontSize: 10 }} />
         <span>{task.start.toLocaleDateString('ru', { day: 'numeric', month: 'short' })}</span>
         <span>→</span>
         <span>{task.end.toLocaleDateString('ru', { day: 'numeric', month: 'short' })}</span>
@@ -200,52 +285,6 @@ function TooltipCard({ task }: { task: TimelineTask }) {
       </div>
       {task.isOtherTeam && <div style={{ marginTop: 4, color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>Другая команда</div>}
     </div>
-  );
-}
-
-function ManageDepsModal({ open, onClose, tasks, deps, onChange }: {
-  open: boolean; onClose: () => void; tasks: Task[]; deps: Dep[]; onChange: (d: Dep[]) => void;
-}) {
-  const { token } = useToken();
-  const [fromId, setFromId] = useState<string | null>(null);
-  const [toId, setToId] = useState<string | null>(null);
-  const opts = tasks.map((t) => ({ value: t.id, label: `${t.id} — ${t.title.slice(0, 50)}` }));
-  const add = () => {
-    if (!fromId || !toId || fromId === toId) return;
-    if (deps.some((d) => d.fromId === fromId && d.toId === toId)) return;
-    onChange([...deps, { fromId, toId }]);
-    setFromId(null); setToId(null);
-  };
-  return (
-    <Modal open={open} title="Управление зависимостями" onCancel={onClose} footer={null} width={640}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Select placeholder="Блокирующая (FROM)" showSearch optionFilterProp="label" style={{ flex: 1 }} options={opts} value={fromId} onChange={setFromId} />
-          <span style={{ color: token.colorTextTertiary }}>→</span>
-          <Select placeholder="Зависимая (TO)" showSearch optionFilterProp="label" style={{ flex: 1 }} options={opts} value={toId} onChange={setToId} />
-          <Button icon={<PlusOutlined />} type="primary" onClick={add} disabled={!fromId || !toId} />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {deps.length === 0 && (
-            <div style={{ color: token.colorTextTertiary, fontSize: 13, textAlign: 'center', padding: '20px 0' }}>Зависимостей нет</div>
-          )}
-          {deps.map((dep, i) => {
-            const fr = tasks.find((t) => t.id === dep.fromId);
-            const to = tasks.find((t) => t.id === dep.toId);
-            return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: token.colorFillSecondary, borderRadius: 6 }}>
-                <Tag style={{ margin: 0, fontFamily: 'monospace', fontSize: 11 }}>{dep.fromId}</Tag>
-                <span style={{ fontSize: 12, color: token.colorTextSecondary, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fr?.title.slice(0, 30)}</span>
-                <span style={{ color: token.colorTextTertiary }}>→</span>
-                <Tag style={{ margin: 0, fontFamily: 'monospace', fontSize: 11 }}>{dep.toId}</Tag>
-                <span style={{ fontSize: 12, color: token.colorTextSecondary, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{to?.title.slice(0, 30)}</span>
-                <Button size="small" type="text" danger icon={<DeleteOutlined />} onClick={() => onChange(deps.filter((_, j) => j !== i))} />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </Modal>
   );
 }
 
@@ -259,17 +298,20 @@ export default function TimelineView({ bdr }: { bdr: string }) {
   const [selectedEpicId, setSelectedEpicId] = useState('EPIC-6');
   const [extraDeps, setExtraDeps] = useState<Dep[]>([]);
   const [removedDeps, setRemovedDeps] = useState<Set<string>>(new Set());
-  const [depsModalOpen, setDepsModalOpen] = useState(false);
   const [taskDates, setTaskDates] = useState<Record<string, { start?: string; end?: string }>>({});
   const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
   const [connectingFrom, setConnectingFrom] = useState<{ taskId: string; x: number; y: number } | null>(null);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [dragTargetId, setDragTargetId] = useState<string | null>(null);
+  const [hoveredDepKey, setHoveredDepKey] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  // Snapshot of taskDates at resize mousedown (to always compute from original)
   const snapRef = useRef<Record<string, { start?: string; end?: string }>>({});
+  const taskDatesRef = useRef<Record<string, { start?: string; end?: string }>>({});
+  useEffect(() => { taskDatesRef.current = taskDates; }, [taskDates]);
+
+  const DAY_PX = DAY_PX_MAP[range];
 
   const { data: allTasks = [], isLoading: tl } = useQuery({ queryKey: ['tasks'], queryFn: getTasks });
   const { data: epics = [], isLoading: el } = useQuery({ queryKey: ['epics'], queryFn: getEpics });
@@ -290,38 +332,37 @@ export default function TimelineView({ bdr }: { bdr: string }) {
     return combined.filter((d) => { const k = key(d); if (seen.has(k)) return false; seen.add(k); return true; });
   }, [fixturedDeps, extraDeps, removedDeps]);
 
-  const setDeps = useCallback((nd: Dep[]) => {
-    const fk = new Set(fixturedDeps.map((d) => `${d.fromId}→${d.toId}`));
-    setExtraDeps(nd.filter((d) => !fk.has(`${d.fromId}→${d.toId}`)));
-    setRemovedDeps(new Set(
-      fixturedDeps.filter((d) => !nd.some((x) => x.fromId === d.fromId && x.toId === d.toId))
-        .map((d) => `${d.fromId}→${d.toId}`),
-    ));
-  }, [fixturedDeps]);
-
   const addDep = useCallback((dep: Dep) => {
     if (deps.some((d) => d.fromId === dep.fromId && d.toId === dep.toId)) return;
     setExtraDeps((prev) => [...prev, dep]);
   }, [deps]);
 
+  const removeDep = useCallback((fromId: string, toId: string) => {
+    const key = `${fromId}→${toId}`;
+    const isFix = fixturedDeps.some((d) => `${d.fromId}→${d.toId}` === key);
+    if (isFix) {
+      setRemovedDeps((prev) => new Set([...prev, key]));
+    } else {
+      setExtraDeps((prev) => prev.filter((d) => `${d.fromId}→${d.toId}` !== key));
+    }
+  }, [fixturedDeps]);
+
   // ── Calendar ────────────────────────────────────────────────────────────────
 
   const selectedEpic = epics.find((e) => e.id === selectedEpicId);
   const epicTeamId = selectedEpic?.teamId ?? 'team-debit';
-  const epicColor = selectedEpic?.color ?? token.colorPrimary;
 
   const [rangeStart, rangeEnd] = useMemo(() => rangeWindow(range), [range]);
   const bizDays = useMemo(() => buildBizDays(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
   const totalW = Math.max(bizDays.length * DAY_PX, 400);
-  const ticks = useMemo(() => buildTicks(bizDays, range), [bizDays, range]);
-  const monthBands = useMemo(() => buildMonthBands(bizDays), [bizDays]);
+  const ticks = useMemo(() => buildTicks(bizDays, range, DAY_PX), [bizDays, range, DAY_PX]);
+  const monthBands = useMemo(() => buildMonthBands(bizDays, DAY_PX), [bizDays, DAY_PX]);
 
-  // Maps date → pixel x (left edge of that business day column)
   const xOf = useCallback((d: Date): number => {
     const s = toStr(d);
     const idx = bizDays.findIndex((bd) => toStr(bd) >= s);
     return (idx === -1 ? bizDays.length : idx) * DAY_PX;
-  }, [bizDays]);
+  }, [bizDays, DAY_PX]);
 
   const todayX = xOf(TODAY);
 
@@ -339,17 +380,20 @@ export default function TimelineView({ bdr }: { bdr: string }) {
     return allTasks.filter((t) => ids.has(t.id));
   }, [allTasks, deps, epicTaskIds]);
 
-  const resolveTask = useCallback((t: Task): TimelineTask => {
-    const ov = taskDates[t.id];
-    const startStr = ov?.start ?? t.startDate ?? t.createdAt ?? '2026-07-01';
-    const endStr = ov?.end ?? t.deadline ?? toStr(addCal(parseDate(startStr), 7));
-    const s = parseDate(startStr), e = parseDate(endStr);
-    return { ...t, start: s <= e ? s : e, end: s <= e ? e : s, row: 0, isOtherTeam: t.teamId !== epicTeamId };
-  }, [taskDates, epicTeamId]);
+  const visibleTasks = useMemo(() => [...epicTasks, ...crossTeamTasks], [epicTasks, crossTeamTasks]);
 
-  const allUnranked = useMemo(
-    () => [...epicTasks, ...crossTeamTasks].map(resolveTask),
-    [epicTasks, crossTeamTasks, resolveTask],
+  // Resolve dates with topological enforcement
+  const resolvedDates = useMemo(
+    () => resolveDatesTopo(visibleTasks, deps, taskDates),
+    [visibleTasks, deps, taskDates],
+  );
+
+  const allUnranked = useMemo<TimelineTask[]>(
+    () => visibleTasks.map((t) => {
+      const d = resolvedDates.get(t.id) ?? { start: parseDate(t.startDate ?? t.createdAt ?? '2026-07-01'), end: parseDate(t.deadline ?? toStr(addCal(parseDate(t.startDate ?? t.createdAt ?? '2026-07-01'), 7))) };
+      return { ...t, start: d.start, end: d.end, row: 0, isOtherTeam: t.teamId !== epicTeamId };
+    }),
+    [visibleTasks, resolvedDates, epicTeamId],
   );
 
   const allVisible = useMemo(() => assignRows(allUnranked, deps), [allUnranked, deps]);
@@ -359,7 +403,20 @@ export default function TimelineView({ bdr }: { bdr: string }) {
   const numRows = allVisible.length > 0 ? Math.max(...allVisible.map((t) => t.row)) + 1 : 1;
   const canvasH = numRows * ROW_STRIDE + ROW_GAP * 2;
 
-  // ── Parent end constraint for child start ───────────────────────────────────
+  // ── Hit test ────────────────────────────────────────────────────────────────
+
+  const findTaskAt = useCallback((x: number, y: number): string | null => {
+    for (const t of allVisible) {
+      const tx = xOf(t.start);
+      const tw = Math.max(DAY_PX * 3, xOf(t.end) - tx + DAY_PX);
+      const ty = t.row * ROW_STRIDE + ROW_GAP / 2;
+      // extend hit area rightward to cover port dot
+      if (x >= tx && x <= tx + tw + PORT_R * 2 && y >= ty && y <= ty + ROW_H) return t.id;
+    }
+    return null;
+  }, [allVisible, xOf, DAY_PX]);
+
+  // ── Resize (start or end edge) ──────────────────────────────────────────────
 
   const getParentConstraint = useCallback((taskId: string): Date | null => {
     let max: Date | null = null;
@@ -371,38 +428,15 @@ export default function TimelineView({ bdr }: { bdr: string }) {
     return max;
   }, [deps, allVisible]);
 
-  // ── Hit test ────────────────────────────────────────────────────────────────
-
-  const findTaskAt = useCallback((x: number, y: number): string | null => {
-    for (const t of allVisible) {
-      const tx = xOf(t.start);
-      const tw = Math.max(DAY_PX, xOf(t.end) - tx + DAY_PX);
-      const ty = t.row * ROW_STRIDE;
-      if (x >= tx && x <= tx + tw && y >= ty && y <= ty + ROW_STRIDE) return t.id;
-    }
-    return null;
-  }, [allVisible, xOf]);
-
-  // ── Resize (start or end edge) ──────────────────────────────────────────────
-
   const handleResizeDown = useCallback((
-    e: React.MouseEvent,
-    taskId: string,
-    edge: 'start' | 'end',
-    origStart: Date,
-    origEnd: Date,
+    e: React.MouseEvent, taskId: string, edge: 'start' | 'end', origStart: Date, origEnd: Date,
   ) => {
     e.stopPropagation(); e.preventDefault();
     const startClientX = e.clientX;
     const parentCons = edge === 'start' ? getParentConstraint(taskId) : null;
-    // Capture snapshot of all dates at this moment
-    snapRef.current = { ...taskDates };
+    snapRef.current = { ...taskDatesRef.current };
 
-    const cascade = (
-      next: Record<string, { start?: string; end?: string }>,
-      fromId: string,
-      bizDelta: number,
-    ) => {
+    const cascade = (next: Record<string, { start?: string; end?: string }>, fromId: string, bizDelta: number) => {
       deps.forEach((dep) => {
         if (dep.fromId !== fromId) return;
         const child = allTasks.find((t) => t.id === dep.toId);
@@ -410,10 +444,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
         const base = snapRef.current;
         const cs = base[dep.toId]?.start ?? child.startDate ?? child.createdAt ?? '2026-07-01';
         const ce = base[dep.toId]?.end ?? child.deadline ?? toStr(addCal(parseDate(cs), 7));
-        next[dep.toId] = {
-          start: toStr(addBiz(parseDate(cs), bizDelta)),
-          end: toStr(addBiz(parseDate(ce), bizDelta)),
-        };
+        next[dep.toId] = { start: toStr(addBiz(parseDate(cs), bizDelta)), end: toStr(addBiz(parseDate(ce), bizDelta)) };
         cascade(next, dep.toId, bizDelta);
       });
     };
@@ -441,13 +472,61 @@ export default function TimelineView({ bdr }: { bdr: string }) {
       });
     };
 
+    const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [allTasks, deps, getParentConstraint, DAY_PX]);
+
+  // ── Whole bar drag (move) ────────────────────────────────────────────────────
+
+  const handleBarMoveDown = useCallback((
+    e: React.MouseEvent, taskId: string, origStart: Date, origEnd: Date,
+  ) => {
+    e.stopPropagation(); e.preventDefault();
+    const startClientX = e.clientX;
+    snapRef.current = { ...taskDatesRef.current };
+    let didMove = false;
+
+    const cascade = (next: Record<string, { start?: string; end?: string }>, fromId: string, bizDelta: number) => {
+      deps.forEach((dep) => {
+        if (dep.fromId !== fromId) return;
+        const child = allTasks.find((t) => t.id === dep.toId);
+        if (!child) return;
+        const base = snapRef.current;
+        const cs = base[dep.toId]?.start ?? child.startDate ?? child.createdAt ?? '2026-07-01';
+        const ce = base[dep.toId]?.end ?? child.deadline ?? toStr(addCal(parseDate(cs), 7));
+        next[dep.toId] = { start: toStr(addBiz(parseDate(cs), bizDelta)), end: toStr(addBiz(parseDate(ce), bizDelta)) };
+        cascade(next, dep.toId, bizDelta);
+      });
+    };
+
+    const onMove = (me: MouseEvent) => {
+      const bizDelta = Math.round((me.clientX - startClientX) / DAY_PX);
+      if (!didMove && Math.abs(me.clientX - startClientX) > 3) didMove = true;
+      if (!didMove) return;
+      setTaskDates(() => {
+        const next = { ...snapRef.current };
+        const newStart = addBiz(origStart, bizDelta);
+        const newEnd = addBiz(origEnd, bizDelta);
+        const parentCons = getParentConstraint(taskId);
+        if (parentCons && newStart < parentCons) return snapRef.current;
+        next[taskId] = { start: toStr(newStart), end: toStr(newEnd) };
+        cascade(next, taskId, bizDelta);
+        return next;
+      });
+    };
+
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      if (!didMove) {
+        // treat as click → navigate
+        void navigate(`/tasks/${taskId}`);
+      }
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-  }, [allTasks, deps, getParentConstraint, taskDates]);
+  }, [allTasks, deps, getParentConstraint, DAY_PX, navigate]);
 
   // ── Connection drag ─────────────────────────────────────────────────────────
 
@@ -458,29 +537,34 @@ export default function TimelineView({ bdr }: { bdr: string }) {
   }, []);
 
   const handleCanvasMove = useCallback((e: React.MouseEvent) => {
-    if (!connectingFrom || !canvasRef.current) return;
+    if (!canvasRef.current) return;
     const r = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - r.left, y = e.clientY - r.top;
-    setCursorPos({ x, y });
-    setDragTargetId(findTaskAt(x, y));
+    if (connectingFrom) {
+      setCursorPos({ x, y });
+      setDragTargetId(findTaskAt(x, y));
+    } else {
+      setHoveredBarId(findTaskAt(x, y));
+    }
   }, [connectingFrom, findTaskAt]);
 
-  const handleCanvasUp = useCallback((e: React.MouseEvent) => {
-    if (!connectingFrom || !canvasRef.current) return;
-    const r = canvasRef.current.getBoundingClientRect();
-    const tid = findTaskAt(e.clientX - r.left, e.clientY - r.top);
-    if (tid && tid !== connectingFrom.taskId) addDep({ fromId: connectingFrom.taskId, toId: tid });
-    setConnectingFrom(null); setCursorPos(null); setDragTargetId(null);
-  }, [connectingFrom, findTaskAt, addDep]);
 
   useEffect(() => {
-    if (!connectingFrom) return;
-    const cancel = () => { setConnectingFrom(null); setCursorPos(null); setDragTargetId(null); };
-    const onKey = (ev: KeyboardEvent) => { if (ev.key === 'Escape') cancel(); };
-    window.addEventListener('mouseup', cancel);
+    if (!connectingFrom || !canvasRef.current) return;
+    const finish = (e: MouseEvent) => {
+      if (!canvasRef.current) return;
+      const r = canvasRef.current.getBoundingClientRect();
+      const tid = findTaskAt(e.clientX - r.left, e.clientY - r.top);
+      if (tid && tid !== connectingFrom.taskId) addDep({ fromId: connectingFrom.taskId, toId: tid });
+      setConnectingFrom(null); setCursorPos(null); setDragTargetId(null);
+    };
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') { setConnectingFrom(null); setCursorPos(null); setDragTargetId(null); }
+    };
+    window.addEventListener('mouseup', finish);
     window.addEventListener('keydown', onKey);
-    return () => { window.removeEventListener('mouseup', cancel); window.removeEventListener('keydown', onKey); };
-  }, [connectingFrom]);
+    return () => { window.removeEventListener('mouseup', finish); window.removeEventListener('keydown', onKey); };
+  }, [connectingFrom, findTaskAt, addDep]);
 
   // Scroll to today
   useEffect(() => {
@@ -511,12 +595,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
 
   const epicOptions = epics.map((e) => ({
     value: e.id,
-    label: (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: e.color, display: 'inline-block', flexShrink: 0 }} />
-        {e.name}
-      </div>
-    ),
+    label: e.name,
   }));
 
   return (
@@ -528,17 +607,13 @@ export default function TimelineView({ bdr }: { bdr: string }) {
         <Select value={selectedEpicId} onChange={setSelectedEpicId} style={{ width: 260 }} size="small" options={epicOptions} />
         <Select value={range} onChange={(v) => setRange(v as ViewRange)} style={{ width: 160 }} size="small" options={VIEW_OPTIONS} />
         <div style={{ flex: 1 }} />
-        <Button size="small" icon={<LinkOutlined />} onClick={() => setDepsModalOpen(true)} style={{ fontSize: 12 }}>
-          Зависимости
-        </Button>
       </div>
 
-      {/* Epic pill */}
+      {/* Epic info (clean, no background/dot) */}
       {selectedEpic && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '5px 12px', background: `${epicColor}10`, borderRadius: 8, border: `1px solid ${epicColor}25`, flexShrink: 0 }}>
-          <span style={{ width: 9, height: 9, borderRadius: '50%', background: epicColor, flexShrink: 0 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexShrink: 0 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: token.colorText }}>{selectedEpic.name}</span>
-          <span style={{ fontSize: 12, color: token.colorTextTertiary, marginLeft: 'auto' }}>
+          <span style={{ fontSize: 12, color: token.colorTextTertiary }}>
             {epicTasks.length} задач{crossTeamTasks.length > 0 ? ` · ${crossTeamTasks.length} из других команд` : ''}
           </span>
         </div>
@@ -550,11 +625,10 @@ export default function TimelineView({ bdr }: { bdr: string }) {
 
       {/* Scroll container */}
       <div ref={scrollRef} style={{ flex: 1, overflow: 'auto', borderRadius: 10, border: bdr, background: '#13141a', minHeight: 0 }}>
-        <div style={{ width: totalW, minWidth: totalW, position: 'relative' }}>
+        <div style={{ minWidth: totalW, width: '100%', position: 'relative' }}>
 
           {/* Sticky header */}
           <div style={{ height: HEADER_H, position: 'sticky', top: 0, zIndex: 10, background: '#13141a', borderBottom: bdr, pointerEvents: 'none' }}>
-            {/* Month band (upper row) */}
             {monthBands.map((band, i) => (
               <div key={i} style={{
                 position: 'absolute', left: band.x, top: 0, width: band.width, height: MONTH_ROW_H,
@@ -567,7 +641,6 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                 {band.label}
               </div>
             ))}
-            {/* Day/week ticks (lower row) */}
             {ticks.map((tick, i) => (
               <div key={i} style={{
                 position: 'absolute', left: tick.x + 4, top: MONTH_ROW_H + 4,
@@ -586,8 +659,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
             ref={canvasRef}
             style={{ position: 'relative', height: canvasH, userSelect: 'none', cursor: connectingFrom ? 'crosshair' : 'default' }}
             onMouseMove={handleCanvasMove}
-            onMouseUp={handleCanvasUp}
-            onMouseLeave={() => { if (!connectingFrom) setHoveredBarId(null); }}
+            onMouseLeave={() => setHoveredBarId(null)}
           >
             {/* Today line */}
             <div style={{ position: 'absolute', top: 0, left: todayX, width: 1, height: canvasH, background: token.colorPrimary, opacity: 0.5, zIndex: 3, pointerEvents: 'none' }} />
@@ -601,41 +673,79 @@ export default function TimelineView({ bdr }: { bdr: string }) {
             ))}
 
             {/* SVG: dep arrows + live line */}
-            <svg style={{ position: 'absolute', top: 0, left: 0, width: totalW, height: canvasH, pointerEvents: 'none', overflow: 'visible', zIndex: 5 }}>
+            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', minWidth: totalW, height: canvasH, overflow: 'visible', zIndex: 5, pointerEvents: 'none' }}>
               <defs>
                 <marker id="tl-arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
                   <path d="M0,0 L7,3.5 L0,7 Z" fill={arrowColor} />
+                </marker>
+                <marker id="tl-arr-hov" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+                  <path d="M0,0 L7,3.5 L0,7 Z" fill="rgba(255,80,80,0.8)" />
                 </marker>
                 <marker id="tl-arr-live" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
                   <path d="M0,0 L7,3.5 L0,7 Z" fill={token.colorPrimary} />
                 </marker>
               </defs>
 
-              {visibleDeps.map((dep, i) => {
+              {visibleDeps.map((dep) => {
                 const fr = allVisible.find((t) => t.id === dep.fromId);
                 const to = allVisible.find((t) => t.id === dep.toId);
                 if (!fr || !to) return null;
-                // exit from right edge of from-bar, enter left edge of to-bar
-                const fx = xOf(fr.end) + DAY_PX;
+                const depKey = `${dep.fromId}→${dep.toId}`;
+                const isHovDep = hoveredDepKey === depKey;
+
+                const frBx = xOf(fr.start);
+                const frBw = Math.max(DAY_PX * 3, xOf(fr.end) - frBx + DAY_PX);
+                const toBx = xOf(to.start);
+                // Exit: right-center of from-bar
+                const fx = frBx + frBw;
                 const fy = fr.row * ROW_STRIDE + ROW_GAP / 2 + ROW_H / 2;
-                const tx = xOf(to.start);
+                // Enter: left-center of to-bar
+                const tx = toBx;
                 const ty = to.row * ROW_STRIDE + ROW_GAP / 2 + ROW_H / 2;
-                let d: string;
-                if (tx >= fx + 4) {
-                  // forward: simple L-elbow
-                  const mx = fx + (tx - fx) / 2;
-                  d = `M ${fx} ${fy} H ${mx} V ${ty} H ${tx}`;
-                } else {
-                  // backward dep: route above both bars so arrow still arrives left→right
-                  const gap = 14;
-                  const routeY = Math.min(fy, ty) - ROW_H / 2 - 6;
-                  d = `M ${fx} ${fy} H ${fx + gap} V ${routeY} H ${tx - gap} V ${ty} H ${tx}`;
-                }
+
+                // Frappe-style elbow: right → vertical → horizontal into target
+                const elbowX = fx + Math.max(DAY_PX * 1.5, (tx - fx) / 2);
+                const d = `M ${fx} ${fy} L ${elbowX} ${fy} L ${elbowX} ${ty} L ${tx} ${ty}`;
+
+                // Delete button at midpoint of final horizontal segment
+                const mx = (elbowX + tx) / 2;
+                const my = ty;
+
                 return (
-                  <path key={i} d={d}
-                    fill="none" stroke={arrowColor} strokeWidth={1.5}
-                    markerEnd="url(#tl-arr)"
-                  />
+                  <g key={depKey}>
+                    {/* Wide invisible hit area */}
+                    <path
+                      d={d} fill="none" stroke="transparent" strokeWidth={12}
+                      style={{ cursor: 'pointer', pointerEvents: 'visibleStroke' }}
+                      onMouseEnter={() => setHoveredDepKey(depKey)}
+                      onMouseLeave={() => setHoveredDepKey(null)}
+                    />
+                    {/* Visible arrow */}
+                    <path
+                      d={d} fill="none"
+                      stroke={isHovDep ? 'rgba(255,80,80,0.6)' : arrowColor}
+                      strokeWidth={isHovDep ? 2 : 1.5}
+                      markerEnd={isHovDep ? 'url(#tl-arr-hov)' : 'url(#tl-arr)'}
+                      style={{ pointerEvents: 'none' }}
+                    />
+                    {/* Delete × button on hover */}
+                    {isHovDep && (
+                      <g
+                        transform={`translate(${mx}, ${my})`}
+                        style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                        onMouseEnter={() => setHoveredDepKey(depKey)}
+                        onMouseLeave={() => setHoveredDepKey(null)}
+                        onClick={(e) => { e.stopPropagation(); removeDep(dep.fromId, dep.toId); setHoveredDepKey(null); }}
+                      >
+                        <circle r={9} fill="#1a1b1e" stroke="rgba(255,80,80,0.6)" strokeWidth={1.5} />
+                        <text
+                          textAnchor="middle" dominantBaseline="central"
+                          fontSize={12} fill="rgba(255,80,80,0.9)" fontWeight={600}
+                          style={{ userSelect: 'none' }}
+                        >×</text>
+                      </g>
+                    )}
+                  </g>
                 );
               })}
 
@@ -644,6 +754,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                   d={`M ${connectingFrom.x} ${connectingFrom.y} C ${connectingFrom.x + 60},${connectingFrom.y} ${cursorPos.x - 60},${cursorPos.y} ${cursorPos.x},${cursorPos.y}`}
                   fill="none" stroke={token.colorPrimary} strokeWidth={2} strokeDasharray="5 3"
                   markerEnd="url(#tl-arr-live)"
+                  style={{ pointerEvents: 'none' }}
                 />
               )}
             </svg>
@@ -651,10 +762,17 @@ export default function TimelineView({ bdr }: { bdr: string }) {
             {/* Task bars */}
             {allVisible.map((t) => {
               const bx = xOf(t.start);
-              const bw = Math.max(DAY_PX, xOf(t.end) - bx + DAY_PX);
+              const bw = Math.max(DAY_PX * 3, xOf(t.end) - bx + DAY_PX);
               const by = t.row * ROW_STRIDE + ROW_GAP / 2;
               const isTarget = !!(dragTargetId === t.id && connectingFrom && t.id !== connectingFrom.taskId);
               const isHov = hoveredBarId === t.id;
+
+              // Strip [Role] prefix from display title
+              const displayTitle = t.title.replace(/^\[.*?\]\s*/, '');
+              // Text fits inside? Show title; else show it to the right of the bar
+              const textPx = displayTitle.length * 6.5; // rough estimate
+              const textFitsInside = bw > HANDLE_W * 2 + 20 + textPx + 30;
+              const showTextInside = bw > 52;
 
               return (
                 <Tooltip
@@ -665,15 +783,11 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                   mouseEnterDelay={0.5}
                 >
                   <div
-                    onMouseEnter={() => { if (!connectingFrom) setHoveredBarId(t.id); }}
-                    onMouseLeave={() => setHoveredBarId(null)}
-                    onClick={() => { if (!connectingFrom) navigate(`/tasks/${t.id}`); }}
                     style={{
                       position: 'absolute', left: bx, top: by, width: bw, height: ROW_H,
                       background: barBg(t), borderRadius: BAR_R, border: barBorder(t, isTarget),
-                      cursor: connectingFrom ? 'crosshair' : 'pointer',
+                      cursor: connectingFrom ? 'crosshair' : 'grab',
                       zIndex: 4, display: 'flex', alignItems: 'center',
-                      // overflow:visible so the port dot can stick out to the right
                       overflow: 'visible',
                       outline: isHov && !isTarget ? '1px solid rgba(255,255,255,0.12)' : 'none',
                       outlineOffset: 1,
@@ -689,22 +803,41 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                       }}
                     />
 
-                    {/* Bar content — inner overflow:hidden clips text */}
-                    <div style={{ flex: 1, overflow: 'hidden', padding: '0 4px', display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                    {/* Bar content — draggable for move */}
+                    <div
+                      onMouseDown={(e) => { if (!connectingFrom) handleBarMoveDown(e, t.id, t.start, t.end); }}
+                      style={{ flex: 1, overflow: 'hidden', padding: '0 4px', display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, cursor: connectingFrom ? 'crosshair' : 'grab' }}
+                    >
                       <span style={{
                         width: 7, height: 7, borderRadius: '50%',
-                        background: PRIORITY_COLORS[t.priority], flexShrink: 0,
+                        background: STATUS_COLORS[t.status], flexShrink: 0,
                       }} />
-                      {bw > 52 && (
+                      {showTextInside && (
                         <span style={{
                           fontSize: 11, fontWeight: 500,
                           color: t.isOtherTeam ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.82)',
-                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1,
+                          whiteSpace: 'nowrap',
+                          overflow: textFitsInside ? 'visible' : 'hidden',
+                          textOverflow: textFitsInside ? 'clip' : 'ellipsis',
+                          flex: textFitsInside ? 'none' : 1,
                         }}>
-                          {t.title}
+                          {displayTitle}
                         </span>
                       )}
                     </div>
+
+                    {/* Title outside bar (when text doesn't fit inside) */}
+                    {!textFitsInside && showTextInside && (
+                      <div style={{
+                        position: 'absolute', left: bw + 6, top: '50%', transform: 'translateY(-50%)',
+                        fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap',
+                        maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis',
+                        color: t.isOtherTeam ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.75)',
+                        pointerEvents: 'none', zIndex: 6,
+                      }}>
+                        {displayTitle}
+                      </div>
+                    )}
 
                     {/* Assignee avatar */}
                     {bw > 72 && t.assignee && (
@@ -723,31 +856,33 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                       }}
                     />
 
-                    {/* Port dot — child of bar so onMouseLeave doesn't fire when hovering it */}
-                    {isHov && !connectingFrom && (
-                      <div
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          handlePortDown(e, t.id, bx + bw, by + ROW_H / 2);
-                        }}
-                        style={{
-                          position: 'absolute',
-                          right: -PORT_R,
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          width: PORT_R * 2,
-                          height: PORT_R * 2,
-                          borderRadius: '50%',
-                          background: '#0e0f14',
-                          border: `2.5px solid ${token.colorPrimary}`,
-                          cursor: 'crosshair',
-                          zIndex: 15,
-                          boxShadow: `0 0 10px ${token.colorPrimary}88`,
-                          pointerEvents: 'all',
-                        }}
-                      />
-                    )}
+                    {/* Port dot for creating connections — always in DOM, opacity-controlled */}
+                    <div
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const rightX = bx + bw;
+                        const centerY = by + ROW_H / 2;
+                        handlePortDown(e, t.id, rightX, centerY);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        right: -PORT_R,
+                        transform: 'translateY(-50%)',
+                        width: PORT_R * 2,
+                        height: PORT_R * 2,
+                        borderRadius: '50%',
+                        background: '#0e0f14',
+                        border: `2.5px solid ${token.colorPrimary}`,
+                        cursor: 'crosshair',
+                        zIndex: 15,
+                        boxShadow: isHov && !connectingFrom ? `0 0 10px ${token.colorPrimary}88` : 'none',
+                        opacity: isHov && !connectingFrom ? 1 : 0,
+                        pointerEvents: isHov && !connectingFrom ? 'all' : 'none',
+                        transition: 'opacity 0.1s',
+                      }}
+                    />
                   </div>
                 </Tooltip>
               );
@@ -761,14 +896,6 @@ export default function TimelineView({ bdr }: { bdr: string }) {
           Отпустите на задаче, чтобы создать связь · Esc для отмены
         </div>
       )}
-
-      <ManageDepsModal
-        open={depsModalOpen}
-        onClose={() => setDepsModalOpen(false)}
-        tasks={allTasks}
-        deps={deps}
-        onChange={setDeps}
-      />
     </div>
   );
 }

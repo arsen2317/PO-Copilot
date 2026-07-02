@@ -347,11 +347,13 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
               >
                 {key === '/profile' ? (
                   <div style={{
-                    width: 24, height: 24, borderRadius: '50%',
-                    background: '#4A82F7', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', flexShrink: 0, fontSize: 12, color: '#fff',
+                    width: 22, height: 22, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #4A82F7 0%, #7B5AF7 100%)',
+                    display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#fff',
+                    letterSpacing: '-0.5px',
                   }}>
-                    <UserOutlined />
+                    АА
                   </div>
                 ) : key === '/notifications' ? (
                   <div style={{ position: 'relative', width: 24, height: 24, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
