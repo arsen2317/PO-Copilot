@@ -58,7 +58,7 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
 };
 
 const STATUS_COLOR: Record<TaskStatus, string> = {
-  backlog: 'default', todo: 'blue', in_progress: 'processing', review: 'warning', done: 'success',
+  backlog: 'default', todo: 'geekblue', in_progress: 'blue', review: 'gold', done: 'success',
 };
 
 const PRIORITY_LABEL: Record<TaskPriority, string> = {
@@ -84,15 +84,14 @@ function UserAvatar({ user, size = 22 }: { user: { id: string; name: string; ava
   );
 }
 
+const PRIORITY_DOT_COLOR: Record<TaskPriority, string> = {
+  critical: '#f5222d', high: '#fa8c16', medium: '#722ed1', low: '#8c8c8c',
+};
+
 function PriorityDot({ priority }: { priority: TaskPriority }) {
-  const { token } = useToken();
-  const color = priority === 'critical' ? token.colorError
-    : priority === 'high' ? token.colorWarning
-    : priority === 'medium' ? token.colorPrimary
-    : token.colorTextQuaternary;
   return (
     <Tooltip title={PRIORITY_LABEL[priority]}>
-      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
+      <span style={{ width: 8, height: 8, borderRadius: 2, background: PRIORITY_DOT_COLOR[priority], display: 'inline-block', flexShrink: 0 }} />
     </Tooltip>
   );
 }
@@ -167,9 +166,10 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
 
 function KanbanColumn({ status, label, tasks, bdr }: { status: TaskStatus; label: string; tasks: Task[]; bdr: string }) {
   const { token } = useToken();
-  const dot = status === 'in_progress' ? token.colorPrimary
-    : status === 'review' ? token.colorWarning
+  const dot = status === 'in_progress' ? '#1677ff'
+    : status === 'review' ? '#d89614'
     : status === 'done' ? token.colorSuccess
+    : status === 'todo' ? '#5b8def'
     : token.colorTextQuaternary;
 
   return (

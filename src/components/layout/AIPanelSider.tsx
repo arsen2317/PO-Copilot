@@ -573,6 +573,45 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend }: {
                     </div>
                   );
                 }
+                // Suggestion chips — rendered as clickable action chips
+                if (className === 'language-suggestions') {
+                  const raw = String(children).trim();
+                  let items: string[];
+                  try { items = JSON.parse(raw) as string[]; } catch { items = []; }
+                  if (!items.length) return null;
+                  return (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                      {items.map((label, i) => (
+                        <button
+                          key={i}
+                          onClick={() => onSend(label)}
+                          style={{
+                            background: 'rgba(74,130,247,0.08)',
+                            border: '1px solid rgba(74,130,247,0.25)',
+                            borderRadius: 20,
+                            padding: '5px 12px',
+                            fontSize: 12,
+                            color: '#9ab4f5',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                            transition: 'background 0.15s, border-color 0.15s',
+                            lineHeight: 1.4,
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,130,247,0.18)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(74,130,247,0.45)';
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,130,247,0.08)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(74,130,247,0.25)';
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                }
                 // QBR HTML report — render in iframe
                 if (className === 'language-html-report') {
                   const html = String(children);
@@ -1474,7 +1513,9 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
         userSelect: 'none',
       }}
     >
-      <div data-no-drag><IconBtn icon={<FormOutlined />} tooltip="Новый чат" onClick={() => { createSession(); setAttachedImages([]); setInputValue(''); setSelectedAgent(null); setView('chat'); }} /></div>
+      {!isAssistantPage && (
+        <div data-no-drag><IconBtn icon={<FormOutlined />} tooltip="Новый чат" onClick={() => { createSession(); setAttachedImages([]); setInputValue(''); setSelectedAgent(null); setView('chat'); }} /></div>
+      )}
       <div data-no-drag style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         {!isAssistantPage && (
           <IconBtn icon={<HistoryOutlined />} tooltip="История чатов" active={view === 'history'} onClick={() => setView((v) => v === 'history' ? 'chat' : 'history')} />
