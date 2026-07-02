@@ -407,8 +407,9 @@ export default function TimelineView({ bdr }: { bdr: string }) {
     for (const t of allVisible) {
       const tx = xOf(t.start);
       const tw = Math.max(DAY_PX * 3, xOf(t.end) - tx + DAY_PX);
-      const ty = t.row * ROW_STRIDE;
-      if (x >= tx && x <= tx + tw && y >= ty && y <= ty + ROW_STRIDE) return t.id;
+      const ty = t.row * ROW_STRIDE + ROW_GAP / 2;
+      // extend hit area downward to cover port dot
+      if (x >= tx && x <= tx + tw && y >= ty - ROW_GAP / 2 && y <= ty + ROW_H + PORT_R * 2) return t.id;
     }
     return null;
   }, [allVisible, xOf, DAY_PX]);
@@ -534,29 +535,34 @@ export default function TimelineView({ bdr }: { bdr: string }) {
   }, []);
 
   const handleCanvasMove = useCallback((e: React.MouseEvent) => {
-    if (!connectingFrom || !canvasRef.current) return;
+    if (!canvasRef.current) return;
     const r = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - r.left, y = e.clientY - r.top;
-    setCursorPos({ x, y });
-    setDragTargetId(findTaskAt(x, y));
+    if (connectingFrom) {
+      setCursorPos({ x, y });
+      setDragTargetId(findTaskAt(x, y));
+    } else {
+      setHoveredBarId(findTaskAt(x, y));
+    }
   }, [connectingFrom, findTaskAt]);
 
-  const handleCanvasUp = useCallback((e: React.MouseEvent) => {
-    if (!connectingFrom || !canvasRef.current) return;
-    const r = canvasRef.current.getBoundingClientRect();
-    const tid = findTaskAt(e.clientX - r.left, e.clientY - r.top);
-    if (tid && tid !== connectingFrom.taskId) addDep({ fromId: connectingFrom.taskId, toId: tid });
-    setConnectingFrom(null); setCursorPos(null); setDragTargetId(null);
-  }, [connectingFrom, findTaskAt, addDep]);
 
   useEffect(() => {
-    if (!connectingFrom) return;
-    const cancel = () => { setConnectingFrom(null); setCursorPos(null); setDragTargetId(null); };
-    const onKey = (ev: KeyboardEvent) => { if (ev.key === 'Escape') cancel(); };
-    window.addEventListener('mouseup', cancel);
+    if (!connectingFrom || !canvasRef.current) return;
+    const finish = (e: MouseEvent) => {
+      if (!canvasRef.current) return;
+      const r = canvasRef.current.getBoundingClientRect();
+      const tid = findTaskAt(e.clientX - r.left, e.clientY - r.top);
+      if (tid && tid !== connectingFrom.taskId) addDep({ fromId: connectingFrom.taskId, toId: tid });
+      setConnectingFrom(null); setCursorPos(null); setDragTargetId(null);
+    };
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') { setConnectingFrom(null); setCursorPos(null); setDragTargetId(null); }
+    };
+    window.addEventListener('mouseup', finish);
     window.addEventListener('keydown', onKey);
-    return () => { window.removeEventListener('mouseup', cancel); window.removeEventListener('keydown', onKey); };
-  }, [connectingFrom]);
+    return () => { window.removeEventListener('mouseup', finish); window.removeEventListener('keydown', onKey); };
+  }, [connectingFrom, findTaskAt, addDep]);
 
   // Scroll to today
   useEffect(() => {
@@ -617,7 +623,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
 
       {/* Scroll container */}
       <div ref={scrollRef} style={{ flex: 1, overflow: 'auto', borderRadius: 10, border: bdr, background: '#13141a', minHeight: 0 }}>
-        <div style={{ width: totalW, minWidth: totalW, position: 'relative' }}>
+        <div style={{ minWidth: totalW, width: '100%', position: 'relative' }}>
 
           {/* Sticky header */}
           <div style={{ height: HEADER_H, position: 'sticky', top: 0, zIndex: 10, background: '#13141a', borderBottom: bdr, pointerEvents: 'none' }}>
@@ -651,8 +657,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
             ref={canvasRef}
             style={{ position: 'relative', height: canvasH, userSelect: 'none', cursor: connectingFrom ? 'crosshair' : 'default' }}
             onMouseMove={handleCanvasMove}
-            onMouseUp={handleCanvasUp}
-            onMouseLeave={() => { if (!connectingFrom) setHoveredBarId(null); }}
+            onMouseLeave={() => setHoveredBarId(null)}
           >
             {/* Today line */}
             <div style={{ position: 'absolute', top: 0, left: todayX, width: 1, height: canvasH, background: token.colorPrimary, opacity: 0.5, zIndex: 3, pointerEvents: 'none' }} />
@@ -666,7 +671,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
             ))}
 
             {/* SVG: dep arrows + live line */}
-            <svg style={{ position: 'absolute', top: 0, left: 0, width: totalW, height: canvasH, overflow: 'visible', zIndex: 5 }}>
+            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', minWidth: totalW, height: canvasH, overflow: 'visible', zIndex: 5 }}>
               <defs>
                 <marker id="tl-arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
                   <path d="M0,0 L7,3.5 L0,7 Z" fill={arrowColor} />
@@ -688,22 +693,20 @@ export default function TimelineView({ bdr }: { bdr: string }) {
 
                 const frBw = Math.max(DAY_PX * 3, xOf(fr.end) - xOf(fr.start) + DAY_PX);
                 const toBw = Math.max(DAY_PX * 3, xOf(to.end) - xOf(to.start) + DAY_PX);
-                // Exit: center-bottom of from-bar
+                // Exit: bottom-center of from-bar
                 const fx = xOf(fr.start) + frBw / 2;
                 const fy = fr.row * ROW_STRIDE + ROW_GAP / 2 + ROW_H;
-                // Enter: center-top of to-bar
+                // Enter: top-center of to-bar
                 const tx = xOf(to.start) + toBw / 2;
                 const ty = to.row * ROW_STRIDE + ROW_GAP / 2;
 
-                // Midpoint for delete button
-                const mx = (fx + tx) / 2;
-                const my = (fy + ty) / 2;
+                // Right-angle elbow: down → horizontal → down
+                const midY = (fy + ty) / 2;
+                const d = `M ${fx} ${fy} L ${fx} ${midY} L ${tx} ${midY} L ${tx} ${ty}`;
 
-                const cp1x = fx;
-                const cp1y = fy + Math.abs(ty - fy) * 0.5;
-                const cp2x = tx;
-                const cp2y = ty - Math.abs(ty - fy) * 0.5;
-                const d = `M ${fx} ${fy} C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${tx} ${ty}`;
+                // Delete button at midpoint of horizontal segment
+                const mx = (fx + tx) / 2;
+                const my = midY;
 
                 return (
                   <g key={depKey}>
@@ -761,8 +764,10 @@ export default function TimelineView({ bdr }: { bdr: string }) {
               const isTarget = !!(dragTargetId === t.id && connectingFrom && t.id !== connectingFrom.taskId);
               const isHov = hoveredBarId === t.id;
 
+              // Strip [Role] prefix from display title
+              const displayTitle = t.title.replace(/^\[.*?\]\s*/, '');
               // Text fits inside? Show title; else show it to the right of the bar
-              const textPx = t.title.length * 6.5; // rough estimate
+              const textPx = displayTitle.length * 6.5; // rough estimate
               const textFitsInside = bw > HANDLE_W * 2 + 20 + textPx + 30;
               const showTextInside = bw > 52;
 
@@ -775,8 +780,6 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                   mouseEnterDelay={0.5}
                 >
                   <div
-                    onMouseEnter={() => { if (!connectingFrom) setHoveredBarId(t.id); }}
-                    onMouseLeave={() => setHoveredBarId(null)}
                     style={{
                       position: 'absolute', left: bx, top: by, width: bw, height: ROW_H,
                       background: barBg(t), borderRadius: BAR_R, border: barBorder(t, isTarget),
@@ -815,7 +818,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                           textOverflow: textFitsInside ? 'clip' : 'ellipsis',
                           flex: textFitsInside ? 'none' : 1,
                         }}>
-                          {t.title}
+                          {displayTitle}
                         </span>
                       )}
                     </div>
@@ -825,10 +828,11 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                       <div style={{
                         position: 'absolute', left: bw + 6, top: '50%', transform: 'translateY(-50%)',
                         fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap',
+                        maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis',
                         color: t.isOtherTeam ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.75)',
                         pointerEvents: 'none', zIndex: 6,
                       }}>
-                        {t.title}
+                        {displayTitle}
                       </div>
                     )}
 
@@ -849,33 +853,33 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                       }}
                     />
 
-                    {/* Port dot for creating connections */}
-                    {isHov && !connectingFrom && (
-                      <div
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          const centerX = bx + bw / 2;
-                          const bottomY = by + ROW_H;
-                          handlePortDown(e, t.id, centerX, bottomY);
-                        }}
-                        style={{
-                          position: 'absolute',
-                          bottom: -PORT_R,
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          width: PORT_R * 2,
-                          height: PORT_R * 2,
-                          borderRadius: '50%',
-                          background: '#0e0f14',
-                          border: `2.5px solid ${token.colorPrimary}`,
-                          cursor: 'crosshair',
-                          zIndex: 15,
-                          boxShadow: `0 0 10px ${token.colorPrimary}88`,
-                          pointerEvents: 'all',
-                        }}
-                      />
-                    )}
+                    {/* Port dot for creating connections — always in DOM, opacity-controlled */}
+                    <div
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const centerX = bx + bw / 2;
+                        const bottomY = by + ROW_H;
+                        handlePortDown(e, t.id, centerX, bottomY);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        bottom: -PORT_R,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: PORT_R * 2,
+                        height: PORT_R * 2,
+                        borderRadius: '50%',
+                        background: '#0e0f14',
+                        border: `2.5px solid ${token.colorPrimary}`,
+                        cursor: 'crosshair',
+                        zIndex: 15,
+                        boxShadow: isHov && !connectingFrom ? `0 0 10px ${token.colorPrimary}88` : 'none',
+                        opacity: isHov && !connectingFrom ? 1 : 0,
+                        pointerEvents: isHov && !connectingFrom ? 'all' : 'none',
+                        transition: 'opacity 0.1s',
+                      }}
+                    />
                   </div>
                 </Tooltip>
               );
