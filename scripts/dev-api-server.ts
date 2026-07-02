@@ -79,9 +79,19 @@ app.post('/api/chat', async (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('X-Accel-Buffering', 'no');
 
+  const proxySecret = process.env.PROXY_SECRET;
+  const proxyFetch = proxySecret
+    ? (url: RequestInfo | URL, init?: RequestInit) => {
+        const headers = new Headers(init?.headers);
+        headers.set('x-proxy-secret', proxySecret);
+        return fetch(url, { ...init, headers });
+      }
+    : undefined;
+
   const client = new Anthropic({
     apiKey,
     ...(process.env.ANTHROPIC_PROXY_URL ? { baseURL: process.env.ANTHROPIC_PROXY_URL } : {}),
+    ...(proxyFetch ? { fetch: proxyFetch } : {}),
   });
 
   try {
@@ -125,7 +135,11 @@ app.post('/api/search', async (req, res) => {
     const braveBase = process.env.BRAVE_PROXY_URL ?? 'https://api.search.brave.com';
     const url = `${braveBase}/res/v1/web/search?q=${encodeURIComponent(query)}&count=8&search_lang=ru&country=ru&text_decorations=false`;
     const resp = await fetch(url, {
-      headers: { 'Accept': 'application/json', 'X-Subscription-Token': apiKey },
+      headers: {
+        'Accept': 'application/json',
+        'X-Subscription-Token': apiKey,
+        ...(process.env.PROXY_SECRET ? { 'x-proxy-secret': process.env.PROXY_SECRET } : {}),
+      },
     });
     const data = await resp.json() as {
       web?: { results?: Array<{ title: string; url: string; description: string }> };
