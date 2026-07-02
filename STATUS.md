@@ -26,11 +26,13 @@
 |---------|--------|
 | Стек | Vite + React + TypeScript strict, antd v5 тёмная тема |
 | Данные | Фикстуры через `data/api/`; реальные интеграции — фаза 4 |
-| ИИ | Vercel Edge Function `api/chat.ts` — raw fetch + SSE pipe (SDK несовместим с edge-light) |
+| ИИ | Express API `scripts/dev-api-server.ts` на порту 3001; SSE стриминг через Anthropic SDK |
 | Авторизация | HMAC-SHA256 токены (Web Crypto); логин/пароль только на сервере; `arsendsgn/481516` |
 | Дев-сервер | Express :3001 + Vite proxy `/api` → :3001 |
 | Стейт ИИ-панели | zustand `uiStore` — сессии чатов, `focusedMetricId`, `focusedFunnelStepId` |
-| Хостинг | Vercel; preview на PR, production на `main` |
+| Хостинг | VPS Timeweb (72.56.34.107), домен copilot.mts-fintech.ru, nginx + PM2 + certbot |
+| CI/CD | GitHub Actions: build → SCP dist/ → SSH restart PM2; триггер: push в main |
+| Прокси | Cloudflare Worker `anthropic-proxy.arackelian.workers.dev` — обход блокировки РФ для Anthropic и Brave. Защищён `PROXY_SECRET`. Репо: `arsen2317/anthropic-proxy` |
 | Роутинг воронки | `users` = квартальный итог; дневная история суммируется ≈ users |
 
 ---
@@ -45,6 +47,11 @@
 ---
 
 ## Последние сессии
+
+### Сессия 14 — 2026-07-02
+Миграция с Vercel на VPS (Timeweb, Ubuntu 24.04). Настроен nginx + PM2 + certbot. GitHub Actions CI/CD: build на runner → SCP dist/ → SSH restart PM2. PM2 запускает API через `scripts/start-api.sh` (обёртка с хардкодом `/usr/bin/tsx`). Anthropic и Brave Search проксируются через Cloudflare Worker (`anthropic-proxy.arackelian.workers.dev`) — обход блокировки российских IP. Worker защищён `PROXY_SECRET` заголовком. Все секреты в GitHub Secrets, пишутся в `.env.local` при каждом деплое.
+
+**Следующий шаг:** продолжить разработку фич (открыть PR таймлайна из сессии 13).
 
 ### Сессия 13 — 2026-07-02
 Вкладка «Таймлайн» на `/tasks`: SVG Gantt без сторонних библиотек, стрелки зависимостей (кубический безье), drag-to-resize с каскадом, ManageDepsModal, три секции (связанные / независимые / чужие команды). Расширена модель данных: Epic, Team, `startDate`/`teamId`/`dependencies` в Task; ~40 фиктивных задач по 6 эпикам и 4 командам с кросс-командными зависимостями. AI: инструмент `get_timeline`, анализ таймлайна в промпте агента, чипы `TASK-XXX` в ИИ-панели (кликабельные, зелёные). Ветка: `claude/task-timeline-dependencies-r3n7gs`.

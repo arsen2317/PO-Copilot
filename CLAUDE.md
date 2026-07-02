@@ -39,15 +39,18 @@
 - Тесты (watch): `npm run test:watch`
 - Сборка: `npm run build`
 - Preview сборки: `npm run preview`
-- Деплой: через git (push → preview, merge в `main` → production) или коннектор Vercel из сессии
+- Деплой: merge в `main` → GitHub Actions автоматически деплоит на VPS
 
-## Деплой (Vercel)
+## Деплой (VPS)
 
-- Хостинг — Vercel. Preview на каждый PR, production на `main` (автоматически из git).
-- `vercel.json` с SPA-rewrite на `/index.html` обязателен, иначе 404 на прямых ссылках. Детали — раздел 15 спецификации.
-- Клиентские env-переменные — с префиксом `VITE_`; секреты — в настройках Vercel по окружениям, не в репо. `.vercel/` — в `.gitignore`.
-- Деплой, список деплоев и build-логи можно гонять через коннектор Vercel прямо из сессии.
-- **Production-деплой — только с моего явного подтверждения.**
+- Хостинг — VPS Timeweb, Ubuntu 24.04, IP `72.56.34.107`, домен `copilot.mts-fintech.ru`.
+- **Фронтенд** — nginx отдаёт `dist/` как SPA (`try_files $uri /index.html`), SSL через certbot.
+- **API-сервер** — `scripts/dev-api-server.ts` запускается через PM2 (`po-copilot-api`) на порту 3001. nginx проксирует `/api/` → `localhost:3001`.
+- **CI/CD** — GitHub Actions (`push → main`): сборка на runner → SCP `dist/` → SSH (пишет `.env.local`, `npm ci`, рестарт PM2).
+- **Секреты** — хранятся в GitHub Secrets, на сервер попадают через `.env.local` при каждом деплое. Никогда не коммить `.env.local`.
+- **Cloudflare Worker** (`anthropic-proxy.arackelian.workers.dev`) — проксирует запросы к Anthropic и Brave Search, обходя блокировку российских IP. Защищён заголовком `x-proxy-secret`. Worker живёт в репо `arsen2317/anthropic-proxy`.
+- **Необходимые GitHub Secrets:** `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`, `ANTHROPIC_API_KEY`, `APP_LOGIN`, `APP_PASSWORD`, `APP_SESSION_SECRET`, `BRAVE_SEARCH_API_KEY`, `ANTHROPIC_PROXY_URL`, `BRAVE_PROXY_URL`, `PROXY_SECRET`.
+- **Production-деплой — только с моего явного подтверждения** (merge в `main`).
 
 ## Чего не делать без подтверждения
 
