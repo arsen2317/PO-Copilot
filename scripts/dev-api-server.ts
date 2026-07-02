@@ -122,7 +122,8 @@ app.post('/api/search', async (req, res) => {
   }
 
   try {
-    const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=8&search_lang=ru&country=ru&text_decorations=false`;
+    const braveBase = process.env.BRAVE_PROXY_URL ?? 'https://api.search.brave.com';
+    const url = `${braveBase}/res/v1/web/search?q=${encodeURIComponent(query)}&count=8&search_lang=ru&country=ru&text_decorations=false`;
     const resp = await fetch(url, {
       headers: { 'Accept': 'application/json', 'X-Subscription-Token': apiKey },
     });
