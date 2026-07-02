@@ -294,16 +294,18 @@ function ListView({ tasks, isLoading }: { tasks: Task[]; isLoading: boolean }) {
   ];
 
   return (
-    <Table
-      dataSource={tasks}
-      columns={columns}
-      rowKey="id"
-      size="small"
-      loading={isLoading}
-      pagination={false}
-      scroll={{ y: 'calc(100vh - 260px)' }}
-      style={{ flex: 1 }}
-    />
+    <div style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
+      <Table
+        dataSource={tasks}
+        columns={columns}
+        rowKey="id"
+        size="small"
+        loading={isLoading}
+        pagination={false}
+        scroll={{ x: 'max-content', y: 'calc(100vh - 260px)' }}
+        style={{ minWidth: 700 }}
+      />
+    </div>
   );
 }
 
