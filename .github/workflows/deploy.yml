@@ -43,26 +43,26 @@ jobs:
             set -e
             cd /var/www/po-copilot
 
-            # Write env file from secrets
-            cat > .env.local << ENVEOF
-            ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
-            APP_LOGIN=${{ secrets.APP_LOGIN }}
-            APP_PASSWORD=${{ secrets.APP_PASSWORD }}
-            APP_SESSION_SECRET=${{ secrets.APP_SESSION_SECRET }}
-            BRAVE_SEARCH_API_KEY=${{ secrets.BRAVE_SEARCH_API_KEY }}
-            ENVEOF
+            # Write env file from secrets (no leading spaces)
+            cat > .env.local <<'ENVEOF'
+ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+APP_LOGIN=${{ secrets.APP_LOGIN }}
+APP_PASSWORD=${{ secrets.APP_PASSWORD }}
+APP_SESSION_SECRET=${{ secrets.APP_SESSION_SECRET }}
+BRAVE_SEARCH_API_KEY=${{ secrets.BRAVE_SEARCH_API_KEY }}
+ENVEOF
 
-            # Pull latest code
+            # Pull latest scripts
             git fetch origin main
-            git checkout origin/main -- scripts/ ecosystem.config.cjs package.json package-lock.json
+            git checkout origin/main -- scripts/ package.json package-lock.json
 
-            # Install all dependencies (including devDependencies for tsx)
+            # Install dependencies
             npm ci --ignore-scripts
 
             # Ensure tsx is installed globally
             npm install -g tsx
 
-            # Restart PM2 process using absolute tsx path
+            # Restart PM2 using absolute tsx path
             TSX_BIN=$(which tsx)
             pm2 delete po-copilot-api 2>/dev/null || true
             pm2 start "$TSX_BIN" --name po-copilot-api --cwd /var/www/po-copilot -- scripts/dev-api-server.ts
