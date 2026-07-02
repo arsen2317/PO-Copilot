@@ -64,7 +64,10 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
               prefix={<UserOutlined style={{ color: '#9B9C9E' }} />}
               placeholder="Логин"
               size="large"
-              autoComplete="username"
+              autoComplete="off"
+              spellCheck={false}
+              autoCorrect="off"
+              autoCapitalize="off"
             />
           </Form.Item>
           <Form.Item name="password" rules={[{ required: true, message: '' }]} style={{ marginBottom: 16 }}>

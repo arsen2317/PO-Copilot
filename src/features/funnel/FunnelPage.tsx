@@ -101,7 +101,6 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
           {steps.map((step, i) => {
             const currPct = step.users / totalUsers;
             const prevPct = i === 0 ? 1.0 : steps[i - 1]!.users / totalUsers;
-            const droppedCount = i === 0 ? 0 : steps[i - 1]!.users - step.users;
 
             const x = i * colW + barOff;
             const solidH = chartH * currPct;
@@ -129,14 +128,6 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
                     {hatchOverlay && (
                       <rect x={x} y={hatchY} width={barW} height={hatchH}
                         style={{ fill: hatchOverlay, transition: 'fill 0.15s', pointerEvents: 'none' }} rx={3} />
-                    )}
-                    {hatchH > 28 && droppedCount > 0 && (
-                      <text x={x + barW / 2} y={hatchY + hatchH / 2 + 4}
-                        textAnchor="middle" fill="rgba(255,255,255,0.40)"
-                        fontSize={11} fontFamily="Inter,sans-serif"
-                        style={{ pointerEvents: 'none' }}>
-                        −{droppedCount.toLocaleString('ru')}
-                      </text>
                     )}
                     {/* transparent hit area */}
                     <rect x={x} y={hatchY} width={barW} height={hatchH}
@@ -215,8 +206,7 @@ function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
             boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
             lineHeight: 1.7,
           }}>
-            <div style={{ fontWeight: 600, marginBottom: 2 }}>{step.name}</div>
-            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginBottom: 8 }}>{step.eventName}</div>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>{step.name}</div>
             {isBlue ? (
               <>
                 <div>
@@ -284,7 +274,7 @@ function aggregateByGranularity(points: MetricPoint[], granularity: string): Met
   for (let i = 0; i < points.length; i += bucketSize) {
     const slice = points.slice(i, i + bucketSize);
     const avg = slice.reduce((s, p) => s + p.value, 0) / slice.length;
-    result.push({ date: slice[0]!.date, value: Math.round(avg * 10) / 10 });
+    result.push({ date: slice[0]!.date, value: Math.round(avg) });
   }
   return result;
 }
@@ -390,12 +380,13 @@ function ChartContainer({ selectedId, steps, granularity, loading }: ChartContai
 interface FunnelTileProps {
   label: string;
   value: string;
+  subLabel?: string;
   change: number;
   selected: boolean;
   onClick: () => void;
 }
 
-function FunnelTile({ label, value, change, selected, onClick }: FunnelTileProps) {
+function FunnelTile({ label, value, subLabel, change, selected, onClick }: FunnelTileProps) {
   const { token } = useToken();
   const [hovered, setHovered] = useState(false);
   const isPositive = change >= 0;
@@ -441,9 +432,14 @@ function FunnelTile({ label, value, change, selected, onClick }: FunnelTileProps
           {isPositive
             ? <ArrowUpOutlined style={{ fontSize: 9 }} />
             : <ArrowDownOutlined style={{ fontSize: 9 }} />}
-          {Math.abs(change)}
+          {Math.abs(change).toLocaleString('ru')}
         </span>
       </div>
+      {subLabel && (
+        <div style={{ fontSize: 11, color: token.colorTextQuaternary, marginTop: 4 }}>
+          {subLabel}
+        </div>
+      )}
     </div>
   );
 }
@@ -549,7 +545,8 @@ function TilesCarousel({
               <FunnelTile
                 key={s.id}
                 label={`Шаг ${idx + 1}: ${s.name}`}
-                value={String(s.users)}
+                value={s.users.toLocaleString('ru')}
+                subLabel="за квартал"
                 change={s.change}
                 selected={selectedId === s.id}
                 onClick={() => onSelect(s.id)}
@@ -568,7 +565,7 @@ function TilesCarousel({
 
 export default function FunnelPage() {
   const { token } = useToken();
-  const [granularity, setGranularity] = useState('daily');
+  const [granularity, setGranularity] = useState('weekly');
   const [selectedId, setSelectedId] = useState<string>(OVERALL_ID);
 
   const { data: steps = [], isLoading } = useQuery({
@@ -662,7 +659,7 @@ export default function FunnelPage() {
             }}
           >
             <ReloadOutlined style={{ fontSize: 12 }} />
-            Данные от 22 мин назад
+            II квартал 2026 (апр–июн) · Данные от 22 мин назад
           </div>
         </div>
 
