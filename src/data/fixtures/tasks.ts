@@ -1,20 +1,24 @@
 import type { Task } from '../types';
 
-const u1 = { id: 'u1', name: 'Анна Смирнова', role: 'developer', avatar: 'https://i.pravatar.cc/150?img=47' };
-const u2 = { id: 'u2', name: 'Иван Петров', role: 'product_manager', avatar: 'https://i.pravatar.cc/150?img=68' };
-const u3 = { id: 'u3', name: 'Мария Ковалёва', role: 'designer', avatar: 'https://i.pravatar.cc/150?img=45' };
-const u4 = { id: 'u4', name: 'Дмитрий Волков', role: 'developer', avatar: 'https://i.pravatar.cc/150?img=60' };
-const u5 = { id: 'u5', name: 'Екатерина Новикова', role: 'qa', avatar: 'https://i.pravatar.cc/150?img=44' };
-const u6 = { id: 'u6', name: 'Сергей Лебедев', role: 'analyst', avatar: 'https://i.pravatar.cc/150?img=65' };
-const u7 = { id: 'u7', name: 'Алексей Фёдоров', role: 'product_manager', avatar: 'https://i.pravatar.cc/150?img=33' };
-const u8 = { id: 'u8', name: 'Наталья Борисова', role: 'developer', avatar: 'https://i.pravatar.cc/150?img=41' };
-const u9 = { id: 'u9', name: 'Павел Орлов', role: 'developer', avatar: 'https://i.pravatar.cc/150?img=52' };
-const u10 = { id: 'u10', name: 'Ольга Зайцева', role: 'analyst', avatar: 'https://i.pravatar.cc/150?img=25' };
+// ─── Team members ─────────────────────────────────────────────────────────────
+
+const u1  = { id: 'u1',  name: 'Анна Смирнова',   role: 'developer',      avatar: 'https://i.pravatar.cc/150?img=47' };
+const u2  = { id: 'u2',  name: 'Иван Петров',      role: 'product_manager', avatar: 'https://i.pravatar.cc/150?img=68' };
+const u3  = { id: 'u3',  name: 'Мария Ковалёва',   role: 'designer',       avatar: 'https://i.pravatar.cc/150?img=45' };
+const u4  = { id: 'u4',  name: 'Дмитрий Волков',   role: 'developer',      avatar: 'https://i.pravatar.cc/150?img=60' };
+const u5  = { id: 'u5',  name: 'Екатерина Новикова',role: 'qa',             avatar: 'https://i.pravatar.cc/150?img=44' };
+const u6  = { id: 'u6',  name: 'Сергей Лебедев',   role: 'analyst',        avatar: 'https://i.pravatar.cc/150?img=65' };
+const u7  = { id: 'u7',  name: 'Алексей Фёдоров',  role: 'product_manager', avatar: 'https://i.pravatar.cc/150?img=33' };
+const u8  = { id: 'u8',  name: 'Наталья Борисова',  role: 'developer',      avatar: 'https://i.pravatar.cc/150?img=41' };
+const u9  = { id: 'u9',  name: 'Павел Орлов',       role: 'developer',      avatar: 'https://i.pravatar.cc/150?img=52' };
+const u10 = { id: 'u10', name: 'Ольга Зайцева',     role: 'analyst',        avatar: 'https://i.pravatar.cc/150?img=25' };
+const u11 = { id: 'u11', name: 'Ксения Морозова',   role: 'ux_researcher',  avatar: 'https://i.pravatar.cc/150?img=36' };
 
 export const taskFixtures: Task[] = [
-  // ══════════════════════════════════════════════════════════════════════════════
+
+  // ══════════════════════════════════════════════════════════════════════════
   // EPIC-1: Онбординг и конверсия
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
 
   {
     id: 'TASK-001',
@@ -31,20 +35,15 @@ export const taskFixtures: Task[] = [
     startDate: '2026-06-19',
     deadline: '2026-06-28',
     createdAt: '2026-06-19',
-    description:
-      '19.06.2026 упала конверсия шага «Паспорт»: с 74,1% до 63,7% после деплоя PR #4521. Причина — новый regex убрал поддержку кириллических серий паспорта старого формата. Hotfix готовит Анна.',
+    description: '19.06.2026 упала конверсия шага «Паспорт» с 74,1% до 63,7% после деплоя PR #4521. Причина — новый regex убрал поддержку кириллических серий паспорта старого формата.',
     criteria: [
       { id: 'c1', text: 'Поддержка паспортов старого формата (до 2020)', done: true },
       { id: 'c2', text: 'Конверсия вернулась к базовому уровню ≥72%', done: false },
       { id: 'c3', text: 'Регрессионные тесты прошли', done: true },
       { id: 'c4', text: 'Hotfix задеплоен в prod без простоя', done: false },
     ],
-    compliance: [
-      { id: 'cc1', label: 'Изменения согласованы с командой ИБ', passed: true },
-    ],
-    artifacts: [
-      { type: 'pr', title: 'PR #4521 — Валидация паспортов', url: '#' },
-    ],
+    compliance: [{ id: 'cc1', label: 'Изменения согласованы с командой ИБ', passed: true }],
+    artifacts: [{ type: 'pr', title: 'PR #4521 — Валидация паспортов', url: '#' }],
     comments: [
       { id: 'cm1', author: u5, text: 'Воспроизвела баг на тестовом окружении.', time: '2026-06-19 10:14' },
       { id: 'cm2', author: u1, text: 'Нашла проблему. Готовлю hotfix.', time: '2026-06-19 11:45' },
@@ -54,7 +53,7 @@ export const taskFixtures: Task[] = [
 
   {
     id: 'TASK-004',
-    title: 'Написать тест-кейсы для онбординга',
+    title: 'Написать тест-кейсы для воронки онбординга',
     status: 'done',
     priority: 'medium',
     riskLevel: 'ok',
@@ -105,32 +104,7 @@ export const taskFixtures: Task[] = [
       { id: 'cc1', label: 'Соответствует письму ЦБ от 01.06.2026', passed: true },
       { id: 'cc2', label: 'Подтверждено юридическим отделом', passed: true },
     ],
-    comments: [{ id: 'cm1', author: u2, text: 'Отличная работа, задача закрыта досрочно!', time: '2026-06-13 18:00' }],
-  },
-
-  {
-    id: 'TASK-012',
-    title: 'Разработать модуль аналитики конверсии воронки онбординга',
-    status: 'backlog',
-    priority: 'medium',
-    riskLevel: 'ok',
-    storyPoints: 8,
-    epicId: 'EPIC-1',
-    teamId: 'team-debit',
-    labels: ['analytics', 'onboarding'],
-    assignee: u6,
-    startDate: '2026-07-15',
-    deadline: '2026-07-30',
-    createdAt: '2026-06-12',
-    dependencies: ['TASK-001', 'TASK-101'],
-    description: 'Дашборд аналитики онбординга: 6 шагов, фильтры по дате/каналу/версии, сравнение периодов, экспорт CSV. Зависит от TASK-101 (дата-платформа).',
-    criteria: [
-      { id: 'c1', text: 'Воронка отображает каждый шаг (6 шагов)', done: false },
-      { id: 'c2', text: 'Фильтр по дате, каналу, версии приложения', done: false },
-      { id: 'c3', text: 'Экспорт в CSV', done: false },
-    ],
-    compliance: [],
-    relatedMetricIds: ['onboarding_conversion', 'time_to_first_action'],
+    comments: [],
   },
 
   {
@@ -162,20 +136,19 @@ export const taskFixtures: Task[] = [
   {
     id: 'TASK-021',
     title: 'Редизайн шага «Ввод телефона» — упрощение формы',
-    status: 'todo',
+    status: 'backlog',
     priority: 'high',
     riskLevel: 'warning',
     storyPoints: 5,
     epicId: 'EPIC-1',
     teamId: 'team-debit',
-    sprintId: 'SPRINT-15',
     labels: ['ux', 'onboarding'],
     assignee: u3,
     startDate: '2026-07-07',
     deadline: '2026-07-18',
     createdAt: '2026-06-21',
     dependencies: ['TASK-020'],
-    description: 'Упростить форму ввода телефона: автоформат +7, автофокус, убрать лишние поля. Ожидаемый прирост конверсии шага: +2-4%.',
+    description: 'Упростить форму ввода телефона: автоформат +7, автофокус. Ожидаемый прирост конверсии: +2-4%.',
     criteria: [
       { id: 'c1', text: 'Автоформат +7 реализован', done: false },
       { id: 'c2', text: 'Поле автофокусируется при открытии экрана', done: false },
@@ -187,25 +160,49 @@ export const taskFixtures: Task[] = [
 
   {
     id: 'TASK-022',
-    title: 'Оптимизация шага SMS-верификации (retry logic)',
+    title: 'Оптимизация SMS-верификации: retry logic и fallback',
     status: 'backlog',
     priority: 'high',
     riskLevel: 'warning',
     storyPoints: 8,
     epicId: 'EPIC-1',
     teamId: 'team-debit',
-    sprintId: 'SPRINT-15',
     labels: ['ux', 'onboarding', 'mobile'],
     assignee: u4,
     startDate: '2026-07-14',
     deadline: '2026-07-28',
     createdAt: '2026-06-22',
     dependencies: ['TASK-021'],
-    description: 'Улучшить UX повторной отправки SMS: отсчёт таймера, возможность переотправки через 30с, подсказка «Не пришло SMS?» с альтернативами. Снизит drop-off на шаге 3.',
+    description: 'Таймер обратного отсчёта, повторная отправка через 30с, подсказка «Не пришло SMS?» с альтернативами.',
     criteria: [
       { id: 'c1', text: 'Таймер обратного отсчёта 30 сек', done: false },
       { id: 'c2', text: 'Кнопка «Отправить повторно» через 30 сек', done: false },
       { id: 'c3', text: 'Подсказка с альтернативными каналами', done: false },
+    ],
+    compliance: [],
+    relatedMetricIds: ['onboarding_conversion'],
+  },
+
+  {
+    id: 'TASK-012',
+    title: 'Разработать модуль аналитики конверсии воронки онбординга',
+    status: 'backlog',
+    priority: 'medium',
+    riskLevel: 'ok',
+    storyPoints: 8,
+    epicId: 'EPIC-1',
+    teamId: 'team-debit',
+    labels: ['analytics', 'onboarding'],
+    assignee: u6,
+    startDate: '2026-07-21',
+    deadline: '2026-08-01',
+    createdAt: '2026-06-12',
+    dependencies: ['TASK-001', 'TASK-101'],
+    description: 'Дашборд аналитики: 6 шагов воронки, фильтры по дате/каналу/версии, сравнение периодов, экспорт CSV. Зависит от CDP v2 (TASK-101).',
+    criteria: [
+      { id: 'c1', text: 'Воронка отображает все 6 шагов', done: false },
+      { id: 'c2', text: 'Фильтр по дате, каналу, версии', done: false },
+      { id: 'c3', text: 'Экспорт в CSV', done: false },
     ],
     compliance: [],
     relatedMetricIds: ['onboarding_conversion'],
@@ -226,9 +223,9 @@ export const taskFixtures: Task[] = [
     deadline: '2026-08-11',
     createdAt: '2026-06-23',
     dependencies: ['TASK-022', 'TASK-012'],
-    description: 'Финальный роллаут воронки онбординга v2: постепенный выход (10% → 50% → 100%), мониторинг метрик, go/no-go решение.',
+    description: 'Финальный роллаут воронки онбординга v2: поэтапный выход (10% → 50% → 100%), мониторинг метрик, go/no-go решение.',
     criteria: [
-      { id: 'c1', text: 'Поэтапный роллаут настроен через feature flags', done: false },
+      { id: 'c1', text: 'Поэтапный роллаут через feature flags', done: false },
       { id: 'c2', text: 'Мониторинг в Grafana подготовлен', done: false },
       { id: 'c3', text: 'Go/no-go чеклист заполнен', done: false },
     ],
@@ -236,9 +233,9 @@ export const taskFixtures: Task[] = [
     relatedMetricIds: ['onboarding_conversion'],
   },
 
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // EPIC-2: Интерфейс и UX
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
 
   {
     id: 'TASK-002',
@@ -255,11 +252,11 @@ export const taskFixtures: Task[] = [
     startDate: '2026-06-11',
     deadline: '2026-07-02',
     createdAt: '2026-06-11',
-    description: 'A/B-тест показал +8,3% к конверсии для карточного формата. Довести вариант B до production: edge-кейсы, B2B-вариант, accessibility (WCAG AA), верификация цен.',
+    description: 'A/B-тест показал +8,3% к конверсии для карточного формата. Довести вариант B до production: edge-кейсы, B2B-вариант, accessibility (WCAG AA).',
     criteria: [
-      { id: 'c1', text: 'Финальные макеты в Figma по всем брейкпойнтам', done: true },
-      { id: 'c2', text: 'Компонент CardTariff описан в дизайн-системе', done: true },
-      { id: 'c3', text: 'Прошла проверка accessibility (WCAG AA)', done: false },
+      { id: 'c1', text: 'Финальные макеты по всем брейкпойнтам', done: true },
+      { id: 'c2', text: 'Компонент CardTariff в дизайн-системе', done: true },
+      { id: 'c3', text: 'Проверка accessibility (WCAG AA)', done: false },
       { id: 'c4', text: 'Макеты переданы в разработку с аннотациями', done: false },
     ],
     compliance: [
@@ -270,9 +267,7 @@ export const taskFixtures: Task[] = [
       { type: 'figma', title: 'Экран выбора тарифа v2', url: '#' },
       { type: 'confluence', title: 'Результаты A/B-теста май 2026', url: '#' },
     ],
-    comments: [
-      { id: 'cm1', author: u2, text: 'Мария, не забудь добавить вариант для корпоративных клиентов.', time: '2026-06-17 09:30' },
-    ],
+    comments: [],
     relatedMetricIds: ['tariff_conversion', 'arpu'],
   },
 
@@ -291,10 +286,10 @@ export const taskFixtures: Task[] = [
     startDate: '2026-06-01',
     deadline: '2026-06-27',
     createdAt: '2026-06-01',
-    description: 'После добавления 3 виджетов TTI вырос с 1,9 до 3,8 сек. Реализовано: async загрузка, WebP иконки, lazy-chunks, Service Worker кеш. PR в ревью.',
+    description: 'TTI вырос с 1,9 до 3,8 сек. Реализовано: async загрузка, WebP иконки, lazy-chunks, Service Worker кеш. PR в ревью.',
     criteria: [
       { id: 'c1', text: 'Time-to-interactive ≤2 сек на Pixel 5', done: true },
-      { id: 'c2', text: 'Размер bundle уменьшен минимум на 20%', done: true },
+      { id: 'c2', text: 'Bundle уменьшен минимум на 20%', done: true },
       { id: 'c3', text: 'Lighthouse Score ≥90', done: true },
       { id: 'c4', text: 'Нет регрессий в Sentry за 48 часов', done: false },
     ],
@@ -302,58 +297,6 @@ export const taskFixtures: Task[] = [
     artifacts: [{ type: 'pr', title: 'PR #4601 — Performance optimization', url: '#' }],
     comments: [{ id: 'cm1', author: u5, text: 'iOS 15 — 1,7с, Android 9 — 2,1с. Мониторинг идёт.', time: '2026-06-25 15:44' }],
     relatedMetricIds: ['app_load_time', 'crash_rate'],
-  },
-
-  {
-    id: 'TASK-006',
-    title: 'Добавить раздел «История операций» в личный кабинет',
-    status: 'review',
-    priority: 'medium',
-    riskLevel: 'ok',
-    storyPoints: 5,
-    epicId: 'EPIC-2',
-    teamId: 'team-debit',
-    sprintId: 'SPRINT-14',
-    labels: ['feature', 'lk'],
-    assignee: u4,
-    startDate: '2026-06-03',
-    deadline: '2026-06-28',
-    createdAt: '2026-06-03',
-    description: 'История операций за 12 месяцев, фильтры (тип/дата/сумма), экспорт PDF (лимит 200 операций). В ревью.',
-    criteria: [
-      { id: 'c1', text: 'Отображение операций за 12 месяцев', done: true },
-      { id: 'c2', text: 'Фильтры по типу, дате и сумме', done: true },
-      { id: 'c3', text: 'Экспорт в PDF с логотипом банка', done: true },
-      { id: 'c4', text: 'Пагинация (50 операций на страницу)', done: true },
-    ],
-    compliance: [{ id: 'cc1', label: 'PDF-выгрузка соответствует требованиям 152-ФЗ', passed: true }],
-    artifacts: [{ type: 'figma', title: 'История операций — финальный макет', url: '#' }],
-    comments: [],
-    relatedMetricIds: ['dau', 'session_duration'],
-  },
-
-  {
-    id: 'TASK-013',
-    title: 'Пересмотреть информационную архитектуру раздела «Продукты»',
-    status: 'backlog',
-    priority: 'low',
-    riskLevel: 'ok',
-    storyPoints: 5,
-    epicId: 'EPIC-2',
-    teamId: 'team-debit',
-    labels: ['ux', 'research'],
-    assignee: u3,
-    startDate: '2026-07-21',
-    deadline: '2026-08-01',
-    createdAt: '2026-06-15',
-    description: 'UX-аудит и card sorting (15 участников). 3 концепции ИА. Согласование с SEO-командой до начала разработки.',
-    criteria: [
-      { id: 'c1', text: 'Проведено 5+ интервью с пользователями', done: false },
-      { id: 'c2', text: 'Составлена карта текущего пути', done: false },
-      { id: 'c3', text: 'Предложены 3 варианта новой ИА', done: false },
-    ],
-    compliance: [],
-    artifacts: [{ type: 'confluence', title: 'Отчёт UX-тестирования май 2026', url: '#' }],
   },
 
   {
@@ -371,7 +314,7 @@ export const taskFixtures: Task[] = [
     deadline: '2026-08-15',
     createdAt: '2026-06-25',
     dependencies: ['TASK-105'],
-    description: 'Виджет персональных предложений (основанный на ML-рекомендациях от команды Аналитики). Зависит от TASK-105 — API рекомендаций.',
+    description: 'Виджет персональных предложений на основе ML-рекомендаций от команды Аналитики. Зависит от TASK-105 — API рекомендаций.',
     criteria: [
       { id: 'c1', text: 'Виджет корректно отображает до 3 предложений', done: false },
       { id: 'c2', text: 'Impression и click трекаются', done: false },
@@ -381,36 +324,13 @@ export const taskFixtures: Task[] = [
     relatedMetricIds: ['arpu'],
   },
 
-  {
-    id: 'TASK-031',
-    title: 'Темная тема — финальная полировка токенов',
-    status: 'todo',
-    priority: 'low',
-    riskLevel: 'ok',
-    storyPoints: 3,
-    epicId: 'EPIC-2',
-    teamId: 'team-debit',
-    sprintId: 'SPRINT-14',
-    labels: ['design', 'mobile'],
-    assignee: u3,
-    startDate: '2026-06-24',
-    deadline: '2026-07-03',
-    createdAt: '2026-06-24',
-    description: 'Исправление 14 визуальных багов в тёмной теме (контраст иконок, цвета кнопок в disabled-состоянии, бордеры карточек).',
-    criteria: [
-      { id: 'c1', text: 'Все 14 багов закрыты', done: false },
-      { id: 'c2', text: 'WCAG AA контраст во всех компонентах', done: false },
-    ],
-    compliance: [],
-  },
-
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // EPIC-3: Безопасность и авторизация
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
 
   {
     id: 'TASK-007',
-    title: 'Реализовать push-уведомления о статусах заявок',
+    title: 'Push-уведомления о статусах заявок (FCM)',
     status: 'todo',
     priority: 'high',
     riskLevel: 'warning',
@@ -423,20 +343,19 @@ export const taskFixtures: Task[] = [
     startDate: '2026-06-23',
     deadline: '2026-07-05',
     createdAt: '2026-06-08',
-    description: 'FCM для iOS/Android. Kafka consumer → FCM API. Ограничение: без уведомлений 22:00–08:00 (требование compliance). Шаблоны согласуются с маркетингом.',
+    description: 'FCM для iOS/Android. Kafka consumer → FCM API. Без уведомлений 22:00–08:00 (требование compliance). Шаблоны согласованы с маркетингом.',
     criteria: [
       { id: 'c1', text: 'Уведомления приходят в течение 30 сек после события', done: false },
       { id: 'c2', text: 'Пользователь может отписаться от уведомлений', done: false },
-      { id: 'c3', text: 'Логотип и tone-of-voice банка в шаблонах', done: false },
+      { id: 'c3', text: 'Ночной тихий режим 22:00–08:00 работает', done: false },
     ],
     compliance: [{ id: 'cc1', label: 'Шаблоны согласованы с маркетингом', passed: false }],
-    comments: [{ id: 'cm1', author: u2, text: 'Нужно убедиться, что уведомления не попадают в ночное время (22:00–08:00).', time: '2026-06-20 11:32' }],
     relatedMetricIds: ['push_open_rate'],
   },
 
   {
     id: 'TASK-008',
-    title: 'Обновить флоу восстановления пароля',
+    title: 'Обновить флоу восстановления пароля (push-OTP)',
     status: 'todo',
     priority: 'medium',
     riskLevel: 'ok',
@@ -450,12 +369,11 @@ export const taskFixtures: Task[] = [
     deadline: '2026-07-08',
     createdAt: '2026-06-09',
     dependencies: ['TASK-007'],
-    description: 'Push-OTP как приоритетный канал (SMS — fallback). Флоу сократить до 2 шагов. Конверсия должна вырасти с 61% до ≥75%.',
+    description: 'Push-OTP как приоритетный канал (SMS — fallback). Флоу сократить до 2 шагов. Конверсия восстановления: с 61% до ≥75%.',
     criteria: [
       { id: 'c1', text: 'Новый флоу проходит за ≤2 шага', done: false },
       { id: 'c2', text: 'Push-OTP как приоритетный канал', done: false },
       { id: 'c3', text: 'Fallback на SMS при отсутствии приложения', done: false },
-      { id: 'c4', text: 'Покрытие тестами ≥80%', done: false },
     ],
     compliance: [{ id: 'cc1', label: 'Проверка на соответствие 152-ФЗ', passed: true }],
     artifacts: [{ type: 'figma', title: 'Новый флоу восстановления пароля', url: '#' }],
@@ -463,7 +381,7 @@ export const taskFixtures: Task[] = [
 
   {
     id: 'TASK-011',
-    title: 'Добавить биометрическую аутентификацию в мобильное приложение',
+    title: 'Биометрическая аутентификация (Face ID / Touch ID)',
     status: 'backlog',
     priority: 'high',
     riskLevel: 'warning',
@@ -476,7 +394,7 @@ export const taskFixtures: Task[] = [
     deadline: '2026-07-25',
     createdAt: '2026-06-10',
     dependencies: ['TASK-007', 'TASK-008'],
-    description: 'Face ID (iOS 12+) и Touch ID / Fingerprint (Android 9+). Биометрия только через Keystore/Secure Enclave. После 3 неудач — запрос PIN. Согласование с ИБ обязательно.',
+    description: 'Face ID (iOS 12+) и Touch ID / Fingerprint (Android 9+). Только через Keystore/Secure Enclave. После 3 неудач — запрос PIN.',
     criteria: [
       { id: 'c1', text: 'Face ID работает на iOS 15+', done: false },
       { id: 'c2', text: 'Touch ID работает на Android 9+', done: false },
@@ -488,59 +406,6 @@ export const taskFixtures: Task[] = [
       { id: 'cc2', label: 'Соответствует ГОСТ Р 57580', passed: false },
     ],
     relatedMetricIds: ['dau', 'auth_success_rate'],
-  },
-
-  {
-    id: 'TASK-009',
-    title: 'Провести груминг бэклога Q3',
-    status: 'todo',
-    priority: 'high',
-    riskLevel: 'warning',
-    storyPoints: 2,
-    epicId: 'EPIC-3',
-    teamId: 'team-debit',
-    sprintId: 'SPRINT-14',
-    labels: ['process'],
-    assignee: u2,
-    startDate: '2026-06-22',
-    deadline: '2026-06-30',
-    createdAt: '2026-06-14',
-    description: '2-часовая сессия груминга: топ-20 задач, оценка SP, зависимости, compliance-метки, распределение по спринтам 15-16.',
-    criteria: [
-      { id: 'c1', text: 'Все задачи с приоритетом high/critical оценены', done: false },
-      { id: 'c2', text: 'Зависимости между задачами зафиксированы', done: false },
-      { id: 'c3', text: 'Compliance-метки проставлены', done: false },
-    ],
-    compliance: [],
-    comments: [
-      { id: 'cm1', author: u6, text: 'Предлагаю включить задачи по новому регулированию ЦБ от 15 июня.', time: '2026-06-22 14:15' },
-    ],
-  },
-
-  {
-    id: 'TASK-040',
-    title: 'Реализовать 2FA через TOTP (Google Authenticator)',
-    status: 'backlog',
-    priority: 'medium',
-    riskLevel: 'warning',
-    storyPoints: 8,
-    epicId: 'EPIC-3',
-    teamId: 'team-debit',
-    labels: ['security', 'auth'],
-    assignee: u1,
-    startDate: '2026-07-28',
-    deadline: '2026-08-15',
-    createdAt: '2026-06-26',
-    dependencies: ['TASK-011'],
-    description: 'Поддержка TOTP-аутентификации (RFC 6238) как дополнительного фактора для premium-пользователей. Интеграция с Google Authenticator и Yandex.Key.',
-    criteria: [
-      { id: 'c1', text: 'QR-код для настройки TOTP генерируется', done: false },
-      { id: 'c2', text: 'Валидация 6-значного кода на сервере', done: false },
-      { id: 'c3', text: 'Backup-коды генерируются и сохраняются', done: false },
-    ],
-    compliance: [
-      { id: 'cc1', label: 'Соответствует требованиям ИБ по MFA', passed: false },
-    ],
   },
 
   {
@@ -558,11 +423,11 @@ export const taskFixtures: Task[] = [
     deadline: '2026-08-04',
     createdAt: '2026-06-26',
     dependencies: ['TASK-011'],
-    description: 'Внешний аудит безопасности модуля биометрической аутентификации. Без подписанного отчёта аудитора релиз в prod запрещён (требование ГОСТ Р 57580.1-2017).',
+    description: 'Внешний аудит безопасности модуля биометрии. Без подписанного отчёта аудитора релиз в prod запрещён (ГОСТ Р 57580.1-2017).',
     criteria: [
       { id: 'c1', text: 'Аудитор выбран и договор подписан', done: false },
       { id: 'c2', text: 'Сканирование уязвимостей пройдено', done: false },
-      { id: 'c3', text: 'Отчёт получен и критические замечания устранены', done: false },
+      { id: 'c3', text: 'Критические замечания устранены', done: false },
     ],
     compliance: [
       { id: 'cc1', label: 'Отчёт внешнего аудитора получен', passed: false },
@@ -571,8 +436,32 @@ export const taskFixtures: Task[] = [
   },
 
   {
+    id: 'TASK-040',
+    title: '2FA через TOTP (Google Authenticator / Яндекс.Ключ)',
+    status: 'backlog',
+    priority: 'medium',
+    riskLevel: 'warning',
+    storyPoints: 8,
+    epicId: 'EPIC-3',
+    teamId: 'team-debit',
+    labels: ['security', 'auth'],
+    assignee: u1,
+    startDate: '2026-07-28',
+    deadline: '2026-08-15',
+    createdAt: '2026-06-26',
+    dependencies: ['TASK-011'],
+    description: 'Поддержка TOTP (RFC 6238) как дополнительного фактора для premium-пользователей. QR-код для настройки, backup-коды.',
+    criteria: [
+      { id: 'c1', text: 'QR-код для настройки TOTP генерируется', done: false },
+      { id: 'c2', text: 'Валидация 6-значного кода на сервере', done: false },
+      { id: 'c3', text: 'Backup-коды генерируются и сохраняются', done: false },
+    ],
+    compliance: [{ id: 'cc1', label: 'Соответствует требованиям ИБ по MFA', passed: false }],
+  },
+
+  {
     id: 'TASK-042',
-    title: 'Релиз биометрии + TOTP в production',
+    title: 'Релиз пакета безопасности (биометрия + 2FA) в production',
     status: 'backlog',
     priority: 'high',
     riskLevel: 'warning',
@@ -585,23 +474,23 @@ export const taskFixtures: Task[] = [
     deadline: '2026-08-25',
     createdAt: '2026-06-26',
     dependencies: ['TASK-041', 'TASK-040'],
-    description: 'Финальный релиз пакета безопасности: биометрия + TOTP. Поэтапный роллаут (5% → 25% → 100%). Requires знак аудита.',
+    description: 'Финальный релиз: биометрия + TOTP. Поэтапный роллаут 5% → 25% → 100%. Требует знак аудита.',
     criteria: [
-      { id: 'c1', text: 'Аудит безопасности пройден (TASK-041)', done: false },
-      { id: 'c2', text: 'Роллаут настроен через feature flags', done: false },
+      { id: 'c1', text: 'Аудит безопасности пройден', done: false },
+      { id: 'c2', text: 'Роллаут через feature flags', done: false },
       { id: 'c3', text: 'Rollback-план задокументирован', done: false },
     ],
     compliance: [],
     relatedMetricIds: ['auth_success_rate'],
   },
 
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // EPIC-4: Платёжная инфраструктура (команда Переводов)
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
 
   {
     id: 'TASK-003',
-    title: 'Интегрировать новый API кредитного скоринга (v3)',
+    title: 'Интегрировать новый API кредитного скоринга v3',
     status: 'in_progress',
     priority: 'high',
     riskLevel: 'warning',
@@ -610,27 +499,21 @@ export const taskFixtures: Task[] = [
     teamId: 'team-payments',
     sprintId: 'SPRINT-14',
     labels: ['integration', 'api', 'compliance'],
-    assignee: u4,
+    assignee: u7,
     startDate: '2026-06-05',
     deadline: '2026-07-10',
     createdAt: '2026-06-05',
-    description: 'Переход с scoring API v2 на v3 (жёсткий дедлайн — 01.09.2026). Изменения: score→risk_category, risk_factors, новые HTTP-коды. Нагрузочное тестирование 1000 rps.',
+    description: 'Переход с scoring API v2 на v3 (жёсткий дедлайн — 01.09.2026). Изменения: score→risk_category, risk_factors, новые HTTP-коды.',
     criteria: [
       { id: 'c1', text: 'Маппинг полей v2→v3 реализован', done: true },
       { id: 'c2', text: 'Тесты с командой рисков пройдены', done: false },
-      { id: 'c3', text: 'Откат на v2 предусмотрен через feature-flag', done: true },
-      { id: 'c4', text: 'Нагрузочное тестирование (1000 rps)', done: false },
-      { id: 'c5', text: 'Документация обновлена', done: false },
+      { id: 'c3', text: 'Откат на v2 через feature-flag', done: true },
+      { id: 'c4', text: 'Нагрузочное тестирование 1000 rps', done: false },
     ],
     compliance: [
       { id: 'cc1', label: 'Согласовано с командой рисков', passed: false },
       { id: 'cc2', label: 'Пройдена проверка ИБ', passed: true },
     ],
-    artifacts: [
-      { type: 'confluence', title: 'Спецификация API скоринга v3', url: '#' },
-      { type: 'pr', title: 'PR #4589 — Scoring API v3 integration', url: '#' },
-    ],
-    comments: [{ id: 'cm1', author: u6, text: 'Новое поле risk_category — 5 уровней вместо 3. Нужно обновить UI.', time: '2026-06-18 13:00' }],
     relatedMetricIds: ['credit_approval_rate', 'scoring_latency'],
   },
 
@@ -644,20 +527,18 @@ export const taskFixtures: Task[] = [
     epicId: 'EPIC-4',
     teamId: 'team-payments',
     sprintId: 'SPRINT-14',
-    labels: ['integration', 'api', 'payments'],
+    labels: ['integration', 'payments'],
     assignee: u9,
     startDate: '2026-06-20',
     deadline: '2026-07-15',
     createdAt: '2026-06-15',
-    description: 'Обязательный переход на SDK эквайринга v4.0: новый протокол 3DS v2.2, поддержка SBP QR-кодов v2. Старый SDK выводится из эксплуатации 15.08.2026.',
+    description: 'Переход на SDK эквайринга v4.0: новый протокол 3DS v2.2, поддержка SBP QR-кодов v2. Старый SDK выводится 15.08.2026.',
     criteria: [
-      { id: 'c1', text: 'SDK v4.0 интегрирован и прошёл smoke-тесты', done: false },
-      { id: 'c2', text: '3DS v2.2 работает на всех поддерживаемых устройствах', done: false },
+      { id: 'c1', text: 'SDK v4.0 прошёл smoke-тесты', done: false },
+      { id: 'c2', text: '3DS v2.2 работает на всех устройствах', done: false },
       { id: 'c3', text: 'SBP QR v2 генерируется корректно', done: false },
     ],
-    compliance: [
-      { id: 'cc1', label: 'Сертификация НСПК пройдена', passed: false },
-    ],
+    compliance: [{ id: 'cc1', label: 'Сертификация НСПК пройдена', passed: false }],
     relatedMetricIds: ['payment_success_rate'],
   },
 
@@ -676,11 +557,11 @@ export const taskFixtures: Task[] = [
     deadline: '2026-07-25',
     createdAt: '2026-06-15',
     dependencies: ['TASK-050'],
-    description: 'Нагрузочное тестирование нового SDK: 5000 TPS sustained, p99 < 200ms. Подготовка отчёта для команды рисков.',
+    description: '5000 TPS sustained, p99 < 200ms. Подготовка отчёта для команды рисков.',
     criteria: [
       { id: 'c1', text: '5000 TPS без деградации', done: false },
       { id: 'c2', text: 'p99 latency < 200ms', done: false },
-      { id: 'c3', text: 'Отчёт нагрузочного тестирования подготовлен', done: false },
+      { id: 'c3', text: 'Отчёт нагрузочного тестирования', done: false },
     ],
     compliance: [],
     relatedMetricIds: ['payment_success_rate'],
@@ -688,7 +569,7 @@ export const taskFixtures: Task[] = [
 
   {
     id: 'TASK-052',
-    title: 'Миграция транзакций на новый процессинг (beta)',
+    title: 'Миграция транзакций на новый процессинг (beta → prod)',
     status: 'backlog',
     priority: 'critical',
     riskLevel: 'critical',
@@ -701,10 +582,10 @@ export const taskFixtures: Task[] = [
     deadline: '2026-08-22',
     createdAt: '2026-06-15',
     dependencies: ['TASK-051', 'TASK-003'],
-    description: 'Поэтапная миграция транзакций на новый процессинг: сначала 1% beta-пользователей, затем 10%, 50%, 100%. Критический путь: без этого нельзя полностью вывести старый SDK.',
+    description: 'Поэтапная миграция: 1% beta → 10% → 50% → 100%. Критический путь: без этого нельзя полностью вывести старый SDK.',
     criteria: [
       { id: 'c1', text: 'Beta (1%) без инцидентов 48 часов', done: false },
-      { id: 'c2', text: 'Расширение до 10% — по результатам beta', done: false },
+      { id: 'c2', text: 'Расширение до 10% по результатам beta', done: false },
       { id: 'c3', text: 'Полный роллаут без деградации метрик', done: false },
     ],
     compliance: [
@@ -729,22 +610,22 @@ export const taskFixtures: Task[] = [
     deadline: '2026-09-01',
     createdAt: '2026-06-15',
     dependencies: ['TASK-052'],
-    description: 'Официальное завершение поддержки SDK v3. Отключение feature flag, архивирование кода, уведомление всех зависимых команд.',
+    description: 'Отключение feature flag, архивирование кода, уведомление всех зависимых команд.',
     criteria: [
       { id: 'c1', text: 'Feature flag v3 отключён', done: false },
-      { id: 'c2', text: 'Все зависимые команды уведомлены', done: false },
+      { id: 'c2', text: 'Зависимые команды уведомлены', done: false },
       { id: 'c3', text: 'Документация обновлена', done: false },
     ],
     compliance: [],
   },
 
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
   // EPIC-5: Аналитика и дашборды (команда Аналитики)
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
 
   {
     id: 'TASK-101',
-    title: 'Внедрение единой дата-платформы (CDP v2)',
+    title: 'Внедрение единой дата-платформы CDP v2',
     status: 'in_progress',
     priority: 'critical',
     riskLevel: 'warning',
@@ -756,19 +637,15 @@ export const taskFixtures: Task[] = [
     startDate: '2026-06-01',
     deadline: '2026-07-11',
     createdAt: '2026-05-15',
-    description: 'Миграция на единую Customer Data Platform v2: унификация событий из iOS/Android/Web, новая схема данных, real-time стриминг через Kafka. Блокирует TASK-012 и TASK-105.',
+    description: 'Миграция на единую Customer Data Platform v2. Унификация событий iOS/Android/Web, real-time стриминг через Kafka. Блокирует TASK-012 и TASK-105.',
     criteria: [
       { id: 'c1', text: 'Схема событий утверждена всеми командами', done: true },
       { id: 'c2', text: 'iOS SDK обновлён и публикует события', done: false },
       { id: 'c3', text: 'Android SDK обновлён', done: false },
       { id: 'c4', text: 'Real-time стриминг через Kafka настроен', done: false },
     ],
-    compliance: [
-      { id: 'cc1', label: 'DPO согласовал обработку данных (152-ФЗ)', passed: true },
-    ],
-    artifacts: [
-      { type: 'confluence', title: 'CDP v2 — техническая спецификация', url: '#' },
-    ],
+    compliance: [{ id: 'cc1', label: 'DPO согласовал обработку данных (152-ФЗ)', passed: true }],
+    artifacts: [{ type: 'confluence', title: 'CDP v2 — техническая спецификация', url: '#' }],
     relatedMetricIds: ['dau', 'session_duration'],
   },
 
@@ -787,7 +664,7 @@ export const taskFixtures: Task[] = [
     deadline: '2026-07-28',
     createdAt: '2026-05-20',
     dependencies: ['TASK-101'],
-    description: 'Создание стандартных дашбордов для всех продуктовых команд на основе CDP v2: retention, conversion, engagement. Шаблоны доступны для самообслуживания.',
+    description: 'Стандартные дашборды для всех продуктовых команд: retention, conversion, engagement. Шаблоны для самообслуживания.',
     criteria: [
       { id: 'c1', text: 'Дашборд retention готов', done: false },
       { id: 'c2', text: 'Дашборд conversion готов', done: false },
@@ -811,11 +688,11 @@ export const taskFixtures: Task[] = [
     deadline: '2026-08-22',
     createdAt: '2026-05-25',
     dependencies: ['TASK-101', 'TASK-102'],
-    description: 'Разработка ML-модели churn prediction на данных CDP v2. Цель: AUC-ROC ≥ 0.82. Используется для таргетинга retention-кампаний.',
+    description: 'Churn prediction на данных CDP v2. Цель: AUC-ROC ≥ 0.82. Таргетинг retention-кампаний.',
     criteria: [
-      { id: 'c1', text: 'Dataset подготовлен (минимум 6 месяцев истории)', done: false },
-      { id: 'c2', text: 'Модель достигает AUC-ROC ≥ 0.82', done: false },
-      { id: 'c3', text: 'A/B тест модели vs baseline запущен', done: false },
+      { id: 'c1', text: 'Dataset: минимум 6 месяцев истории', done: false },
+      { id: 'c2', text: 'Модель AUC-ROC ≥ 0.82', done: false },
+      { id: 'c3', text: 'A/B тест vs baseline запущен', done: false },
     ],
     compliance: [],
     relatedMetricIds: ['churn_rate'],
@@ -835,9 +712,9 @@ export const taskFixtures: Task[] = [
     startDate: '2026-06-23',
     deadline: '2026-07-31',
     createdAt: '2026-06-01',
-    description: 'Переход на формат XBRL для регуляторной отчётности (требование ЦБ, дедлайн 31.07.2026). Без этого штраф и предписание.',
+    description: 'Переход на XBRL для регуляторной отчётности (требование ЦБ, дедлайн 31.07.2026). Без этого — штраф и предписание.',
     criteria: [
-      { id: 'c1', text: 'Маппинг внутренних данных → XBRL-таксономия', done: false },
+      { id: 'c1', text: 'Маппинг данных → XBRL-таксономия', done: false },
       { id: 'c2', text: 'Автоматическая генерация отчётов', done: false },
       { id: 'c3', text: 'Тестовая подача в ЦБ прошла валидацию', done: false },
     ],
@@ -862,7 +739,7 @@ export const taskFixtures: Task[] = [
     deadline: '2026-07-25',
     createdAt: '2026-06-05',
     dependencies: ['TASK-101'],
-    description: 'REST API для выдачи ML-рекомендаций продуктовым командам (персонализированные предложения, cross-sell, up-sell). SLA: p99 < 50ms.',
+    description: 'REST API для выдачи ML-рекомендаций (персонализированные предложения, cross-sell). SLA: p99 < 50ms.',
     criteria: [
       { id: 'c1', text: 'API задокументирован в Swagger', done: false },
       { id: 'c2', text: 'p99 < 50ms при 1000 RPS', done: false },
@@ -871,37 +748,73 @@ export const taskFixtures: Task[] = [
     compliance: [],
   },
 
-  {
-    id: 'TASK-106',
-    title: 'Self-service аналитика для PO (no-code)',
-    status: 'backlog',
-    priority: 'low',
-    riskLevel: 'ok',
-    storyPoints: 8,
-    epicId: 'EPIC-5',
-    teamId: 'team-analytics',
-    labels: ['analytics', 'no-code'],
-    assignee: u10,
-    startDate: '2026-08-11',
-    deadline: '2026-09-05',
-    createdAt: '2026-06-10',
-    dependencies: ['TASK-102', 'TASK-103'],
-    description: 'No-code инструмент для продактов: возможность строить кастомные отчёты без SQL. Интеграция с Metabase.',
-    criteria: [
-      { id: 'c1', text: 'Metabase настроен и подключён к CDP', done: false },
-      { id: 'c2', text: 'Обучающие материалы для PO подготовлены', done: false },
-      { id: 'c3', text: 'Права доступа настроены по ролям', done: false },
-    ],
-    compliance: [],
-  },
+  // ══════════════════════════════════════════════════════════════════════════
+  // EPIC-6: Программа лояльности «Своя выгода»
+  // Полный продуктовый цикл: исследование → дизайн → разработка → QA → релиз
+  // Роли: аналитик данных, UX-исследователь, дизайнер, PM,
+  //       backend-разработчик, frontend-разработчик, QA-инженер
+  // ══════════════════════════════════════════════════════════════════════════
 
-  // ══════════════════════════════════════════════════════════════════════════════
-  // EPIC-6: Программа лояльности
-  // ══════════════════════════════════════════════════════════════════════════════
+  // ── Фаза 1: Discovery ──────────────────────────────────────────────────
 
   {
     id: 'TASK-060',
-    title: 'Исследование: аудит текущей программы кэшбэка',
+    title: '[Аналитик] Количественный анализ текущей программы кэшбэка',
+    status: 'done',
+    priority: 'high',
+    riskLevel: 'ok',
+    storyPoints: 3,
+    epicId: 'EPIC-6',
+    teamId: 'team-debit',
+    sprintId: 'SPRINT-13',
+    labels: ['research', 'analytics', 'cashback'],
+    assignee: u6,
+    startDate: '2026-06-01',
+    deadline: '2026-06-13',
+    createdAt: '2026-05-28',
+    description: 'SQL-выгрузка и анализ данных за 6 месяцев: активация кэшбэка, категории трат, корреляция с churn rate, cohort-анализ. Вывод: 67% пользователей не понимают механику начисления.',
+    criteria: [
+      { id: 'c1', text: 'Данные за 6 месяцев собраны и очищены', done: true },
+      { id: 'c2', text: 'Когортный анализ по activation rate', done: true },
+      { id: 'c3', text: 'Корреляция использования кэшбэка с retention', done: true },
+      { id: 'c4', text: 'Отчёт с инсайтами опубликован в Confluence', done: true },
+    ],
+    compliance: [],
+    artifacts: [{ type: 'confluence', title: 'Количественный анализ программы лояльности', url: '#' }],
+    comments: [],
+    relatedMetricIds: ['arpu', 'churn_rate'],
+  },
+
+  {
+    id: 'TASK-061',
+    title: '[UX-исследователь] Глубинные интервью с пользователями',
+    status: 'done',
+    priority: 'high',
+    riskLevel: 'ok',
+    storyPoints: 5,
+    epicId: 'EPIC-6',
+    teamId: 'team-debit',
+    sprintId: 'SPRINT-13',
+    labels: ['research', 'ux', 'cashback'],
+    assignee: u11,
+    startDate: '2026-06-04',
+    deadline: '2026-06-18',
+    createdAt: '2026-05-28',
+    description: '12 глубинных интервью: 4 активных пользователя кэшбэка, 4 пассивных, 4 отказавшихся. Скрипт на основе JTBD-фреймворка. Запись и транскрипция в Notion.',
+    criteria: [
+      { id: 'c1', text: '12 интервью проведено и записано', done: true },
+      { id: 'c2', text: 'Транскрипции загружены в Notion', done: true },
+      { id: 'c3', text: 'Affinity diagram построена', done: true },
+      { id: 'c4', text: 'Топ-5 барьеров использования выявлены', done: true },
+    ],
+    compliance: [],
+    artifacts: [{ type: 'confluence', title: 'Отчёт: интервью о программе лояльности', url: '#' }],
+    comments: [],
+  },
+
+  {
+    id: 'TASK-062',
+    title: '[Аналитик] Конкурентный анализ механик кэшбэка',
     status: 'done',
     priority: 'medium',
     riskLevel: 'ok',
@@ -909,118 +822,356 @@ export const taskFixtures: Task[] = [
     epicId: 'EPIC-6',
     teamId: 'team-debit',
     sprintId: 'SPRINT-13',
-    labels: ['research', 'cashback'],
+    labels: ['research', 'competitive', 'cashback'],
     assignee: u6,
-    startDate: '2026-06-01',
-    deadline: '2026-06-14',
+    startDate: '2026-06-04',
+    deadline: '2026-06-18',
     createdAt: '2026-05-28',
-    description: 'Аудит текущей программы кэшбэка: интервью с 12 пользователями, анализ данных использования, сравнение с конкурентами. Вывод: 67% не понимают, как начисляется кэшбэк.',
+    description: 'Анализ механик кэшбэка: Т-Банк, Сбер, ВТБ, Альфа, Газпромбанк. Mystery shopping + анализ публичных данных. Сравнительная таблица по 15 параметрам.',
     criteria: [
-      { id: 'c1', text: '12 интервью проведено и записано', done: true },
-      { id: 'c2', text: 'Отчёт с инсайтами в Confluence', done: true },
-      { id: 'c3', text: 'Конкурентный анализ (Т-Банк, Сбер, ВТБ)', done: true },
+      { id: 'c1', text: '5 конкурентов изучены', done: true },
+      { id: 'c2', text: 'Сравнительная таблица заполнена (15 параметров)', done: true },
+      { id: 'c3', text: 'Выявлены незакрытые ниши', done: true },
     ],
     compliance: [],
-    artifacts: [{ type: 'confluence', title: 'Аудит программы лояльности 2026', url: '#' }],
+    artifacts: [{ type: 'confluence', title: 'Конкурентный анализ: программы лояльности банков', url: '#' }],
     comments: [],
   },
 
   {
-    id: 'TASK-061',
-    title: 'Дизайн новой механики кэшбэка (концепты)',
+    id: 'TASK-063',
+    title: '[UX-исследователь] Синтез исследований и JTBD-карта',
     status: 'in_progress',
-    priority: 'medium',
+    priority: 'high',
+    riskLevel: 'ok',
+    storyPoints: 3,
+    epicId: 'EPIC-6',
+    teamId: 'team-debit',
+    sprintId: 'SPRINT-14',
+    labels: ['research', 'jtbd', 'cashback'],
+    assignee: u11,
+    startDate: '2026-06-19',
+    deadline: '2026-06-28',
+    createdAt: '2026-06-18',
+    dependencies: ['TASK-060', 'TASK-061', 'TASK-062'],
+    description: 'Синтез всех исследований в единый документ. Jobs to be done карта. Формулировка дизайн-проблемы. HMW-вопросы для дизайн-сессии.',
+    criteria: [
+      { id: 'c1', text: 'JTBD-карта построена (≥4 jobs)', done: true },
+      { id: 'c2', text: 'Формулировка дизайн-проблемы согласована с PM', done: false },
+      { id: 'c3', text: 'HMW-вопросы сформулированы для дизайн-сессии', done: false },
+    ],
+    compliance: [],
+    artifacts: [{ type: 'confluence', title: 'JTBD-карта: программа лояльности 2026', url: '#' }],
+    relatedMetricIds: ['arpu'],
+  },
+
+  // ── Фаза 2: Дизайн ────────────────────────────────────────────────────
+
+  {
+    id: 'TASK-064',
+    title: '[Дизайнер] Концепты новой механики — 3 варианта',
+    status: 'in_progress',
+    priority: 'high',
+    riskLevel: 'ok',
+    storyPoints: 8,
+    epicId: 'EPIC-6',
+    teamId: 'team-debit',
+    sprintId: 'SPRINT-14',
+    labels: ['design', 'cashback', 'concept'],
+    assignee: u3,
+    startDate: '2026-06-22',
+    deadline: '2026-07-04',
+    createdAt: '2026-06-21',
+    dependencies: ['TASK-063'],
+    description: 'Три концепта механики: A) Фиксированный кэшбэк по 5 категориям — просто и предсказуемо. B) Прогрессивный кэшбэк — чем больше тратишь, тем выше %. C) «Любимая категория» — пользователь выбирает повышенный кэшбэк 1 раз в месяц. Wireframes + hi-fi в Figma.',
+    criteria: [
+      { id: 'c1', text: 'Три концепта проработаны до hi-fi', done: true },
+      { id: 'c2', text: 'Главный экран, история начислений, онбординг механики', done: false },
+      { id: 'c3', text: 'Все три варианта покрывают edge cases', done: false },
+      { id: 'c4', text: 'Интерактивные прототипы в Figma готовы', done: false },
+    ],
+    compliance: [],
+    artifacts: [{ type: 'figma', title: 'Концепты механики кэшбэка v3', url: '#' }],
+    relatedMetricIds: ['arpu'],
+  },
+
+  {
+    id: 'TASK-065',
+    title: '[UX-исследователь] Юзабилити-тест концептов',
+    status: 'todo',
+    priority: 'high',
     riskLevel: 'ok',
     storyPoints: 5,
     epicId: 'EPIC-6',
     teamId: 'team-debit',
     sprintId: 'SPRINT-14',
-    labels: ['design', 'cashback'],
-    assignee: u3,
-    startDate: '2026-06-16',
-    deadline: '2026-07-04',
-    createdAt: '2026-06-14',
-    dependencies: ['TASK-060'],
-    description: '3 концепта новой механики: (A) фиксированный кэшбэк по категориям, (B) прогрессивный кэшбэк по тратам, (C) выбор «любимой категории» каждый месяц. Прототипы в Figma.',
+    labels: ['research', 'usability', 'cashback'],
+    assignee: u11,
+    startDate: '2026-07-03',
+    deadline: '2026-07-11',
+    createdAt: '2026-06-21',
+    dependencies: ['TASK-063', 'TASK-064'],
+    description: 'Модерируемое тестирование прототипов на 8 участниках (по ≈60 минут). Задачи: активировать кэшбэк, понять правила начисления, проверить историю. Победитель определяется по comprehension score и task completion rate.',
     criteria: [
-      { id: 'c1', text: '3 концепта в Figma проработаны до hi-fi', done: false },
-      { id: 'c2', text: 'Юзабилити-тест (8 участников) проведён', done: false },
-      { id: 'c3', text: 'Победивший концепт определён', done: false },
+      { id: 'c1', text: '8 участников протестированы', done: false },
+      { id: 'c2', text: 'Task completion rate измерен для каждого концепта', done: false },
+      { id: 'c3', text: 'Comprehension score измерен', done: false },
+      { id: 'c4', text: 'Победивший концепт выбран и согласован с PM', done: false },
     ],
     compliance: [],
-    artifacts: [{ type: 'figma', title: 'Концепты кэшбэка v3', url: '#' }],
-    relatedMetricIds: ['arpu'],
+    artifacts: [{ type: 'confluence', title: 'Отчёт юзабилити-теста: кэшбэк', url: '#' }],
   },
 
   {
-    id: 'TASK-062',
-    title: 'Согласование новой механики кэшбэка с финансами',
+    id: 'TASK-066',
+    title: '[PM] Unit-экономика и согласование с финансами',
     status: 'backlog',
     priority: 'high',
     riskLevel: 'warning',
-    storyPoints: 2,
+    storyPoints: 3,
     epicId: 'EPIC-6',
     teamId: 'team-debit',
-    labels: ['process', 'cashback', 'finance'],
+    labels: ['process', 'finance', 'cashback'],
     assignee: u2,
-    startDate: '2026-07-06',
-    deadline: '2026-07-13',
-    createdAt: '2026-06-14',
-    dependencies: ['TASK-061'],
-    description: 'Unit-экономика трёх концептов, согласование с финансовым директором. Ограничение: себестоимость кэшбэка не должна превышать 1.2% от оборота.',
+    startDate: '2026-07-07',
+    deadline: '2026-07-14',
+    createdAt: '2026-06-21',
+    dependencies: ['TASK-065'],
+    description: 'Финансовая модель для победившего концепта: P&L за 12 месяцев при разных сценариях adoption rate. Ограничение от CFO: себестоимость кэшбэка ≤ 1,2% от оборота.',
     criteria: [
-      { id: 'c1', text: 'Unit-экономика рассчитана для 3 концептов', done: false },
-      { id: 'c2', text: 'CFO подписал unit-экономику', done: false },
+      { id: 'c1', text: 'P&L рассчитан для 3 сценариев adoption', done: false },
+      { id: 'c2', text: 'Себестоимость ≤ 1,2% от оборота подтверждена', done: false },
+      { id: 'c3', text: 'CFO подписал unit-экономику', done: false },
+      { id: 'c4', text: 'Юридический отдел проверил налоговые аспекты', done: false },
     ],
-    compliance: [],
+    compliance: [{ id: 'cc1', label: 'Налоговые аспекты начисления согласованы', passed: false }],
   },
 
   {
-    id: 'TASK-063',
-    title: 'Разработка новых экранов программы лояльности',
-    status: 'backlog',
-    priority: 'medium',
-    riskLevel: 'ok',
-    storyPoints: 13,
-    epicId: 'EPIC-6',
-    teamId: 'team-debit',
-    labels: ['feature', 'cashback', 'mobile'],
-    assignee: u4,
-    startDate: '2026-07-14',
-    deadline: '2026-08-08',
-    createdAt: '2026-06-14',
-    dependencies: ['TASK-062'],
-    description: 'Разработка мобильных экранов новой программы лояльности: экран выбора категории, история начислений, прогресс-бар до следующего уровня, анимации.',
-    criteria: [
-      { id: 'c1', text: 'Экран выбора категории реализован', done: false },
-      { id: 'c2', text: 'История начислений с пагинацией', done: false },
-      { id: 'c3', text: 'Анимация при начислении кэшбэка', done: false },
-      { id: 'c4', text: 'Покрытие тестами ≥80%', done: false },
-    ],
-    compliance: [],
-    relatedMetricIds: ['arpu', 'dau'],
-  },
-
-  {
-    id: 'TASK-064',
-    title: 'Интеграция кэшбэка с процессингом платежей',
+    id: 'TASK-067',
+    title: '[Дизайнер] Финальный UI + компоненты для Design System',
     status: 'backlog',
     priority: 'high',
-    riskLevel: 'warning',
+    riskLevel: 'ok',
     storyPoints: 8,
     epicId: 'EPIC-6',
     teamId: 'team-debit',
-    labels: ['integration', 'cashback', 'payments'],
-    assignee: u8,
+    labels: ['design', 'cashback', 'design-system'],
+    assignee: u3,
+    startDate: '2026-07-07',
+    deadline: '2026-07-21',
+    createdAt: '2026-06-21',
+    dependencies: ['TASK-065'],
+    description: 'Полный экранный флоу победившего концепта: главный экран (виджет кэшбэка), экран «Мой кэшбэк», выбор/смена категории, история начислений, онбординг для новых пользователей. Тёмная тема, все состояния (empty, error, loading), спецификация для разработки.',
+    criteria: [
+      { id: 'c1', text: 'Все экраны в Figma с аннотациями', done: false },
+      { id: 'c2', text: '3 новых компонента задокументированы в Design System', done: false },
+      { id: 'c3', text: 'Анимации описаны (Lottie specs)', done: false },
+      { id: 'c4', text: 'WCAG AA контраст проверен', done: false },
+      { id: 'c5', text: 'Передано разработке с комментариями', done: false },
+    ],
+    compliance: [],
+    artifacts: [{ type: 'figma', title: 'Программа лояльности — финальный UI', url: '#' }],
+    relatedMetricIds: ['arpu'],
+  },
+
+  // ── Фаза 3: Спецификация ──────────────────────────────────────────────
+
+  {
+    id: 'TASK-068',
+    title: '[PM] Продуктовая спецификация (PRD)',
+    status: 'backlog',
+    priority: 'high',
+    riskLevel: 'ok',
+    storyPoints: 3,
+    epicId: 'EPIC-6',
+    teamId: 'team-debit',
+    labels: ['spec', 'cashback'],
+    assignee: u2,
+    startDate: '2026-07-14',
+    deadline: '2026-07-21',
+    createdAt: '2026-06-21',
+    dependencies: ['TASK-066', 'TASK-067'],
+    description: 'User stories, acceptance criteria, API-контракт согласованный с backend-ом, стратегия feature flags, план поэтапного роллаута. Входной документ для разработки.',
+    criteria: [
+      { id: 'c1', text: 'User stories для всех ролей (новый/активный/VIP)', done: false },
+      { id: 'c2', text: 'API-контракт согласован с backend-разработчиком', done: false },
+      { id: 'c3', text: 'Стратегия feature flags описана', done: false },
+      { id: 'c4', text: 'Acceptance criteria по каждому user story', done: false },
+    ],
+    compliance: [],
+    artifacts: [{ type: 'confluence', title: 'PRD: Программа лояльности «Своя выгода»', url: '#' }],
+  },
+
+  // ── Фаза 4: Backend-разработка ────────────────────────────────────────
+
+  {
+    id: 'TASK-069',
+    title: '[Backend] Проектирование БД и архитектура сервиса',
+    status: 'backlog',
+    priority: 'high',
+    riskLevel: 'ok',
+    storyPoints: 5,
+    epicId: 'EPIC-6',
+    teamId: 'team-debit',
+    labels: ['backend', 'architecture', 'cashback'],
+    assignee: u1,
+    startDate: '2026-07-21',
+    deadline: '2026-07-30',
+    createdAt: '2026-06-21',
+    dependencies: ['TASK-068'],
+    description: 'Схема БД: таблицы категорий, правил начисления, истории транзакций и балансов. Архитектура микросервиса loyalty-service. ADR-документ с обоснованием технических решений.',
+    criteria: [
+      { id: 'c1', text: 'ERD-схема БД согласована с командой', done: false },
+      { id: 'c2', text: 'Миграции написаны и проверены на стейже', done: false },
+      { id: 'c3', text: 'ADR-документ с техническими решениями', done: false },
+      { id: 'c4', text: 'Индексы для высоконагруженных запросов', done: false },
+    ],
+    compliance: [],
+    artifacts: [{ type: 'confluence', title: 'ADR: Архитектура loyalty-service', url: '#' }],
+  },
+
+  {
+    id: 'TASK-070',
+    title: '[Backend] API механики кэшбэка',
+    status: 'backlog',
+    priority: 'high',
+    riskLevel: 'warning',
+    storyPoints: 13,
+    epicId: 'EPIC-6',
+    teamId: 'team-debit',
+    labels: ['backend', 'api', 'cashback'],
+    assignee: u1,
     startDate: '2026-07-28',
     deadline: '2026-08-15',
-    createdAt: '2026-06-14',
-    dependencies: ['TASK-052', 'TASK-063'],
-    description: 'Интеграция новой механики кэшбэка с новым процессингом платежей (TASK-052). Начисление в real-time при транзакции, webhook уведомления.',
+    createdAt: '2026-06-21',
+    dependencies: ['TASK-069'],
+    description: 'REST API endpoints: выбор категории, текущий кэшбэк баланс, история начислений с пагинацией, предпросмотр начисления при транзакции. Unit-тесты ≥80%, OpenAPI-спецификация, rate limiting.',
     criteria: [
-      { id: 'c1', text: 'Начисление в real-time (<2 сек после транзакции)', done: false },
-      { id: 'c2', text: 'Webhook уведомление о начислении работает', done: false },
+      { id: 'c1', text: 'POST /loyalty/category — выбор категории', done: false },
+      { id: 'c2', text: 'GET /loyalty/balance — текущий баланс', done: false },
+      { id: 'c3', text: 'GET /loyalty/history — история с пагинацией', done: false },
+      { id: 'c4', text: 'OpenAPI-спецификация опубликована', done: false },
+      { id: 'c5', text: 'Unit-тесты покрытие ≥80%', done: false },
+      { id: 'c6', text: 'Rate limiting: ≤100 req/min на пользователя', done: false },
+    ],
+    compliance: [],
+    artifacts: [
+      { type: 'pr', title: 'PR: loyalty-service API v1', url: '#' },
+      { type: 'confluence', title: 'OpenAPI: loyalty-service', url: '#' },
+    ],
+  },
+
+  // ── Фаза 5: Frontend/Mobile разработка ───────────────────────────────
+
+  {
+    id: 'TASK-071',
+    title: '[Frontend] Экраны программы лояльности (iOS + Android)',
+    status: 'backlog',
+    priority: 'high',
+    riskLevel: 'warning',
+    storyPoints: 13,
+    epicId: 'EPIC-6',
+    teamId: 'team-debit',
+    labels: ['mobile', 'frontend', 'cashback'],
+    assignee: u4,
+    startDate: '2026-08-04',
+    deadline: '2026-08-22',
+    createdAt: '2026-06-21',
+    dependencies: ['TASK-067', 'TASK-070'],
+    description: 'iOS и Android: экран «Мой кэшбэк», выбор/смена категории, история начислений, онбординг. Анимации начисления через Lottie. Skeleton-лоадеры. Обработка offline-режима.',
+    criteria: [
+      { id: 'c1', text: 'Все экраны соответствуют Figma-макетам (≥95% pixel-perfect)', done: false },
+      { id: 'c2', text: 'Анимации Lottie внедрены', done: false },
+      { id: 'c3', text: 'Offline: кеш истории, graceful degradation', done: false },
+      { id: 'c4', text: 'VoiceOver / TalkBack поддержка', done: false },
+      { id: 'c5', text: 'Покрытие UI-тестами ≥70%', done: false },
+    ],
+    compliance: [],
+    artifacts: [
+      { type: 'pr', title: 'PR: loyalty screens — iOS', url: '#' },
+      { type: 'pr', title: 'PR: loyalty screens — Android', url: '#' },
+    ],
+    relatedMetricIds: ['arpu', 'dau'],
+  },
+
+  // ── Фаза 6: QA ───────────────────────────────────────────────────────
+
+  {
+    id: 'TASK-072',
+    title: '[QA] Тест-план и тест-кейсы',
+    status: 'backlog',
+    priority: 'medium',
+    riskLevel: 'ok',
+    storyPoints: 5,
+    epicId: 'EPIC-6',
+    teamId: 'team-debit',
+    labels: ['qa', 'testing', 'cashback'],
+    assignee: u5,
+    startDate: '2026-07-28',
+    deadline: '2026-08-08',
+    createdAt: '2026-06-21',
+    dependencies: ['TASK-068'],
+    description: 'Тест-план на основе PRD. 80+ тест-кейсов: позитивные и негативные сценарии, edge cases (отмена транзакции, конкурентный доступ, смена категории в день X), кроссплатформенное тестирование.',
+    criteria: [
+      { id: 'c1', text: '80+ тест-кейсов написано', done: false },
+      { id: 'c2', text: 'Edge cases: отмена транзакции покрыта', done: false },
+      { id: 'c3', text: 'Тест-план согласован с разработчиком', done: false },
+      { id: 'c4', text: 'Автотесты для API написаны (Postman/REST-assured)', done: false },
+    ],
+    compliance: [],
+    artifacts: [{ type: 'confluence', title: 'Тест-план: программа лояльности', url: '#' }],
+  },
+
+  {
+    id: 'TASK-073',
+    title: '[QA] Ручное тестирование и acceptance sign-off',
+    status: 'backlog',
+    priority: 'high',
+    riskLevel: 'warning',
+    storyPoints: 5,
+    epicId: 'EPIC-6',
+    teamId: 'team-debit',
+    labels: ['qa', 'testing', 'cashback'],
+    assignee: u5,
+    startDate: '2026-08-18',
+    deadline: '2026-08-25',
+    createdAt: '2026-06-21',
+    dependencies: ['TASK-071', 'TASK-072'],
+    description: 'Полное smoke + regression тестирование на iOS и Android (реальные устройства: iPhone 14, Samsung S22, Xiaomi 12). Acceptance по критериям PRD. Знак QA для релиза.',
+    criteria: [
+      { id: 'c1', text: 'Smoke-тест пройден на 6 устройствах', done: false },
+      { id: 'c2', text: 'Regression: 0 критических багов', done: false },
+      { id: 'c3', text: 'Acceptance criteria PRD выполнены на 100%', done: false },
+      { id: 'c4', text: 'QA sign-off подписан', done: false },
+    ],
+    compliance: [],
+    relatedMetricIds: ['crash_rate'],
+  },
+
+  // ── Фаза 7: Интеграция (cross-team dep) ──────────────────────────────
+
+  {
+    id: 'TASK-074',
+    title: '[Backend] Интеграция с процессингом платежей — real-time начисление',
+    status: 'backlog',
+    priority: 'critical',
+    riskLevel: 'critical',
+    storyPoints: 8,
+    epicId: 'EPIC-6',
+    teamId: 'team-debit',
+    labels: ['backend', 'integration', 'payments', 'cashback'],
+    assignee: u8,
+    startDate: '2026-08-18',
+    deadline: '2026-09-01',
+    createdAt: '2026-06-21',
+    dependencies: ['TASK-070', 'TASK-052'],
+    description: 'Webhook от нового процессинга платежей команды Переводов (TASK-052) → начисление кэшбэка в real-time. Reconciliation с бухгалтерской системой. Retry logic при недоступности loyalty-service.',
+    criteria: [
+      { id: 'c1', text: 'Кэшбэк начисляется <2 сек после транзакции', done: false },
+      { id: 'c2', text: 'Retry logic: 3 попытки с экспоненциальным backoff', done: false },
       { id: 'c3', text: 'Reconciliation с бухгалтерской системой', done: false },
+      { id: 'c4', text: 'Dead letter queue для неудавшихся начислений', done: false },
     ],
     compliance: [
       { id: 'cc1', label: 'Налоговые аспекты начисления согласованы', passed: false },
@@ -1028,9 +1179,11 @@ export const taskFixtures: Task[] = [
     relatedMetricIds: ['arpu'],
   },
 
+  // ── Фаза 8: Релиз ─────────────────────────────────────────────────────
+
   {
-    id: 'TASK-065',
-    title: 'Бета-запуск новой программы лояльности',
+    id: 'TASK-075',
+    title: '[PM] Beta-запуск и поэтапный роллаут',
     status: 'backlog',
     priority: 'high',
     riskLevel: 'warning',
@@ -1039,15 +1192,18 @@ export const taskFixtures: Task[] = [
     teamId: 'team-debit',
     labels: ['release', 'cashback', 'beta'],
     assignee: u2,
-    startDate: '2026-08-18',
-    deadline: '2026-09-01',
-    createdAt: '2026-06-14',
-    dependencies: ['TASK-064'],
-    description: 'Бета-запуск новой программы лояльности для 10% пользователей. Мониторинг NPS, churn, ARPU в течение 2 недель. Go/no-go для полного роллаута.',
+    startDate: '2026-09-02',
+    deadline: '2026-09-15',
+    createdAt: '2026-06-21',
+    dependencies: ['TASK-073', 'TASK-074'],
+    description: 'Поэтапный роллаут через feature flags: 5% → 20% → 100%. 2 недели мониторинга: activation rate, ARPU delta, NPS, crash rate. Go/no-go дашборд в Grafana. Rollback-план.',
     criteria: [
-      { id: 'c1', text: 'Beta-когорта 10% настроена', done: false },
-      { id: 'c2', text: 'NPS beta-когорты ≥ NPS контрольной группы', done: false },
-      { id: 'c3', text: 'ARPU beta-когорты вырос ≥5%', done: false },
+      { id: 'c1', text: 'Beta-когорта 5% настроена через feature flags', done: false },
+      { id: 'c2', text: 'Дашборд мониторинга в Grafana готов', done: false },
+      { id: 'c3', text: 'Activation rate beta-когорты ≥ 30%', done: false },
+      { id: 'c4', text: 'ARPU beta-когорты вырос ≥5%', done: false },
+      { id: 'c5', text: 'NPS не ухудшился', done: false },
+      { id: 'c6', text: 'Rollback выполняется за <10 минут', done: false },
     ],
     compliance: [],
     relatedMetricIds: ['arpu', 'nps_general'],
