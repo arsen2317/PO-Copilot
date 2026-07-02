@@ -43,14 +43,12 @@ jobs:
             set -e
             cd /var/www/po-copilot
 
-            # Write env file from secrets (no leading spaces)
-            cat > .env.local <<'ENVEOF'
-ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
-APP_LOGIN=${{ secrets.APP_LOGIN }}
-APP_PASSWORD=${{ secrets.APP_PASSWORD }}
-APP_SESSION_SECRET=${{ secrets.APP_SESSION_SECRET }}
-BRAVE_SEARCH_API_KEY=${{ secrets.BRAVE_SEARCH_API_KEY }}
-ENVEOF
+            # Write env file from secrets
+            echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" > .env.local
+            echo "APP_LOGIN=${{ secrets.APP_LOGIN }}" >> .env.local
+            echo "APP_PASSWORD=${{ secrets.APP_PASSWORD }}" >> .env.local
+            echo "APP_SESSION_SECRET=${{ secrets.APP_SESSION_SECRET }}" >> .env.local
+            echo "BRAVE_SEARCH_API_KEY=${{ secrets.BRAVE_SEARCH_API_KEY }}" >> .env.local
 
             # Pull latest scripts
             git fetch origin main
