@@ -84,14 +84,24 @@ function UserAvatar({ user, size = 22 }: { user: { id: string; name: string; ava
   );
 }
 
-const PRIORITY_DOT_COLOR: Record<TaskPriority, string> = {
-  critical: '#f5222d', high: '#fa8c16', medium: '#722ed1', low: '#8c8c8c',
+const PRIORITY_CHEVRON: Record<TaskPriority, { count: number; color: string }> = {
+  critical: { count: 3, color: '#F5633A' },
+  high:     { count: 2, color: '#F5633A' },
+  medium:   { count: 1, color: '#F08040' },
+  low:      { count: 1, color: '#666' },
 };
 
-function PriorityDot({ priority }: { priority: TaskPriority }) {
+function PriorityChevrons({ priority }: { priority: TaskPriority }) {
+  const { count, color } = PRIORITY_CHEVRON[priority];
   return (
     <Tooltip title={PRIORITY_LABEL[priority]}>
-      <span style={{ width: 8, height: 8, borderRadius: 2, background: PRIORITY_DOT_COLOR[priority], display: 'inline-block', flexShrink: 0 }} />
+      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0, lineHeight: 1 }}>
+        {Array.from({ length: count }).map((_, i) => (
+          <svg key={i} width="10" height="6" viewBox="0 0 10 6" fill="none">
+            <path d="M1 5L5 1L9 5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        ))}
+      </span>
     </Tooltip>
   );
 }
@@ -134,7 +144,7 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span data-drag {...listeners} style={{ cursor: 'grab', color: token.colorTextQuaternary, fontSize: 13, userSelect: 'none' }}>⠿</span>
-          <PriorityDot priority={task.priority} />
+          <PriorityChevrons priority={task.priority} />
           <span style={{ fontSize: 11, color: token.colorTextTertiary, fontFamily: 'monospace' }}>{task.id}</span>
           {task.labels?.slice(0, 1).map((l) => (
             <Tag key={l} style={{ fontSize: 10, padding: '0 5px', margin: 0, lineHeight: '16px', border: '1px solid #2D2E30', background: 'transparent', color: token.colorTextSecondary }}>
@@ -164,18 +174,22 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
 
 // ─── Kanban column ────────────────────────────────────────────────────────────
 
+const COLUMN_STYLE: Record<TaskStatus, { bg: string; borderColor: string }> = {
+  backlog:     { bg: '#16171a', borderColor: '' },
+  todo:        { bg: '#0d1629', borderColor: 'rgba(56, 100, 220, 0.4)' },
+  in_progress: { bg: '#091d3a', borderColor: 'rgba(22, 119, 255, 0.35)' },
+  review:      { bg: '#170d2c', borderColor: 'rgba(114, 46, 209, 0.4)' },
+  done:        { bg: '#0c1f14', borderColor: 'rgba(82, 196, 26, 0.3)' },
+};
+
 function KanbanColumn({ status, label, tasks, bdr }: { status: TaskStatus; label: string; tasks: Task[]; bdr: string }) {
   const { token } = useToken();
-  const dot = status === 'in_progress' ? '#1677ff'
-    : status === 'review' ? '#d89614'
-    : status === 'done' ? token.colorSuccess
-    : status === 'todo' ? '#5b8def'
-    : token.colorTextQuaternary;
+  const { bg, borderColor } = COLUMN_STYLE[status];
+  const colBorder = borderColor ? `1px solid ${borderColor}` : bdr;
 
   return (
-    <div style={{ flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', background: '#16171a', borderRadius: 10, border: bdr, overflow: 'hidden', maxHeight: '100%' }}>
-      <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: bdr, flexShrink: 0 }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: dot, display: 'inline-block' }} />
+    <div style={{ flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', background: bg, borderRadius: 10, border: colBorder, overflow: 'hidden', maxHeight: '100%' }}>
+      <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: colBorder, flexShrink: 0 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: token.colorText }}>{label}</span>
         <Badge count={tasks.length} style={{ background: '#2D2E30', color: token.colorTextSecondary, boxShadow: 'none', fontSize: 11 }} />
       </div>
@@ -263,7 +277,7 @@ function ListView({ tasks, isLoading }: { tasks: Task[]; isLoading: boolean }) {
       title: <span style={{ fontSize: 11, color: token.colorTextTertiary }}>ПРИОРИТЕТ</span>,
       key: 'priority', width: 120,
       sorter: (a, b) => { const o: Record<TaskPriority, number> = { critical: 0, high: 1, medium: 2, low: 3 }; return o[a.priority] - o[b.priority]; },
-      render: (_, t) => <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><PriorityDot priority={t.priority} /><span style={{ fontSize: 12, color: token.colorText }}>{PRIORITY_LABEL[t.priority]}</span></div>,
+      render: (_, t) => <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><PriorityChevrons priority={t.priority} /><span style={{ fontSize: 12, color: token.colorText }}>{PRIORITY_LABEL[t.priority]}</span></div>,
     },
     {
       title: <span style={{ fontSize: 11, color: token.colorTextTertiary }}>МЕТРИКИ</span>,
@@ -279,7 +293,11 @@ function ListView({ tasks, isLoading }: { tasks: Task[]; isLoading: boolean }) {
       title: <span style={{ fontSize: 11, color: token.colorTextTertiary }}>ВЛИЯНИЕ</span>,
       key: 'risk', width: 110,
       sorter: (a, b) => { const o: Record<string, number> = { critical: 0, warning: 1, ok: 2 }; return (o[a.riskLevel] ?? 3) - (o[b.riskLevel] ?? 3); },
-      render: (_, t) => <span style={{ fontSize: 12, color: t.riskLevel === 'critical' ? token.colorError : t.riskLevel === 'warning' ? token.colorWarning : token.colorSuccess }}>{t.riskLevel === 'critical' ? '● Критично' : t.riskLevel === 'warning' ? '● Высокое' : '● Низкое'}</span>,
+      render: (_, t) => {
+        const rc = t.riskLevel === 'critical' ? token.colorError : t.riskLevel === 'warning' ? token.colorWarning : token.colorSuccess;
+        const label = t.riskLevel === 'critical' ? 'Критично' : t.riskLevel === 'warning' ? 'Высокое' : 'Низкое';
+        return <span style={{ fontSize: 12, color: rc, border: t.riskLevel !== 'ok' ? `1px solid ${rc}` : undefined, borderRadius: 4, padding: t.riskLevel !== 'ok' ? '1px 7px' : undefined }}>{label}</span>;
+      },
     },
     {
       title: <span style={{ fontSize: 11, color: token.colorTextTertiary }}>ДЕДЛАЙН</span>,
@@ -346,7 +364,7 @@ function BacklogRow({ task, rank, isDragging }: { task: Task; rank: number; isDr
         {/* Priority + title */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-            <PriorityDot priority={task.priority} />
+            <PriorityChevrons priority={task.priority} />
             <span style={{ fontSize: 11, color: token.colorTextTertiary, fontFamily: 'monospace' }}>{task.id}</span>
             {task.labels?.slice(0, 2).map((l) => (
               <Tag key={l} style={{ fontSize: 10, padding: '0 5px', margin: 0, lineHeight: '16px', border: '1px solid #2D2E30', background: 'transparent', color: token.colorTextSecondary }}>{l}</Tag>
@@ -612,7 +630,7 @@ export default function TasksPage() {
       {/* ── Page header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, flexShrink: 0 }}>
         <div>
-          <Typography.Title level={3} style={{ margin: 0, fontSize: 22, color: token.colorText }}>
+          <Typography.Title level={3} style={{ margin: 0, fontSize: 24, color: token.colorText, fontFamily: "'MTS Wide', 'MTS Text', sans-serif" }}>
             Задачи
           </Typography.Title>
           <Typography.Text style={{ fontSize: 13, color: token.colorTextTertiary }}>
@@ -678,10 +696,10 @@ export default function TasksPage() {
             allowClear size="small" style={{ width: 140 }}
             value={priorityFilter} onChange={setPriorityFilter}
             options={[
-              { value: 'critical', label: '● Критический' },
-              { value: 'high', label: '● Высокий' },
-              { value: 'medium', label: '● Средний' },
-              { value: 'low', label: '● Низкий' },
+              { value: 'critical', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><PriorityChevrons priority="critical" />{PRIORITY_LABEL.critical}</span> },
+              { value: 'high',     label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><PriorityChevrons priority="high" />{PRIORITY_LABEL.high}</span> },
+              { value: 'medium',   label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><PriorityChevrons priority="medium" />{PRIORITY_LABEL.medium}</span> },
+              { value: 'low',      label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><PriorityChevrons priority="low" />{PRIORITY_LABEL.low}</span> },
             ]}
           />
           {(assigneeFilter || priorityFilter) && (

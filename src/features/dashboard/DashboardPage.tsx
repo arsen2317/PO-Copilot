@@ -430,7 +430,7 @@ export default function DashboardPage() {
       {/* ── Page header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, flexShrink: 0 }}>
         <div>
-          <Typography.Title level={3} style={{ margin: 0, fontSize: 22, color: token.colorText }}>
+          <Typography.Title level={3} style={{ margin: 0, fontSize: 24, color: token.colorText, fontFamily: "'MTS Wide', 'MTS Text', sans-serif" }}>
             Обзор продукта
           </Typography.Title>
         </div>

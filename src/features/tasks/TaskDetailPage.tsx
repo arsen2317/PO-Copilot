@@ -44,6 +44,28 @@ const PRIORITY_LABEL: Record<TaskPriority, string> = {
   low: 'Низкий',
 };
 
+const PRIORITY_CHEVRON: Record<TaskPriority, { count: number; color: string }> = {
+  critical: { count: 3, color: '#F5633A' },
+  high:     { count: 2, color: '#F5633A' },
+  medium:   { count: 1, color: '#F08040' },
+  low:      { count: 1, color: '#666' },
+};
+
+function PriorityChevrons({ priority }: { priority: TaskPriority }) {
+  const { count, color } = PRIORITY_CHEVRON[priority];
+  return (
+    <Tooltip title={PRIORITY_LABEL[priority]}>
+      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0, lineHeight: 1 }}>
+        {Array.from({ length: count }).map((_, i) => (
+          <svg key={i} width="10" height="6" viewBox="0 0 10 6" fill="none">
+            <path d="M1 5L5 1L9 5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        ))}
+      </span>
+    </Tooltip>
+  );
+}
+
 const TABS = [
   { id: 'description', label: 'Описание', icon: <FileTextOutlined /> },
   { id: 'criteria', label: 'Критерии', icon: <CheckCircleOutlined /> },
@@ -110,12 +132,6 @@ export default function TaskDetailPage() {
       </div>
     );
   }
-
-  const priorityColor =
-    task.priority === 'critical' ? token.colorError
-    : task.priority === 'high' ? token.colorWarning
-    : task.priority === 'medium' ? token.colorPrimary
-    : token.colorTextQuaternary;
 
   const riskColor =
     task.riskLevel === 'critical' ? token.colorError
@@ -420,16 +436,21 @@ export default function TaskDetailPage() {
 
             <MetaRow label="Приоритет">
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: priorityColor, display: 'inline-block' }} />
+                <PriorityChevrons priority={task.priority} />
                 {PRIORITY_LABEL[task.priority]}
               </span>
             </MetaRow>
 
             <MetaRow label="Риск">
-              <span style={{ color: riskColor }}>
-                {task.riskLevel === 'critical' ? '● Критический'
-                  : task.riskLevel === 'warning' ? '● Предупреждение'
-                  : '● Норма'}
+              <span style={{
+                color: riskColor,
+                border: task.riskLevel !== 'ok' ? `1px solid ${riskColor}` : undefined,
+                borderRadius: 4, padding: task.riskLevel !== 'ok' ? '1px 8px' : undefined,
+                fontSize: 12,
+              }}>
+                {task.riskLevel === 'critical' ? 'Критический'
+                  : task.riskLevel === 'warning' ? 'Предупреждение'
+                  : 'Норма'}
               </span>
             </MetaRow>
 

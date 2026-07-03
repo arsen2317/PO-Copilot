@@ -140,7 +140,7 @@ export default function MetricsPage() {
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
         <div>
-          <Typography.Title level={3} style={{ margin: 0, fontSize: 22 }}>
+          <Typography.Title level={3} style={{ margin: 0, fontSize: 24, fontFamily: "'MTS Wide', 'MTS Text', sans-serif" }}>
             Метрики
           </Typography.Title>
           <Typography.Text type="secondary" style={{ fontSize: 13 }}>

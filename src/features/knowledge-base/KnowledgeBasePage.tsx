@@ -57,7 +57,7 @@ export default function KnowledgeBasePage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
-        <Title level={4} style={{ margin: 0, color: token.colorText }}>База знаний</Title>
+        <Title level={4} style={{ margin: 0, color: token.colorText, fontSize: 24, fontFamily: "'MTS Wide', 'MTS Text', sans-serif" }}>База знаний</Title>
         <Text style={{ fontSize: 13, color: token.colorTextSecondary }}>
           Опросы, исследования, анализ и отчёты по продукту
         </Text>

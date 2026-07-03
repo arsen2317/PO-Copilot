@@ -1,3 +1,79 @@
+/* ── MTS Wide font (заголовки) ───────────────────────────────────── */
+@font-face {
+  font-family: 'MTS Wide';
+  src: url('/fonts/MTSWide-Light.woff2') format('woff2'),
+       url('/fonts/MTSWide-Light.woff') format('woff');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MTS Wide';
+  src: url('/fonts/MTSWide-Regular.woff2') format('woff2'),
+       url('/fonts/MTSWide-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MTS Wide';
+  src: url('/fonts/MTSWide-Medium.woff2') format('woff2'),
+       url('/fonts/MTSWide-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MTS Wide';
+  src: url('/fonts/MTSWide-Bold.woff2') format('woff2'),
+       url('/fonts/MTSWide-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MTS Wide';
+  src: url('/fonts/MTSWide-Black.woff2') format('woff2'),
+       url('/fonts/MTSWide-Black.woff') format('woff');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── MTS Text font ───────────────────────────────────────────────── */
+@font-face {
+  font-family: 'MTS Text';
+  src: url('/fonts/MTSText-Regular.woff2') format('woff2'),
+       url('/fonts/MTSText-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MTS Text';
+  src: url('/fonts/MTSText-Medium.woff2') format('woff2'),
+       url('/fonts/MTSText-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MTS Text';
+  src: url('/fonts/MTSText-Bold.woff2') format('woff2'),
+       url('/fonts/MTSText-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MTS Text';
+  src: url('/fonts/MTSText-Black.woff2') format('woff2'),
+       url('/fonts/MTSText-Black.woff') format('woff');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 *,
 *::before,
 *::after {
@@ -13,7 +89,7 @@ body,
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+  font-family: 'MTS Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     sans-serif;
   background: #000;
   overscroll-behavior: none;
@@ -266,4 +342,17 @@ body {
 }
 .content-scroll::-webkit-scrollbar-thumb:hover {
   background: #343537;
+}
+
+/* ── MTS Wide — заголовки ────────────────────────────────────────── */
+h1, h2, h3, h4,
+.ant-typography h1,
+.ant-typography h2,
+.ant-typography h3,
+.ant-typography h4,
+.ant-typography.ant-typography-h1,
+.ant-typography.ant-typography-h2,
+.ant-typography.ant-typography-h3,
+.ant-typography.ant-typography-h4 {
+  font-family: 'MTS Wide', 'MTS Text', sans-serif;
 }
