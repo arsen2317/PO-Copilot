@@ -1742,7 +1742,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                   padding: '32px 24px',
                 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, width: '100%' }}>
-                    <span style={{ color: TEXT_PRIMARY, fontSize: 22, fontWeight: 600, textAlign: 'center', lineHeight: 1.4 }}>
+                    <span style={{ color: TEXT_PRIMARY, fontSize: 24, fontWeight: 500, textAlign: 'center', lineHeight: 1.4, fontFamily: "'MTS Wide', 'MTS Text', sans-serif" }}>
                       Над чем будем<br />работать сегодня?
                     </span>
                     <AgentCards onSelect={handleAgentSelect} />
@@ -1805,7 +1805,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, width: '100%' }}>
               <JumpingDots />
-              <span style={{ color: TEXT_PRIMARY, fontSize: 18, fontWeight: 600, textAlign: 'center', lineHeight: 1.4 }}>
+              <span style={{ color: TEXT_PRIMARY, fontSize: 24, fontWeight: 500, textAlign: 'center', lineHeight: 1.4, fontFamily: "'MTS Wide', 'MTS Text', sans-serif" }}>
                 Что вы хотите узнать?
               </span>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
