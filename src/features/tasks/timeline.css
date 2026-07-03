@@ -1,44 +1,81 @@
-/* Dark theme overrides for wx-react-gantt matching antd dark theme */
+/* Dark theme overrides for gantt-task-react */
 
 .gantt-dark-wrap {
   height: 100%;
-  /* Override WillowDark defaults to match our app palette */
-  --wx-background: #16171a;
-  --wx-background-alt: #1e1f23;
-  --wx-background-hover: #222428;
-  --wx-color-primary: #1668dc;
-  --wx-color-primary-selected: rgba(22, 104, 220, 0.18);
-  --wx-color-primary-font: #fff;
-  --wx-border: 1px solid #2D2E30;
-  --wx-border-light: 1px solid #26272a;
-  --wx-border-medium: 1px solid #2D2E30;
-  --wx-color-font: rgba(255, 255, 255, 0.88);
-  --wx-color-font-alt: rgba(255, 255, 255, 0.45);
-  --wx-color-font-disabled: rgba(255, 255, 255, 0.25);
-  --wx-color-danger: #f5222d;
-  --wx-color-warning: #fa8c16;
-  --wx-color-success: #52c41a;
-  --wx-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --wx-font-size: 13px;
-  --wx-font-size-sm: 11px;
-  --wx-border-radius: 4px;
-  --wx-radius-major: 6px;
-  --wx-icon-color: rgba(255, 255, 255, 0.45);
-  --wx-box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
 }
 
-/* Task bar — use priority-tinted color; default to antd blue */
-.gantt-dark-wrap .wx-task-content {
-  border-radius: 4px;
+/* SVG grid background rows */
+.gantt-dark-wrap svg rect._2dZTy {
+  fill: #16171a;
+}
+.gantt-dark-wrap svg rect._2dZTy:nth-child(even) {
+  fill: #1a1b1e;
 }
 
-/* Compact row height */
-.gantt-dark-wrap .wx-gantt-task-area,
-.gantt-dark-wrap .wx-gantt-grid-row {
-  height: 42px;
+/* Grid lines */
+.gantt-dark-wrap svg line._3rUKi,
+.gantt-dark-wrap svg line._RuwuK,
+.gantt-dark-wrap svg line._1rLuZ {
+  stroke: #2D2E30;
 }
 
-/* Remove the editor/form popup we don't need */
-.gantt-dark-wrap .wx-modal-overlay {
-  display: none !important;
+/* Header date text */
+.gantt-dark-wrap svg text._9w8d5,
+.gantt-dark-wrap svg text._2q1Kt {
+  fill: rgba(255, 255, 255, 0.45);
+}
+
+/* Bar label text */
+.gantt-dark-wrap svg text._3zRJQ {
+  fill: rgba(255, 255, 255, 0.88);
+}
+.gantt-dark-wrap svg text._3KcaM {
+  fill: rgba(255, 255, 255, 0.65);
+}
+
+/* Milestone diamond */
+.gantt-dark-wrap svg polygon._35nLX {
+  fill: #16171a;
+  stroke: #595959;
+}
+
+/* Today marker */
+.gantt-dark-wrap svg rect._2dZTy[fill="rgba(22,104,220,0.15)"] {
+  opacity: 1;
+}
+
+/* Resize handles */
+.gantt-dark-wrap svg rect._3w_5u {
+  fill: rgba(255, 255, 255, 0.25);
+}
+
+/* Scrollbar container */
+.gantt-dark-wrap ._1eT-t,
+.gantt-dark-wrap ._2k9Ys {
+  scrollbar-width: thin;
+  scrollbar-color: #3a3b3e transparent;
+}
+.gantt-dark-wrap ._1eT-t::-webkit-scrollbar-thumb,
+.gantt-dark-wrap ._2k9Ys::-webkit-scrollbar-thumb {
+  background: #3a3b3e;
+  border-color: #16171a;
+}
+
+/* Left panel border */
+.gantt-dark-wrap ._3_ygE,
+.gantt-dark-wrap ._3ZbQT {
+  border-color: #2D2E30;
+}
+
+/* Left panel divider between columns */
+.gantt-dark-wrap ._2eZzQ {
+  border-color: #2D2E30;
+}
+
+/* Tooltip wrapper override */
+.gantt-dark-wrap ._3T42e {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
 }
