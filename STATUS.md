@@ -48,6 +48,11 @@
 
 ## Последние сессии
 
+### Сессия 15 — 2026-07-03
+Переписан таймлайн с нуля на `wx-react-gantt` (SVAR). Старый SVG-файл удалён без чтения. Установлен `wx-react-gantt` (--legacy-peer-deps). Задачи группируются по Эпикам (summary-строки), зависимости превращаются в стрелки finish-to-start. Кастомный `taskTemplate`: аватарка + точка приоритета + название. Тултип при наведении — стилизован под канбан-карточку. Тёмная тема через `.wx-willow-dark-theme` + CSS-переменные. Задачи без дат скрыты. Изменения (drag/resize/links) — in-memory в библиотеке. Добавлен `src/types/wx-react-gantt.d.ts`. Ветка: `claude/task-timeline-gantt-p2vmbh`.
+
+**Следующий шаг:** протестировать на проде; возможна доработка CSS тёмной темы под точный дизайн.
+
 ### Сессия 14 — 2026-07-02
 Миграция с Vercel на VPS (Timeweb, Ubuntu 24.04). Настроен nginx + PM2 + certbot. GitHub Actions CI/CD: build на runner → SCP dist/ → SSH restart PM2. PM2 запускает API через `scripts/start-api.sh` (обёртка с хардкодом `/usr/bin/tsx`). Anthropic и Brave Search проксируются через Cloudflare Worker (`anthropic-proxy.arackelian.workers.dev`) — обход блокировки российских IP. Worker защищён `PROXY_SECRET` заголовком. Все секреты в GitHub Secrets, пишутся в `.env.local` при каждом деплое.
 
