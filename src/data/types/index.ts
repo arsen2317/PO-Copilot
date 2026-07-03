@@ -263,6 +263,18 @@ export interface CjmNodeData extends Record<string, unknown> {
   metric?: string;
   sentiment?: 'positive' | 'neutral' | 'negative';
   channel?: string;
+  linkedMetricId?: string;
+  linkedArtifactId?: string;
+}
+
+export type ArtifactType = 'survey' | 'research' | 'analysis' | 'report';
+
+export interface KnowledgeArtifact {
+  id: string;
+  title: string;
+  type: ArtifactType;
+  description: string;
+  createdAt: string;
 }
 
 export interface CjmFlowNode {

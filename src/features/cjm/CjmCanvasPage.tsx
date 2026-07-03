@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -6,12 +6,15 @@ import {
   Background,
   Controls,
   BackgroundVariant,
+  useNodesState,
+  useEdgesState,
   type Node,
   type Edge,
+  type NodeMouseHandler,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { theme, Typography, Badge, Button, Breadcrumb, Tooltip, Spin } from 'antd';
-import { ArrowLeftOutlined, RobotOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, RobotOutlined, PlusOutlined } from '@ant-design/icons';
 
 import { getCjmById } from '../../data/api/cjm';
 import { useCjmStore } from '../../store/cjmStore';
@@ -20,11 +23,11 @@ import TouchpointNode from './nodes/TouchpointNode';
 import EmotionNode from './nodes/EmotionNode';
 import PainNode from './nodes/PainNode';
 import OpportunityNode from './nodes/OpportunityNode';
-import type { CjmStatus } from '../../data/types';
+import CjmEditDrawer, { AddStageDrawer } from './CjmEditDrawer';
+import type { CjmStatus, CjmFlowNode, CjmFlowEdge, CjmNodeData } from '../../data/types';
 
 const { Title, Text } = Typography;
 
-// Defined outside component to avoid re-renders
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const nodeTypes: Record<string, React.ComponentType<any>> = {
   stage:       StageNode,
@@ -46,7 +49,6 @@ const STATUS_COLORS: Record<CjmStatus, 'success' | 'processing' | 'default'> = {
   archived: 'default',
 };
 
-// Row labels shown on the left legend
 const ROW_LABELS = [
   { label: 'Этап',           top: 16 },
   { label: 'Touchpoint',     top: 186 },
@@ -55,12 +57,42 @@ const ROW_LABELS = [
   { label: 'Возможности',    top: 696 },
 ];
 
+const COL = 280;
+const ROW_Y: Record<string, number> = {
+  touchpoint:  170,
+  emotion:     340,
+  pain:        510,
+  opportunity: 680,
+};
+
+function toFlowNodes(cjmNodes: CjmFlowNode[]): Node[] {
+  return cjmNodes.map((n) => ({
+    id: n.id,
+    type: n.type,
+    position: n.position,
+    data: n.data,
+    draggable: false,
+  }));
+}
+
+function toFlowEdges(cjmEdges: CjmFlowEdge[], strokeColor: string): Edge[] {
+  return cjmEdges.map((e) => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    style: { stroke: strokeColor, strokeWidth: 1.5 },
+  }));
+}
+
 export default function CjmCanvasPage() {
   const { token } = theme.useToken();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const generatedMaps = useCjmStore((s) => s.generatedMaps);
+  const {
+    generatedMaps, nodesState, edgesState,
+    setMapNodes, setMapEdges, updateNodeData, addStage,
+  } = useCjmStore();
 
   const { data: fixtureMap, isLoading } = useQuery({
     queryKey: ['cjm', id],
@@ -70,8 +102,88 @@ export default function CjmCanvasPage() {
 
   const map = generatedMaps.find((m) => m.id === id) ?? fixtureMap;
 
-  const onFitView = useCallback(() => {}, []);
-  void onFitView;
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+
+  const [selectedNode, setSelectedNode] = useState<CjmFlowNode | null>(null);
+  const [addStageOpen, setAddStageOpen] = useState(false);
+
+  // Initialise React Flow state from store overrides or fixture
+  useEffect(() => {
+    if (!map || !id) return;
+    const cjmNodes = nodesState[id] ?? map.nodes;
+    const cjmEdges = edgesState[id] ?? map.edges;
+    setNodes(toFlowNodes(cjmNodes));
+    setEdges(toFlowEdges(cjmEdges, token.colorBorderSecondary));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map?.id]);
+
+  const handleNodeClick: NodeMouseHandler = (_, node) => {
+    if (!map || !id) return;
+    const cjmNodes = nodesState[id] ?? map.nodes;
+    const cjmNode = cjmNodes.find((n) => n.id === node.id);
+    if (cjmNode) setSelectedNode(cjmNode);
+  };
+
+  const handleSave = (nodeId: string, data: Partial<CjmNodeData>) => {
+    if (!id) return;
+    // Ensure store has base nodes first
+    if (!nodesState[id] && map) setMapNodes(id, map.nodes);
+    updateNodeData(id, nodeId, data);
+    // Update React Flow visual state immediately
+    setNodes((prev) =>
+      prev.map((n) =>
+        n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n,
+      ),
+    );
+  };
+
+  const handleAddStage = (label: string) => {
+    if (!id || !map) return;
+    const cjmNodes = nodesState[id] ?? map.nodes;
+    const cjmEdges = edgesState[id] ?? map.edges;
+
+    // Find rightmost stage x position
+    const stageNodes = cjmNodes.filter((n) => n.type === 'stage');
+    const maxX = stageNodes.reduce((acc, n) => Math.max(acc, n.position.x), 0);
+    const newX = maxX + COL;
+
+    const newStageId = `${id}-stage-${Date.now()}`;
+    const newNode: CjmFlowNode = {
+      id: newStageId,
+      type: 'stage',
+      position: { x: newX, y: 0 },
+      data: { label },
+    };
+
+    // Also add empty child nodes for the new stage
+    const childNodes: CjmFlowNode[] = Object.entries(ROW_Y).map(([type, y]) => ({
+      id: `${newStageId}-${type}`,
+      type: type as CjmFlowNode['type'],
+      position: { x: newX, y },
+      data: { label: '—' },
+    }));
+
+    // Edge from last stage to new stage
+    const lastStage = stageNodes[stageNodes.length - 1];
+    const newEdge: CjmFlowEdge | null = lastStage
+      ? { id: `${id}-e-${lastStage.id}-${newStageId}`, source: lastStage.id, target: newStageId }
+      : null;
+
+    const allNewNodes = [newNode, ...childNodes];
+    const newCjmNodes = [...cjmNodes, ...allNewNodes];
+    const newCjmEdges = newEdge ? [...cjmEdges, newEdge] : cjmEdges;
+
+    setMapNodes(id, newCjmNodes);
+    setMapEdges(id, newCjmEdges);
+
+    // Update React Flow state
+    setNodes((prev) => [...prev, ...toFlowNodes(allNewNodes)]);
+    if (newEdge) {
+      setEdges((prev) => [...prev, ...toFlowEdges([newEdge], token.colorBorderSecondary)]);
+    }
+    addStage(id, newNode, newEdge);
+  };
 
   if (isLoading) {
     return (
@@ -89,25 +201,8 @@ export default function CjmCanvasPage() {
     );
   }
 
-  const nodes: Node[] = map.nodes.map((n) => ({
-    id: n.id,
-    type: n.type,
-    position: n.position,
-    data: n.data,
-    draggable: false,
-  }));
-
-  const edgeArr: Edge[] = map.edges.map((e) => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    style: { stroke: token.colorBorderSecondary, strokeWidth: 1.5 },
-    animated: false,
-  }));
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
-      {/* Breadcrumb */}
       <Breadcrumb
         items={[
           { title: 'Аналитика' },
@@ -117,7 +212,6 @@ export default function CjmCanvasPage() {
         style={{ fontSize: 12 }}
       />
 
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Button
@@ -138,14 +232,18 @@ export default function CjmCanvasPage() {
             </Text>
           </div>
         </div>
-        <Tooltip title="ИИ-агент для актуализации CJM — скоро">
-          <Button icon={<RobotOutlined />} disabled>
-            Актуализировать с ИИ
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button icon={<PlusOutlined />} onClick={() => setAddStageOpen(true)}>
+            Добавить этап
           </Button>
-        </Tooltip>
+          <Tooltip title="ИИ-агент для актуализации CJM — скоро">
+            <Button icon={<RobotOutlined />} disabled>
+              Актуализировать с ИИ
+            </Button>
+          </Tooltip>
+        </div>
       </div>
 
-      {/* Canvas */}
       <div
         style={{
           flex: 1,
@@ -154,7 +252,6 @@ export default function CjmCanvasPage() {
           borderRadius: token.borderRadiusLG,
           border: `1px solid ${token.colorBorderSecondary}`,
           overflow: 'hidden',
-          // React Flow CSS variable overrides for dark theme
           ['--xy-background-color-default' as string]: token.colorBgContainer,
           ['--xy-background-pattern-color-default' as string]: token.colorBorderSecondary,
           ['--xy-edge-stroke-default' as string]: token.colorBorderSecondary,
@@ -166,44 +263,35 @@ export default function CjmCanvasPage() {
       >
         <ReactFlow
           nodes={nodes}
-          edges={edgeArr}
+          edges={edges}
           nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeClick={handleNodeClick}
           fitView
           fitViewOptions={{ padding: 0.15 }}
           nodesDraggable={false}
           nodesConnectable={false}
-          elementsSelectable={false}
           zoomOnDoubleClick={false}
           proOptions={{ hideAttribution: true }}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <Controls showInteractive={false} />
 
-          {/* Row legend */}
           <div
             style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 0,
-              pointerEvents: 'none',
-              zIndex: 5,
+              position: 'absolute', left: 0, top: 0, bottom: 0,
+              width: 0, pointerEvents: 'none', zIndex: 5,
             }}
           >
             {ROW_LABELS.map(({ label, top }) => (
               <div
                 key={label}
                 style={{
-                  position: 'absolute',
-                  top,
-                  left: 8,
-                  fontSize: 9,
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  color: token.colorTextTertiary,
-                  whiteSpace: 'nowrap',
+                  position: 'absolute', top, left: 8,
+                  fontSize: 9, fontWeight: 600,
+                  textTransform: 'uppercase', letterSpacing: '0.5px',
+                  color: token.colorTextTertiary, whiteSpace: 'nowrap',
                   transform: 'translateY(-50%)',
                 }}
               >
@@ -213,6 +301,18 @@ export default function CjmCanvasPage() {
           </div>
         </ReactFlow>
       </div>
+
+      <CjmEditDrawer
+        node={selectedNode}
+        onClose={() => setSelectedNode(null)}
+        onSave={handleSave}
+      />
+
+      <AddStageDrawer
+        open={addStageOpen}
+        onClose={() => setAddStageOpen(false)}
+        onAdd={handleAddStage}
+      />
     </div>
   );
 }

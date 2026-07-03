@@ -1,12 +1,23 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
-import { theme, Typography } from 'antd';
+import { theme, Typography, Tag } from 'antd';
+import { ExperimentOutlined } from '@ant-design/icons';
+import { metricGroupsFixture } from '../../../data/fixtures/metrics';
 
 const { Text } = Typography;
 
-export type StageNodeType = Node<{ label: string; metric?: string }, 'stage'>;
+const ALL_METRICS = metricGroupsFixture.flatMap((g) => g.metrics);
+
+export type StageNodeType = Node<{
+  label: string; metric?: string;
+  linkedMetricId?: string; linkedArtifactId?: string;
+}, 'stage'>;
 
 export default function StageNode({ data }: NodeProps<StageNodeType>) {
   const { token } = theme.useToken();
+  const linkedMetric = data.linkedMetricId
+    ? ALL_METRICS.find((m) => m.id === data.linkedMetricId)
+    : null;
+
   return (
     <div
       style={{
@@ -22,31 +33,27 @@ export default function StageNode({ data }: NodeProps<StageNodeType>) {
         position={Position.Left}
         style={{ background: token.colorPrimary, border: 'none', width: 8, height: 8 }}
       />
-      <Text
-        style={{
-          display: 'block',
-          fontSize: 10,
-          color: token.colorPrimary,
-          fontWeight: 600,
-          textTransform: 'uppercase',
-          letterSpacing: '0.6px',
-          marginBottom: 4,
-        }}
-      >
+      <Text style={{
+        display: 'block', fontSize: 10, color: token.colorPrimary,
+        fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 4,
+      }}>
         Этап
       </Text>
-      <Text
-        strong
-        style={{ display: 'block', fontSize: 13, color: token.colorText, lineHeight: 1.35 }}
-      >
+      <Text strong style={{ display: 'block', fontSize: 13, color: token.colorText, lineHeight: 1.35 }}>
         {data.label}
       </Text>
       {data.metric && (
-        <Text
-          style={{ display: 'block', fontSize: 11, color: token.colorTextSecondary, marginTop: 6 }}
-        >
+        <Text style={{ display: 'block', fontSize: 11, color: token.colorTextSecondary, marginTop: 6 }}>
           {data.metric}
         </Text>
+      )}
+      {linkedMetric && (
+        <Tag
+          icon={<ExperimentOutlined />}
+          style={{ marginTop: 8, fontSize: 10, background: 'transparent', borderColor: token.colorPrimary, color: token.colorPrimary }}
+        >
+          {linkedMetric.name}: {linkedMetric.currentQuarter.toLocaleString('ru')} {linkedMetric.unit}
+        </Tag>
       )}
       <Handle
         type="source"
