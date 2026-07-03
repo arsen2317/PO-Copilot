@@ -29,6 +29,15 @@ function ganttReact19Compat(): Plugin {
         'Symbol.for("react.transitional.element")',
       );
 
+      // 3. Svelte's init() has `root: e.target || r.$$.root` where r is the
+      //    module-level current_component, which starts as undefined (not null).
+      //    When a root component is created with no parent, r is undefined and
+      //    r.$$.root throws.  Guard with optional chaining.
+      patched = patched.replace(
+        /root:e\.target\|\|r\.\$\$\.root/g,
+        'root:e.target||(r&&r.$$&&r.$$.root)',
+      );
+
       return { code: patched, map: null };
     },
   };
