@@ -381,29 +381,39 @@ const COST_COLORS = ['#FF6B6B', '#FF9E7A', '#FFB347'];
 
 function DonutChart({ data, colors }: { data: Array<{ type: string; value: number }>; colors: string[] }) {
   return (
-    <Pie
-      data={data}
-      angleField="value"
-      colorField="type"
-      radius={0.85}
-      innerRadius={0.6}
-      theme="classicDark"
-      color={colors}
-      label={false}
-      legend={{ position: 'bottom', layout: 'horizontal' }}
-      tooltip={{
-        items: [
-          (d: { type: string; value: number }, _index: number, data: Array<{ type: string; value: number }>) => {
-            const total = data.reduce((s, x) => s + x.value, 0);
-            return {
-              name: d.type,
-              value: `${fmtRub(d.value)} (${((d.value / total) * 100).toFixed(1)}%)`,
-            };
-          },
-        ],
-      }}
-      height={320}
-    />
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, width: '100%' }}>
+      <Pie
+        data={data}
+        angleField="value"
+        colorField="type"
+        radius={0.85}
+        innerRadius={0.6}
+        theme="classicDark"
+        color={colors}
+        label={false}
+        legend={false}
+        tooltip={{
+          items: [
+            (d: { type: string; value: number }, _index: number, data: Array<{ type: string; value: number }>) => {
+              const total = data.reduce((s, x) => s + x.value, 0);
+              return {
+                name: d.type,
+                value: `${fmtRub(d.value)} (${((d.value / total) * 100).toFixed(1)}%)`,
+              };
+            },
+          ],
+        }}
+        height={260}
+      />
+      <div style={{ display: 'flex', gap: 18, justifyContent: 'center', flexWrap: 'wrap' }}>
+        {data.map((d, i) => (
+          <div key={d.type} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 2, background: colors[i] ?? '#888', flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)' }}>{d.type}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -754,6 +764,7 @@ export default function UnitEconomicsPage() {
             <Tabs
               defaultActiveKey="payback"
               size="small"
+              className="ue-charts-tabs"
               style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
               tabBarStyle={{ margin: '0 16px', flexShrink: 0 }}
               items={[
@@ -773,11 +784,11 @@ export default function UnitEconomicsPage() {
                   key: 'revenue',
                   label: 'Структура выручки',
                   children: (
-                    <div style={{ padding: '8px 24px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <Typography.Text style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 8, display: 'block', textAlign: 'center' }}>
+                    <div style={{ padding: '8px 24px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                      <Typography.Text style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 12, display: 'block', textAlign: 'center' }}>
                         Итого: {fmtRub(result.revenue)} / карта / мес
                       </Typography.Text>
-                      <div style={{ width: '100%', maxWidth: 420 }}>
+                      <div style={{ width: '100%', maxWidth: 380 }}>
                         <DonutChart data={result.revenueBreakdown} colors={REVENUE_COLORS} />
                       </div>
                     </div>
@@ -787,11 +798,11 @@ export default function UnitEconomicsPage() {
                   key: 'cost',
                   label: 'Структура расходов',
                   children: (
-                    <div style={{ padding: '8px 24px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <Typography.Text style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 8, display: 'block', textAlign: 'center' }}>
+                    <div style={{ padding: '8px 24px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                      <Typography.Text style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 12, display: 'block', textAlign: 'center' }}>
                         Итого: {fmtRub(result.cost)} / карта / мес
                       </Typography.Text>
-                      <div style={{ width: '100%', maxWidth: 420 }}>
+                      <div style={{ width: '100%', maxWidth: 380 }}>
                         <DonutChart data={result.costBreakdown} colors={COST_COLORS} />
                       </div>
                     </div>

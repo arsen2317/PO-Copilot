@@ -230,6 +230,22 @@ body {
   40%       { opacity: 0.7; transform: translateY(0);    }
 }
 
+/* ── Unit economics charts tabs — vertical centering ────────────── */
+.ue-charts-tabs .ant-tabs-content-holder {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.ue-charts-tabs .ant-tabs-content {
+  height: 100%;
+}
+.ue-charts-tabs .ant-tabs-tabpane {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 .content-scroll {
   scrollbar-width: thin;
   scrollbar-color: #2A2B2D transparent;

@@ -1905,43 +1905,43 @@ function GlowBg() {
 function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
   useEffect(() => { ensureAuroraStyles(); }, []);
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '38%', pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-      {/* Blob A — large primary blue, bottom-center */}
+    <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, pointerEvents: 'none', zIndex: 0 }}>
+      {/* Blob A — large primary blue, lower-center */}
       <div style={{
         position: 'absolute',
-        width: 280, height: 190,
+        width: 300, height: 240,
         borderRadius: '50%',
         background: '#1a6fff',
-        filter: 'blur(60px)',
-        opacity: hovered ? 0.52 : 0.28,
-        bottom: -80, left: '50%', marginLeft: -140,
+        filter: 'blur(85px)',
+        opacity: hovered ? 0.50 : 0.26,
+        bottom: '22%', left: '50%', marginLeft: -150,
         animation: 'aurora-blob-a 9s ease-in-out infinite',
         willChange: 'transform',
         transition: 'opacity 0.5s ease',
       }} />
-      {/* Blob B — left-center, overlaps A */}
+      {/* Blob B — left, overlaps A */}
       <div style={{
         position: 'absolute',
-        width: 220, height: 160,
+        width: 240, height: 190,
         borderRadius: '50%',
         background: '#0a2a8a',
-        filter: 'blur(52px)',
-        opacity: hovered ? 0.48 : 0.32,
-        bottom: -60, left: '26%', marginLeft: -110,
+        filter: 'blur(75px)',
+        opacity: hovered ? 0.46 : 0.30,
+        bottom: '20%', left: '22%', marginLeft: -120,
         animation: 'aurora-blob-b 11s ease-in-out infinite',
         animationDelay: '-2s',
         willChange: 'transform',
         transition: 'opacity 0.5s ease',
       }} />
-      {/* Blob C — right-center, overlaps A */}
+      {/* Blob C — right, overlaps A */}
       <div style={{
         position: 'absolute',
-        width: 180, height: 130,
+        width: 200, height: 160,
         borderRadius: '50%',
         background: '#4A30D0',
-        filter: 'blur(46px)',
-        opacity: hovered ? 0.38 : 0.20,
-        bottom: -50, left: '68%', marginLeft: -90,
+        filter: 'blur(70px)',
+        opacity: hovered ? 0.38 : 0.22,
+        bottom: '21%', left: '74%', marginLeft: -100,
         animation: 'aurora-blob-c 13s ease-in-out infinite',
         animationDelay: '-4s',
         willChange: 'transform',
