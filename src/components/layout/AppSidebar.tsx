@@ -28,6 +28,7 @@ interface AppSidebarProps {
 const ANALYTICS_SUBITEMS = [
   { key: '/dashboard',       label: 'Дашборд' },
   { key: '/funnel',          label: 'Воронка' },
+  { key: '/cjm',             label: 'CJM' },
   { key: '/unit-economics',  label: 'Unit-экономика' },
   { key: '/retention',       label: 'Удержание' },
   { key: '/features',        label: 'Фичи' },
@@ -59,7 +60,9 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
 
-  const isAnalyticsActive = ANALYTICS_KEYS.has(location.pathname as '/dashboard');
+  const isAnalyticsActive =
+    ANALYTICS_KEYS.has(location.pathname as '/dashboard') ||
+    location.pathname.startsWith('/cjm');
   const [analyticsOpen, setAnalyticsOpen] = useState(true);
 
   const selectedKey: string =
@@ -275,7 +278,9 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
           {!collapsed && analyticsOpen && (
             <div style={{ display: 'flex', flexDirection: 'column', marginTop: 2, marginBottom: 2 }}>
               {ANALYTICS_SUBITEMS.map(({ key, label }) => {
-                const isActive = location.pathname === key;
+                const isActive =
+                  location.pathname === key ||
+                  (key === '/cjm' && location.pathname.startsWith('/cjm'));
                 return (
                   <div
                     key={key}

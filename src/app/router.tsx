@@ -21,6 +21,8 @@ import MetricsPage from '../features/metrics/MetricsPage';
 import PlaceholderPage from '../features/analytics/PlaceholderPage';
 import FunnelPage from '../features/funnel/FunnelPage';
 import UnitEconomicsPage from '../features/unit-economics/UnitEconomicsPage';
+import CjmListPage from '../features/cjm/CjmListPage';
+import CjmCanvasPage from '../features/cjm/CjmCanvasPage';
 import LoginPage from '../features/auth/LoginPage';
 import { isAuthenticated } from '../features/auth/auth';
 
@@ -54,6 +56,8 @@ export const router = createBrowserRouter([
           { path: 'rooms/:roomId', element: <RoomDetailPage /> },
           { path: 'knowledge', element: <KnowledgeBasePage /> },
           { path: 'knowledge/:artifactId', element: <ArtifactDetailPage /> },
+          { path: 'cjm', element: <CjmListPage /> },
+          { path: 'cjm/:id', element: <CjmCanvasPage /> },
           { path: 'funnel', element: <FunnelPage /> },
           { path: 'unit-economics', element: <UnitEconomicsPage /> },
           { path: 'retention', element: <PlaceholderPage /> },
