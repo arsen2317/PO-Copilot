@@ -26,10 +26,11 @@ interface AppSidebarProps {
 }
 
 const ANALYTICS_SUBITEMS = [
-  { key: '/dashboard', label: 'Дашборд' },
-  { key: '/funnel',    label: 'Воронка' },
-  { key: '/retention', label: 'Удержание' },
-  { key: '/features',  label: 'Фичи' },
+  { key: '/dashboard',       label: 'Дашборд' },
+  { key: '/funnel',          label: 'Воронка' },
+  { key: '/unit-economics',  label: 'Unit-экономика' },
+  { key: '/retention',       label: 'Удержание' },
+  { key: '/features',        label: 'Фичи' },
 ] as const;
 
 const ANALYTICS_KEYS = new Set(ANALYTICS_SUBITEMS.map((i) => i.key));
