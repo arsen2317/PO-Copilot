@@ -23,6 +23,11 @@ export default function Providers({ children }: ProvidersProps) {
           token: {
             fontFamily: "'MTS Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
           },
+          components: {
+            Typography: {
+              fontFamilyHeading: "'MTS Wide', 'MTS Text', sans-serif",
+            },
+          },
         }}
       >
         {children}
