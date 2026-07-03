@@ -2,8 +2,7 @@ import { useMemo } from 'react';
 import { Gantt } from 'wx-react-gantt';
 import 'wx-react-gantt/dist/gantt.css';
 import './timeline.css';
-import { ConfigProvider, Skeleton, theme, Tooltip } from 'antd';
-import { ClockCircleOutlined } from '@ant-design/icons';
+import { Skeleton } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { getEpics, getTasks } from '../../data/api/tasks';
 import type { Epic, Task, TaskPriority } from '../../data/types';
@@ -61,132 +60,64 @@ interface GLink {
   type: string;
 }
 
-// ─── Tooltip card (mirrors kanban card style) ─────────────────────────────────
-
-function TooltipCard({ data }: { data: GTask }) {
-  const isOverdue = data._deadline && new Date(data._deadline) < new Date();
-  return (
-    <div style={{
-      background: '#1a1b1e',
-      border: '1px solid #2D2E30',
-      borderRadius: 8,
-      padding: '10px 12px',
-      minWidth: 220,
-      maxWidth: 280,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-        {data._priority && (
-          <span style={{
-            width: 8, height: 8, borderRadius: 2,
-            background: PRIORITY_COLOR[data._priority],
-            flexShrink: 0,
-          }} />
-        )}
-        <span style={{ fontSize: 11, color: '#8c8c8c', fontFamily: 'monospace' }}>
-          {data.id}
-        </span>
-        {data._priority && (
-          <span style={{ fontSize: 11, color: '#8c8c8c' }}>
-            {PRIORITY_LABEL[data._priority]}
-          </span>
-        )}
-      </div>
-
-      <div style={{ fontSize: 13, fontWeight: 500, color: '#e8e8e8', lineHeight: 1.4, marginBottom: 8 }}>
-        {data.text}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {data._storyPoints !== undefined && (
-            <span style={{
-              fontSize: 11, color: '#8c8c8c',
-              background: '#2D2E30', borderRadius: 4, padding: '1px 6px',
-            }}>
-              {data._storyPoints} SP
-            </span>
-          )}
-          {data._deadline && (
-            <span style={{
-              fontSize: 11,
-              color: isOverdue ? '#f5222d' : '#8c8c8c',
-              display: 'flex', alignItems: 'center', gap: 3,
-            }}>
-              <ClockCircleOutlined style={{ fontSize: 10 }} />
-              {new Date(data._deadline).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
-            </span>
-          )}
-        </div>
-        {data._assigneeAvatar && (
-          <img
-            src={data._assigneeAvatar}
-            alt={data._assigneeName ?? ''}
-            style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── Custom task bar ──────────────────────────────────────────────────────────
 
-/** Rendered inside each task bar by wx-react-gantt's taskTemplate prop.
- *  The library calls this as a React component with { data: GTask }.
- *  It wraps its own ConfigProvider so antd Tooltip theming works correctly
- *  even though this renders outside the app's main React tree in the gantt
- *  Svelte bridge. */
+/** Rendered inside each task bar by wx-react-gantt via a Svelte bridge.
+ *  Must be hook-free (no antd components, no useState/useEffect) — the bridge
+ *  mounts this outside the main React fiber tree. */
 function TaskBar({ data }: { data: GTask }) {
-  // Summary rows (epics) use the lib's default rendering
   if (data.type === 'summary') return null;
 
+  const tooltipLines = [
+    data.text,
+    data._priority ? PRIORITY_LABEL[data._priority] : null,
+    data._assigneeName ?? null,
+    data._storyPoints !== undefined ? `${data._storyPoints} SP` : null,
+    data._deadline
+      ? new Date(data._deadline).toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })
+      : null,
+  ].filter(Boolean).join(' · ');
+
   return (
-    <ConfigProvider theme={{ algorithm: theme.darkAlgorithm }}>
-      <Tooltip
-        title={<TooltipCard data={data} />}
-        placement="top"
-        mouseEnterDelay={0.4}
-        overlayInnerStyle={{ padding: 0, background: 'transparent', boxShadow: 'none' }}
-        overlayStyle={{ maxWidth: 300 }}
-      >
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 5,
-          height: '100%',
-          padding: '0 8px',
-          overflow: 'hidden',
-          cursor: 'grab',
-        }}>
-          {data._assigneeAvatar && (
-            <img
-              src={data._assigneeAvatar}
-              alt=""
-              style={{ width: 18, height: 18, borderRadius: '50%', flexShrink: 0, objectFit: 'cover' }}
-            />
-          )}
-          {data._priority && (
-            <span style={{
-              width: 7,
-              height: 7,
-              borderRadius: 2,
-              background: PRIORITY_COLOR[data._priority],
-              flexShrink: 0,
-            }} />
-          )}
-          <span style={{
-            fontSize: 11,
-            color: '#fff',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            minWidth: 0,
-          }}>
-            {data.text}
-          </span>
-        </div>
-      </Tooltip>
-    </ConfigProvider>
+    <div
+      title={tooltipLines}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 5,
+        height: '100%',
+        padding: '0 8px',
+        overflow: 'hidden',
+        cursor: 'grab',
+      }}
+    >
+      {data._assigneeAvatar && (
+        <img
+          src={data._assigneeAvatar}
+          alt=""
+          style={{ width: 18, height: 18, borderRadius: '50%', flexShrink: 0, objectFit: 'cover' }}
+        />
+      )}
+      {data._priority && (
+        <span style={{
+          width: 7,
+          height: 7,
+          borderRadius: 2,
+          background: PRIORITY_COLOR[data._priority],
+          flexShrink: 0,
+        }} />
+      )}
+      <span style={{
+        fontSize: 11,
+        color: '#fff',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        minWidth: 0,
+      }}>
+        {data.text}
+      </span>
+    </div>
   );
 }
 
