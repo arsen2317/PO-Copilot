@@ -772,7 +772,7 @@ export default function UnitEconomicsPage() {
                   key: 'payback',
                   label: 'График окупаемости',
                   children: (
-                    <div style={{ padding: '8px 12px 12px', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <div style={{ padding: '8px 12px 12px', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                       <Typography.Text style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 8, display: 'block' }}>
                         Накопленный денежный поток (Contribution Margin − CAC), ₽
                       </Typography.Text>

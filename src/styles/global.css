@@ -238,12 +238,16 @@ body {
   min-height: 0;
 }
 .ue-charts-tabs .ant-tabs-content {
-  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 .ue-charts-tabs .ant-tabs-tabpane-active {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
 }
 
 .content-scroll {
