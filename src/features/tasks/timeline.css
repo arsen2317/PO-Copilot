@@ -5,6 +5,11 @@
   color-scheme: dark;
 }
 
+/* SVG elements default to white background — override globally */
+.gantt-dark-wrap svg {
+  background: #16171a;
+}
+
 /* SVG grid background rows */
 .gantt-dark-wrap svg rect._2dZTy {
   fill: #16171a;
