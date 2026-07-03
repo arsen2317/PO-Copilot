@@ -22,6 +22,7 @@ export const knowledgeFixtures: KnowledgeArtifact[] = [
 **Вывод:** Главный барьер — длина формы и отсутствие прогресс-бара.
 Конверсия может вырасти на ~8% при сокращении формы с 7 до 4 шагов.`,
     createdAt: '2026-05-14',
+    sourceUrl: 'https://confluence.example.com/pages/survey-onboarding-2026',
   },
   {
     id: 'art-survey-activation',
@@ -43,6 +44,7 @@ export const knowledgeFixtures: KnowledgeArtifact[] = [
 **Вывод:** Проблема осведомлённости, не желания.
 Push-уведомление в момент доставки карты + пошаговая инструкция увеличат активацию до 20–22%.`,
     createdAt: '2026-06-03',
+    sourceUrl: 'https://confluence.example.com/pages/survey-activation-2026',
   },
   {
     id: 'art-research-3ds',
@@ -101,5 +103,6 @@ Push-уведомление в момент доставки карты + пош
 
 **Действие:** проактивный SMS/push при задержке >3 дней + компенсация кэшбэком 500₽.`,
     createdAt: '2026-07-01',
+    sourceUrl: 'https://confluence.example.com/pages/nps-report-june-2026',
   },
 ];

@@ -65,7 +65,10 @@ function CjmCard({ map }: { map: CjmMap }) {
         />
       </div>
 
-      <Text style={{ fontSize: 12, color: token.colorTextSecondary, lineHeight: 1.45 }}>
+      <Text style={{
+        fontSize: 12, color: token.colorTextSecondary, lineHeight: 1.45,
+        display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+      }}>
         {map.description}
       </Text>
 
