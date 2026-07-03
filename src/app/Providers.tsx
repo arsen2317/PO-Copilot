@@ -20,6 +20,9 @@ export default function Providers({ children }: ProvidersProps) {
         locale={ruRU}
         theme={{
           algorithm: theme.darkAlgorithm,
+          token: {
+            fontFamily: "'MTS Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          },
         }}
       >
         {children}
