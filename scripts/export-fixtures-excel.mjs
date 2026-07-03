@@ -583,6 +583,149 @@ function crc32(buf) {
   return (c ^ 0xFFFFFFFF) >>> 0;
 }
 
+// ─── Данные metric-definitions.ts ────────────────────────────────────────────
+
+const TOTAL_DAYS = 176;
+
+function dateFromIdx(i) {
+  const d = new Date('2026-01-01');
+  d.setDate(d.getDate() + i);
+  return d.toISOString().slice(0, 10);
+}
+
+function mkHistory(cps, noiseAmp, precision = 0) {
+  const sorted = [...cps].sort((a, b) => a[0] - b[0]);
+  const mult = 10 ** precision;
+  return Array.from({ length: TOTAL_DAYS }, (_, i) => {
+    let lo = sorted[0];
+    let hi = sorted[sorted.length - 1];
+    for (let k = 0; k < sorted.length - 1; k++) {
+      if (sorted[k][0] <= i && sorted[k + 1][0] >= i) { lo = sorted[k]; hi = sorted[k + 1]; break; }
+    }
+    const t = hi[0] === lo[0] ? 0 : (i - lo[0]) / (hi[0] - lo[0]);
+    const base = lo[1] + (hi[1] - lo[1]) * t;
+    const n = Math.sin(i * 0.37 + lo[0] * 0.13) * noiseAmp;
+    return Math.max(0, Math.round((base + n) * mult) / mult);
+  });
+}
+
+function velocityHistory() {
+  return Array.from({ length: TOTAL_DAYS }, (_, i) => {
+    const sprint = Math.floor(i / 14);
+    return Math.max(50, Math.round(56 + sprint * 1.1 + Math.sin(sprint * 0.9) * 3));
+  });
+}
+
+const metricDefs = [
+  // Бизнес и портфель
+  { id:'active_cards',         group:'Бизнес и портфель',        name:'Активные карты',                         unit:'шт.',       lowerIsBetter:false, currentValue:483240,  planValue:500000,  lastPeriodValue:462000,  owner:'Команда продукта',    updatedAt:'2026-06-25', onDashboard:true,
+    history: mkHistory([[0,441000],[89,462000],[175,483240]], 3000) },
+  { id:'new_issuance',         group:'Бизнес и портфель',        name:'Новые выдачи в месяц',                   unit:'шт.',       lowerIsBetter:false, currentValue:16800,   planValue:22000,   lastPeriodValue:17200,   owner:'Команда продукта',    updatedAt:'2026-06-25', onDashboard:true,
+    history: mkHistory([[0,14200],[89,17200],[120,18400],[150,17500],[175,16800]], 500) },
+  { id:'portfolio_balance',    group:'Бизнес и портфель',        name:'Баланс портфеля',                        unit:'млн ₽',    lowerIsBetter:false, currentValue:2840,    planValue:3100,    lastPeriodValue:2640,    owner:'Команда аналитики',   updatedAt:'2026-06-24', onDashboard:false,
+    history: mkHistory([[0,2400],[89,2640],[175,2840]], 60) },
+  { id:'product_revenue',      group:'Бизнес и портфель',        name:'Доход от продукта (квартал)',             unit:'млн ₽',    lowerIsBetter:false, currentValue:412,     planValue:480,     lastPeriodValue:358,     owner:'Команда аналитики',   updatedAt:'2026-06-20', onDashboard:true,
+    history: mkHistory([[0,300],[89,358],[175,412]], 12) },
+  { id:'cac',                  group:'Бизнес и портфель',        name:'CAC (стоимость привлечения)',             unit:'₽',        lowerIsBetter:true,  currentValue:1850,    planValue:1600,    lastPeriodValue:2050,    owner:'Команда маркетинга',  updatedAt:'2026-06-22', onDashboard:false,
+    history: mkHistory([[0,2200],[89,2050],[175,1850]], 60) },
+  { id:'ltv',                  group:'Бизнес и портфель',        name:'LTV клиента (бизнес)',                   unit:'₽',        lowerIsBetter:false, currentValue:24500,   planValue:27000,   lastPeriodValue:22800,   owner:'Команда аналитики',   updatedAt:'2026-06-20', onDashboard:false,
+    history: mkHistory([[0,21000],[89,22800],[175,24500]], 400) },
+  // Вовлечение
+  { id:'mau',                  group:'Вовлечение',               name:'MAU дебетовой карты',                    unit:'чел.',      lowerIsBetter:false, currentValue:312000,  planValue:340000,  lastPeriodValue:293000,  owner:'Команда продукта',    updatedAt:'2026-06-25', onDashboard:true,
+    history: mkHistory([[0,278000],[89,293000],[175,312000]], 4000) },
+  { id:'dau',                  group:'Вовлечение',               name:'DAU дебетовой карты',                    unit:'чел.',      lowerIsBetter:false, currentValue:89400,   planValue:95000,   lastPeriodValue:84000,   owner:'Команда продукта',    updatedAt:'2026-06-25', onDashboard:true,
+    history: mkHistory([[0,79000],[89,84000],[175,89400]], 2000) },
+  { id:'tx_frequency',         group:'Вовлечение',               name:'Частота транзакций на карту',            unit:'опер.',     lowerIsBetter:false, currentValue:14.2,    planValue:16.0,    lastPeriodValue:13.1,    owner:'Команда аналитики',   updatedAt:'2026-06-24', onDashboard:false,
+    history: mkHistory([[0,12.2],[89,13.1],[175,14.2]], 0.4, 1) },
+  { id:'avg_ticket',           group:'Вовлечение',               name:'Средний чек покупки',                    unit:'₽',        lowerIsBetter:false, currentValue:3240,    planValue:3500,    lastPeriodValue:3080,    owner:'Команда аналитики',   updatedAt:'2026-06-24', onDashboard:false,
+    history: mkHistory([[0,2950],[89,3080],[175,3240]], 60) },
+  { id:'cashback_adoption',    group:'Вовлечение',               name:'Доля с кэшбэком / лояльностью',          unit:'%',        lowerIsBetter:false, currentValue:67.3,    planValue:72.0,    lastPeriodValue:65.2,    owner:'Команда продукта',    updatedAt:'2026-06-23', onDashboard:false,
+    history: mkHistory([[0,62.0],[89,65.2],[130,67.5],[175,67.3]], 0.6, 1) },
+  // Клиентский опыт
+  { id:'nps_general',          group:'Клиентский опыт',          name:'NPS общий',                              unit:'',         lowerIsBetter:false, currentValue:58,      planValue:72,      lastPeriodValue:72,      owner:'CX-команда',          updatedAt:'2026-06-21', onDashboard:true,
+    history: mkHistory([[0,66],[89,72],[120,72],[140,65],[162,60],[175,58]], 2) },
+  { id:'nps_tx',               group:'Клиентский опыт',          name:'NPS транзакционный',                     unit:'',         lowerIsBetter:false, currentValue:67,      planValue:78,      lastPeriodValue:76,      owner:'CX-команда',          updatedAt:'2026-06-21', onDashboard:false,
+    history: mkHistory([[0,70],[89,76],[120,76],[140,71],[162,68],[175,67]], 2) },
+  { id:'support_contacts',     group:'Клиентский опыт',          name:'Обращения на 1 000 карт',                unit:'',         lowerIsBetter:true,  currentValue:31.2,    planValue:18.0,    lastPeriodValue:21.0,    owner:'CX-команда',          updatedAt:'2026-06-24', onDashboard:false,
+    history: mkHistory([[0,27.0],[89,21.0],[100,21.0],[108,34.5],[130,33.0],[175,31.2]], 1.0, 1) },
+  { id:'ttr',                  group:'Клиентский опыт',          name:'TTR — время решения проблемы',           unit:'ч.',       lowerIsBetter:true,  currentValue:6.8,     planValue:2.5,     lastPeriodValue:3.8,     owner:'CX-команда',          updatedAt:'2026-06-23', onDashboard:false,
+    history: mkHistory([[0,5.8],[89,3.8],[100,3.8],[108,7.6],[130,7.2],[175,6.8]], 0.3, 1) },
+  { id:'churn_rate',           group:'Клиентский опыт',          name:'Churn Rate (отток)',                     unit:'%',        lowerIsBetter:true,  currentValue:3.8,     planValue:2.0,     lastPeriodValue:2.4,     owner:'Команда удержания',   updatedAt:'2026-06-22', onDashboard:true,
+    history: mkHistory([[0,3.2],[89,2.4],[105,2.4],[120,3.0],[148,3.6],[175,3.8]], 0.12, 1) },
+  // Юнит-экономика
+  { id:'revenue_per_card',     group:'Юнит-экономика',           name:'Выручка на карту в месяц',               unit:'₽',        lowerIsBetter:false, currentValue:340,     planValue:380,     lastPeriodValue:312,     owner:'Команда аналитики',   updatedAt:'2026-06-24', onDashboard:false,
+    history: mkHistory([[0,285],[89,312],[175,340]], 10) },
+  { id:'cost_per_card',        group:'Юнит-экономика',           name:'Затраты на обслуживание карты',          unit:'₽',        lowerIsBetter:true,  currentValue:222,     planValue:160,     lastPeriodValue:195,     owner:'Команда аналитики',   updatedAt:'2026-06-22', onDashboard:false,
+    history: mkHistory([[0,212],[89,195],[100,195],[118,210],[150,218],[175,222]], 6) },
+  { id:'profit_per_card',      group:'Юнит-экономика',           name:'Прибыль на карту',                       unit:'₽',        lowerIsBetter:false, currentValue:118,     planValue:220,     lastPeriodValue:148,     owner:'Команда аналитики',   updatedAt:'2026-06-24', onDashboard:false,
+    history: mkHistory([[0,88],[89,148],[110,148],[132,128],[160,121],[175,118]], 8) },
+  { id:'cohort_retention_12m', group:'Юнит-экономика',           name:'Когортное удержание 12M',                unit:'%',        lowerIsBetter:false, currentValue:68.5,    planValue:75.0,    lastPeriodValue:70.2,    owner:'Команда аналитики',   updatedAt:'2026-06-20', onDashboard:false,
+    history: mkHistory([[0,67.5],[89,70.2],[130,70.0],[175,68.5]], 0.5, 1) },
+  { id:'cashback_cost',        group:'Юнит-экономика',           name:'Cashback Cost',                          unit:'%',        lowerIsBetter:true,  currentValue:1.45,    planValue:1.10,    lastPeriodValue:1.09,    owner:'Команда продукта',    updatedAt:'2026-06-23', onDashboard:false,
+    history: mkHistory([[0,1.08],[89,1.09],[100,1.12],[130,1.28],[155,1.40],[175,1.45]], 0.03, 2) },
+  // Надёжность и риски
+  { id:'uptime',               group:'Надёжность и риски',       name:'Uptime процессинга',                     unit:'%',        lowerIsBetter:false, currentValue:99.97,   planValue:99.99,   lastPeriodValue:99.95,   owner:'Команда надёжности',  updatedAt:'2026-06-25', onDashboard:true,
+    history: mkHistory([[0,99.92],[89,99.95],[175,99.97]], 0.02, 2) },
+  { id:'auth_success_rate',    group:'Надёжность и риски',       name:'Authorization Success Rate',             unit:'%',        lowerIsBetter:false, currentValue:96.8,    planValue:99.0,    lastPeriodValue:98.5,    owner:'Команда надёжности',  updatedAt:'2026-06-25', onDashboard:true,
+    history: mkHistory([[0,97.4],[89,98.5],[100,98.5],[108,96.0],[130,96.4],[175,96.8]], 0.2, 1) },
+  { id:'auth_latency_p95',     group:'Надёжность и риски',       name:'Latency авторизации p95',                unit:'мс',       lowerIsBetter:true,  currentValue:180,     planValue:150,     lastPeriodValue:198,     owner:'Команда надёжности',  updatedAt:'2026-06-25', onDashboard:false,
+    history: mkHistory([[0,215],[89,198],[100,194],[108,210],[130,196],[175,180]], 8) },
+  { id:'mttd',                 group:'Надёжность и риски',       name:'MTTD — время обнаружения инцидента',     unit:'мин.',     lowerIsBetter:true,  currentValue:12,      planValue:8,       lastPeriodValue:16,      owner:'Команда надёжности',  updatedAt:'2026-06-23', onDashboard:false,
+    history: mkHistory([[0,20],[89,16],[175,12]], 2) },
+  { id:'mttr',                 group:'Надёжность и риски',       name:'MTTR — время восстановления',            unit:'мин.',     lowerIsBetter:true,  currentValue:47,      planValue:30,      lastPeriodValue:62,      owner:'Команда надёжности',  updatedAt:'2026-06-23', onDashboard:false,
+    history: mkHistory([[0,72],[89,62],[175,47]], 5) },
+  { id:'fraud_rate',           group:'Надёжность и риски',       name:'Fraud Rate',                             unit:'%',        lowerIsBetter:true,  currentValue:0.034,   planValue:0.030,   lastPeriodValue:0.038,   owner:'Команда безопасности', updatedAt:'2026-06-24', onDashboard:true,
+    history: mkHistory([[0,0.044],[89,0.038],[175,0.034]], 0.003, 3) },
+  { id:'false_positive_rate',  group:'Надёжность и риски',       name:'False Positive Rate антифрода',          unit:'%',        lowerIsBetter:true,  currentValue:1.35,    planValue:0.60,    lastPeriodValue:0.65,    owner:'Команда безопасности', updatedAt:'2026-06-24', onDashboard:false,
+    history: mkHistory([[0,0.92],[89,0.65],[100,0.65],[104,1.82],[115,1.68],[145,1.48],[175,1.35]], 0.04, 2) },
+  { id:'chargeback_rate',      group:'Надёжность и риски',       name:'Chargeback Rate',                        unit:'%',        lowerIsBetter:true,  currentValue:0.14,    planValue:0.10,    lastPeriodValue:0.12,    owner:'Команда безопасности', updatedAt:'2026-06-23', onDashboard:false,
+    history: mkHistory([[0,0.155],[89,0.12],[100,0.12],[115,0.148],[175,0.14]], 0.006, 3) },
+  // Командная эффективность
+  { id:'velocity',             group:'Командная эффективность',  name:'Velocity (SP/спринт)',                   unit:'SP',       lowerIsBetter:false, currentValue:68,      planValue:72,      lastPeriodValue:62,      owner:'Команда разработки',  updatedAt:'2026-06-24', onDashboard:false,
+    history: velocityHistory() },
+  { id:'lead_time',            group:'Командная эффективность',  name:'Lead Time',                              unit:'дн.',      lowerIsBetter:true,  currentValue:9.3,     planValue:7.0,     lastPeriodValue:11.2,    owner:'Команда разработки',  updatedAt:'2026-06-24', onDashboard:false,
+    history: mkHistory([[0,12.5],[89,11.2],[175,9.3]], 0.6, 1) },
+  { id:'cycle_time',           group:'Командная эффективность',  name:'Cycle Time',                             unit:'дн.',      lowerIsBetter:true,  currentValue:2.1,     planValue:1.5,     lastPeriodValue:2.7,     owner:'Команда разработки',  updatedAt:'2026-06-24', onDashboard:false,
+    history: mkHistory([[0,3.0],[89,2.7],[175,2.1]], 0.2, 1) },
+  { id:'deploy_frequency',     group:'Командная эффективность',  name:'Deploy Frequency',                       unit:'деп./нед.',lowerIsBetter:false, currentValue:2.3,     planValue:3.0,     lastPeriodValue:1.9,     owner:'Команда разработки',  updatedAt:'2026-06-23', onDashboard:false,
+    history: mkHistory([[0,1.6],[89,1.9],[175,2.3]], 0.2, 1) },
+  { id:'defect_rate',          group:'Командная эффективность',  name:'Defect Rate',                            unit:'%',        lowerIsBetter:true,  currentValue:1.8,     planValue:1.0,     lastPeriodValue:2.3,     owner:'Команда QA',          updatedAt:'2026-06-23', onDashboard:false,
+    history: mkHistory([[0,2.8],[89,2.3],[175,1.8]], 0.2, 1) },
+  { id:'backlog_ratio',        group:'Командная эффективность',  name:'Соотношение бэклога (фичи/баги/долг)',   unit:'%',        lowerIsBetter:false, currentValue:60,      planValue:60,      lastPeriodValue:54,      owner:'Команда продукта',    updatedAt:'2026-06-21', onDashboard:false,
+    history: mkHistory([[0,50],[89,54],[175,60]], 2) },
+];
+
+// ── Лист 7: Расширенные метрики — сводка ─────────────────────────────────────
+function buildMetricDefsSummarySheet() {
+  const header = ['Группа', 'ID', 'Метрика', 'Факт (25 июн 2026)', 'План', 'Прошлый период', 'Ед. изм.', 'Меньше = лучше', 'На дашборде', 'Владелец', 'Обновлено'];
+  const rows = [header];
+  for (const m of metricDefs) {
+    rows.push([
+      m.group, m.id, m.name,
+      m.currentValue, m.planValue, m.lastPeriodValue,
+      m.unit, m.lowerIsBetter ? 'Да' : 'Нет',
+      m.onDashboard ? 'Да' : 'Нет',
+      m.owner, m.updatedAt,
+    ]);
+  }
+  const ws = makeSheet(rows);
+  autoCols(ws, rows);
+  return ws;
+}
+
+// ── Лист 8: Расширенные метрики — дневная история (176 дней) ─────────────────
+function buildMetricDefsHistorySheet() {
+  // Заголовок: Дата + по одной колонке на метрику
+  const header = ['Дата (Q1–Q2 2026)', ...metricDefs.map(m => `${m.name} (${m.unit || 'ед.'})`)];
+  const rows = [header];
+  for (let i = 0; i < TOTAL_DAYS; i++) {
+    rows.push([dateFromIdx(i), ...metricDefs.map(m => m.history[i])]);
+  }
+  const ws = makeSheet(rows);
+  autoCols(ws, rows);
+  return ws;
+}
+
 // ─── Сборка книги ─────────────────────────────────────────────────────────────
 
 const wb = XLSX.utils.book_new();
@@ -593,6 +736,8 @@ XLSX.utils.book_append_sheet(wb, buildFunnelSummarySheet(),  '03_Воронка_
 XLSX.utils.book_append_sheet(wb, buildFunnelHistorySheet(),  '04_Воронка_история');
 XLSX.utils.book_append_sheet(wb, buildUEParamsSheet(),       '05_Unit_экономика');
 XLSX.utils.book_append_sheet(wb, buildUEPaybackSheet(),      '06_UE_окупаемость');
+XLSX.utils.book_append_sheet(wb, buildMetricDefsSummarySheet(), '07_Метрики_расш_сводка');
+XLSX.utils.book_append_sheet(wb, buildMetricDefsHistorySheet(), '08_Метрики_расш_история');
 
 // ─── Запись файла ─────────────────────────────────────────────────────────────
 
