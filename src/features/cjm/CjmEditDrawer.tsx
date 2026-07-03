@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Drawer, Form, Input, Select, Button, Divider, Space,
+  Modal, Form, Input, Select, Button, Divider, Space,
   Typography, Tag, theme,
 } from 'antd';
 import { LinkOutlined, ExperimentOutlined } from '@ant-design/icons';
@@ -36,7 +36,6 @@ const ARTIFACT_TYPE_LABELS: Record<ArtifactType, string> = {
   report:   'Отчёт',
 };
 
-// Flatten all metrics from all groups
 const ALL_METRICS = metricGroupsFixture.flatMap((g) =>
   g.metrics.map((m) => ({ ...m, groupName: g.name })),
 );
@@ -47,7 +46,7 @@ interface Props {
   onSave: (nodeId: string, data: Partial<CjmNodeData>) => void;
 }
 
-export default function CjmEditDrawer({ node, onClose, onSave }: Props) {
+export default function CjmEditModal({ node, onClose, onSave }: Props) {
   const { token } = theme.useToken();
   const navigate = useNavigate();
   const [form] = Form.useForm<CjmFormValues>();
@@ -71,8 +70,7 @@ export default function CjmEditDrawer({ node, onClose, onSave }: Props) {
 
   const handleSave = () => {
     if (!node) return;
-    const values = form.getFieldsValue();
-    onSave(node.id, values);
+    onSave(node.id, form.getFieldsValue());
     onClose();
   };
 
@@ -84,51 +82,41 @@ export default function CjmEditDrawer({ node, onClose, onSave }: Props) {
     ? artifacts.find((a) => a.id === node.data.linkedArtifactId)
     : null;
 
-  const showMetricPicker  = node?.type === 'stage' || node?.type === 'touchpoint';
+  const showMetricPicker   = node?.type === 'stage' || node?.type === 'touchpoint';
   const showArtifactPicker = node?.type === 'pain' || node?.type === 'opportunity' || node?.type === 'stage';
   const showChannel        = node?.type === 'touchpoint';
   const showSentiment      = node?.type === 'emotion';
   const showStageMetric    = node?.type === 'stage';
 
   return (
-    <Drawer
+    <Modal
       open={!!node}
-      onClose={onClose}
+      onCancel={onClose}
       title={
         node ? (
-          <Space>
-            <Text style={{ fontSize: 11, color: token.colorTextSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              {NODE_TYPE_LABELS[node.type] ?? node.type}
-            </Text>
-          </Space>
+          <Text style={{ fontSize: 11, color: token.colorTextSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            {NODE_TYPE_LABELS[node.type] ?? node.type}
+          </Text>
         ) : null
       }
-      width={360}
-      styles={{
-        body:   { padding: '16px 20px' },
-        header: { borderBottom: `1px solid ${token.colorBorderSecondary}`, padding: '14px 20px' },
-      }}
-      footer={
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <Button onClick={onClose}>Отмена</Button>
-          <Button type="primary" onClick={handleSave}>Сохранить</Button>
-        </div>
-      }
+      width={480}
+      footer={[
+        <Button key="cancel" onClick={onClose}>Отмена</Button>,
+        <Button key="save" type="primary" onClick={handleSave}>Сохранить</Button>,
+      ]}
+      destroyOnHidden
     >
-      <Form form={form} layout="vertical" size="small">
-        {/* Label */}
+      <Form form={form} layout="vertical" size="small" style={{ marginTop: 8 }}>
         <Form.Item label="Текст" name="label" rules={[{ required: true }]}>
           <Input.TextArea autoSize={{ minRows: 2, maxRows: 5 }} />
         </Form.Item>
 
-        {/* Channel (touchpoint only) */}
         {showChannel && (
           <Form.Item label="Канал" name="channel">
             <Input placeholder="Приложение / SMS / Офлайн" />
           </Form.Item>
         )}
 
-        {/* Sentiment (emotion only) */}
         {showSentiment && (
           <Form.Item label="Тональность" name="sentiment">
             <Select
@@ -141,14 +129,12 @@ export default function CjmEditDrawer({ node, onClose, onSave }: Props) {
           </Form.Item>
         )}
 
-        {/* Stage metric text (stage only) */}
         {showStageMetric && (
           <Form.Item label="Метрика (текст)" name="metric">
             <Input placeholder="84 000 пользователей" />
           </Form.Item>
         )}
 
-        {/* Metric picker */}
         {showMetricPicker && (
           <>
             <Divider style={{ margin: '8px 0' }} />
@@ -180,13 +166,9 @@ export default function CjmEditDrawer({ node, onClose, onSave }: Props) {
             </Form.Item>
             {linkedMetric && (
               <div style={{
-                background: token.colorFillSecondary,
-                borderRadius: token.borderRadius,
-                padding: '6px 10px',
-                marginTop: -8,
-                marginBottom: 12,
-                display: 'flex',
-                justifyContent: 'space-between',
+                background: token.colorFillSecondary, borderRadius: token.borderRadius,
+                padding: '6px 10px', marginTop: -8, marginBottom: 12,
+                display: 'flex', justifyContent: 'space-between',
               }}>
                 <Text style={{ fontSize: 11, color: token.colorText }}>{linkedMetric.name}</Text>
                 <Text style={{ fontSize: 11, color: token.colorPrimary, fontWeight: 600 }}>
@@ -197,7 +179,6 @@ export default function CjmEditDrawer({ node, onClose, onSave }: Props) {
           </>
         )}
 
-        {/* Artifact picker */}
         {showArtifactPicker && (
           <>
             <Divider style={{ margin: '8px 0' }} />
@@ -229,14 +210,9 @@ export default function CjmEditDrawer({ node, onClose, onSave }: Props) {
             {linkedArtifact && (
               <div
                 style={{
-                  background: token.colorFillSecondary,
-                  borderRadius: token.borderRadius,
-                  padding: '6px 10px',
-                  marginTop: -8,
-                  marginBottom: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
+                  background: token.colorFillSecondary, borderRadius: token.borderRadius,
+                  padding: '6px 10px', marginTop: -8, marginBottom: 12,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   cursor: 'pointer',
                 }}
                 onClick={() => void navigate(`/knowledge/${linkedArtifact.id}`)}
@@ -248,11 +224,11 @@ export default function CjmEditDrawer({ node, onClose, onSave }: Props) {
           </>
         )}
       </Form>
-    </Drawer>
+    </Modal>
   );
 }
 
-// ── "Add stage" drawer ────────────────────────────────────────────────────────
+// ── Add stage modal ───────────────────────────────────────────────────────────
 
 interface AddStageProps {
   open: boolean;
@@ -271,22 +247,20 @@ export function AddStageDrawer({ open, onClose, onAdd }: AddStageProps) {
   };
 
   return (
-    <Drawer
+    <Modal
       open={open}
-      onClose={onClose}
+      onCancel={onClose}
       title="Добавить этап"
-      width={360}
-      styles={{ body: { padding: '16px 20px' } }}
-      footer={
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <Button onClick={onClose}>Отмена</Button>
-          <Button type="primary" onClick={handleAdd} disabled={!label.trim()}>
-            Добавить
-          </Button>
-        </div>
-      }
+      width={420}
+      footer={[
+        <Button key="cancel" onClick={onClose}>Отмена</Button>,
+        <Button key="add" type="primary" onClick={handleAdd} disabled={!label.trim()}>
+          Добавить
+        </Button>,
+      ]}
+      destroyOnHidden
     >
-      <Form layout="vertical" size="small">
+      <Form layout="vertical" size="small" style={{ marginTop: 8 }}>
         <Form.Item label="Название этапа" required>
           <Input
             value={label}
@@ -297,10 +271,10 @@ export function AddStageDrawer({ open, onClose, onAdd }: AddStageProps) {
           />
         </Form.Item>
         <Text type="secondary" style={{ fontSize: 12 }}>
-          Новый этап будет добавлен в конец цепочки. Touchpoint, эмоции, боли и возможности
-          можно будет заполнить кликом по ноде.
+          Новый этап добавляется в конец цепочки. Touchpoint, эмоции, боли и возможности
+          можно заполнить кликом по ноде.
         </Text>
       </Form>
-    </Drawer>
+    </Modal>
   );
 }
