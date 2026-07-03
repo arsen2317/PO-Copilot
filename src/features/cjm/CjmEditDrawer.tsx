@@ -92,6 +92,7 @@ export default function CjmEditModal({ node, onClose, onSave }: Props) {
     <Modal
       open={!!node}
       onCancel={onClose}
+      centered
       title={
         node ? (
           <Text style={{ fontSize: 11, color: token.colorTextSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -250,6 +251,7 @@ export function AddStageDrawer({ open, onClose, onAdd }: AddStageProps) {
     <Modal
       open={open}
       onCancel={onClose}
+      centered
       title="Добавить этап"
       width={420}
       footer={[

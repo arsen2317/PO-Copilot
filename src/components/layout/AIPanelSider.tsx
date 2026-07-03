@@ -1323,22 +1323,19 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
         {/* Automate row — only in empty state */}
         {!hasMessages && (
-          <>
-            <div
-              onMouseEnter={() => setAutomateHovered(true)}
-              onMouseLeave={() => setAutomateHovered(false)}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '10px 16px', cursor: 'default',
-              }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <StarFilled style={{ color: ACCENT, fontSize: 12 }} />
-                <span style={{ fontSize: 12, color: TEXT_SECONDARY }}>Автоматизировать повторяющиеся задачи</span>
-              </div>
-              <span style={{ fontSize: 12, color: ACCENT, cursor: 'pointer', whiteSpace: 'nowrap' }}>Попробовать</span>
+          <div
+            onMouseEnter={() => setAutomateHovered(true)}
+            onMouseLeave={() => setAutomateHovered(false)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '10px 16px', cursor: 'default',
+            }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <StarFilled style={{ color: ACCENT, fontSize: 12 }} />
+              <span style={{ fontSize: 12, color: TEXT_SECONDARY }}>Автоматизировать повторяющиеся задачи</span>
             </div>
-            <div style={{ height: 1, background: BORDER_COLOR }} />
-          </>
+            <span style={{ fontSize: 12, color: ACCENT, cursor: 'pointer', whiteSpace: 'nowrap' }}>Попробовать</span>
+          </div>
         )}
 
         {/* Input area */}
@@ -1617,7 +1614,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   // ── Sidebar / floating layout ────────────────────────────────────────────────
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-      {!hasMessages && view !== 'history' && <GlowBg />}
+      {!hasMessages && view !== 'history' && <SidebarAuroraGlow />}
       <div style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>{TopBar}</div>
 
       {/* ── Center: history / empty state / message list ── */}
@@ -1696,7 +1693,9 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   );
 }
 
-// ── Background animated aurora glow ─────────────────────────────────────────
+// ── Background glow elements ─────────────────────────────────────────────────
+
+// Animated aurora for the assistant page (large centred layout)
 function GlowBg() {
   useEffect(() => { ensureAuroraStyles(); }, []);
   return (
@@ -1704,7 +1703,6 @@ function GlowBg() {
       position: 'absolute', left: 0, right: 0, bottom: 0,
       height: '55%', pointerEvents: 'none', zIndex: 0, overflow: 'hidden',
     }}>
-      {/* Blob A — large centre */}
       <div style={{
         position: 'absolute', width: 300, height: 200, borderRadius: '50%',
         background: '#1a6fff', filter: 'blur(72px)', opacity: 0.40,
@@ -1712,7 +1710,6 @@ function GlowBg() {
         animation: 'aurora-blob-a 10s ease-in-out infinite',
         willChange: 'transform',
       }} />
-      {/* Blob B — right accent */}
       <div style={{
         position: 'absolute', width: 230, height: 170, borderRadius: '50%',
         background: '#0040cc', filter: 'blur(62px)', opacity: 0.30,
@@ -1721,13 +1718,59 @@ function GlowBg() {
         animationDelay: '-2s',
         willChange: 'transform',
       }} />
-      {/* Blob C — left accent */}
       <div style={{
         position: 'absolute', width: 170, height: 140, borderRadius: '50%',
         background: '#00aaff', filter: 'blur(52px)', opacity: 0.20,
         bottom: -40, left: -40,
         animation: 'aurora-blob-c 10s ease-in-out infinite',
         animationDelay: '-5s',
+        willChange: 'transform',
+      }} />
+    </div>
+  );
+}
+
+// Animated aurora for the sidebar panel empty state
+function SidebarAuroraGlow() {
+  useEffect(() => { ensureAuroraStyles(); }, []);
+  return (
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%', pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+      {/* Blob A — large primary blue, bottom-center */}
+      <div style={{
+        position: 'absolute',
+        width: 260, height: 180,
+        borderRadius: '50%',
+        background: '#1a6fff',
+        filter: 'blur(64px)',
+        opacity: 0.32,
+        bottom: -60, left: '50%', marginLeft: -130,
+        animation: 'aurora-blob-a 9s ease-in-out infinite',
+        willChange: 'transform',
+      }} />
+      {/* Blob B — darker blue, bottom-right */}
+      <div style={{
+        position: 'absolute',
+        width: 200, height: 150,
+        borderRadius: '50%',
+        background: '#0a2a8a',
+        filter: 'blur(52px)',
+        opacity: 0.38,
+        bottom: -40, right: -40,
+        animation: 'aurora-blob-b 11s ease-in-out infinite',
+        animationDelay: '-2s',
+        willChange: 'transform',
+      }} />
+      {/* Blob C — accent purple, bottom-left */}
+      <div style={{
+        position: 'absolute',
+        width: 160, height: 130,
+        borderRadius: '50%',
+        background: '#4A30D0',
+        filter: 'blur(44px)',
+        opacity: 0.24,
+        bottom: -30, left: -30,
+        animation: 'aurora-blob-c 13s ease-in-out infinite',
+        animationDelay: '-4s',
         willChange: 'transform',
       }} />
     </div>

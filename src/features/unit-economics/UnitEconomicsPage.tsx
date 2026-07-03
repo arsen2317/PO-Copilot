@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Divider, InputNumber, Tabs, theme, Tooltip, Typography } from 'antd';
+import { InputNumber, Tabs, theme, Tooltip, Typography } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Pie } from '@ant-design/plots';
 
@@ -402,7 +402,7 @@ function DonutChart({ data, colors }: { data: Array<{ type: string; value: numbe
           },
         ],
       }}
-      height={260}
+      height={320}
     />
   );
 }
@@ -547,142 +547,146 @@ export default function UnitEconomicsPage() {
           background: token.colorBgContainer,
           border: BDR,
           borderRadius: token.borderRadiusLG,
-          overflow: 'hidden auto',
+          overflow: 'hidden',
           padding: '16px 14px',
           display: 'flex',
           flexDirection: 'column',
-          gap: 0,
+          justifyContent: 'space-between',
         }}>
 
-          <SectionTitle>Доходы</SectionTitle>
+          {/* Доходы */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <SectionTitle>Доходы</SectionTitle>
+            <InputRow
+              label="Транзакций в месяц"
+              value={params.txPerMonth}
+              min={0}
+              max={200}
+              onChange={set('txPerMonth')}
+            />
+            <InputRow
+              label="Средний чек"
+              suffix="₽"
+              value={params.avgTxAmount}
+              min={0}
+              step={100}
+              onChange={set('avgTxAmount')}
+            />
+            <InputRow
+              label="Ставка интерчейнджа"
+              hint="% от суммы транзакции"
+              suffix="%"
+              value={params.interchangeRate}
+              min={0}
+              max={5}
+              step={0.1}
+              precision={2}
+              onChange={set('interchangeRate')}
+            />
+            <InputRow
+              label="Остаток на счёте"
+              suffix="₽"
+              value={params.avgBalance}
+              min={0}
+              step={1000}
+              onChange={set('avgBalance')}
+            />
+            <InputRow
+              label="Чистая % маржа"
+              hint="ЧПМ, % годовых"
+              suffix="%"
+              value={params.nim}
+              min={0}
+              max={30}
+              step={0.5}
+              precision={1}
+              onChange={set('nim')}
+            />
+            <InputRow
+              label="Ежемесячная плата"
+              suffix="₽"
+              value={params.monthlyFee}
+              min={0}
+              step={10}
+              onChange={set('monthlyFee')}
+            />
+            <InputRow
+              label="Прочие доходы"
+              hint="Снятия наличных, прочие комиссии"
+              suffix="₽/мес"
+              value={params.otherFeeIncome}
+              min={0}
+              step={5}
+              onChange={set('otherFeeIncome')}
+            />
+          </div>
 
-          <InputRow
-            label="Транзакций в месяц"
-            value={params.txPerMonth}
-            min={0}
-            max={200}
-            onChange={set('txPerMonth')}
-          />
-          <InputRow
-            label="Средний чек"
-            suffix="₽"
-            value={params.avgTxAmount}
-            min={0}
-            step={100}
-            onChange={set('avgTxAmount')}
-          />
-          <InputRow
-            label="Ставка интерчейнджа"
-            hint="% от суммы транзакции"
-            suffix="%"
-            value={params.interchangeRate}
-            min={0}
-            max={5}
-            step={0.1}
-            precision={2}
-            onChange={set('interchangeRate')}
-          />
-          <InputRow
-            label="Остаток на счёте"
-            suffix="₽"
-            value={params.avgBalance}
-            min={0}
-            step={1000}
-            onChange={set('avgBalance')}
-          />
-          <InputRow
-            label="Чистая % маржа"
-            hint="ЧПМ, % годовых"
-            suffix="%"
-            value={params.nim}
-            min={0}
-            max={30}
-            step={0.5}
-            precision={1}
-            onChange={set('nim')}
-          />
-          <InputRow
-            label="Ежемесячная плата"
-            suffix="₽"
-            value={params.monthlyFee}
-            min={0}
-            step={10}
-            onChange={set('monthlyFee')}
-          />
-          <InputRow
-            label="Прочие доходы"
-            hint="Снятия наличных, прочие комиссии"
-            suffix="₽/мес"
-            value={params.otherFeeIncome}
-            min={0}
-            step={5}
-            onChange={set('otherFeeIncome')}
-          />
+          {/* Расходы */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <SectionTitle>Расходы</SectionTitle>
+            <InputRow
+              label="Кешбэк / лояльность"
+              suffix="% об."
+              value={params.cashbackRate}
+              min={0}
+              max={10}
+              step={0.1}
+              precision={2}
+              onChange={set('cashbackRate')}
+            />
+            <InputRow
+              label="Процессинг (за транз.)"
+              suffix="₽"
+              value={params.processingCostPerTx}
+              min={0}
+              step={0.5}
+              precision={1}
+              onChange={set('processingCostPerTx')}
+            />
+            <InputRow
+              label="Обслуживание счёта"
+              hint="ДБО, колл-центр, пластик"
+              suffix="₽/мес"
+              value={params.accountServicingCost}
+              min={0}
+              step={5}
+              onChange={set('accountServicingCost')}
+            />
+            <InputRow
+              label="CAC"
+              hint="Стоимость привлечения одного клиента"
+              suffix="₽"
+              value={params.cac}
+              min={0}
+              step={100}
+              onChange={set('cac')}
+            />
+          </div>
 
-          <Divider style={{ margin: '14px 0 12px' }} />
-          <SectionTitle>Расходы</SectionTitle>
-
-          <InputRow
-            label="Кешбэк / лояльность"
-            suffix="% об."
-            value={params.cashbackRate}
-            min={0}
-            max={10}
-            step={0.1}
-            precision={2}
-            onChange={set('cashbackRate')}
-          />
-          <InputRow
-            label="Процессинг (за транз.)"
-            suffix="₽"
-            value={params.processingCostPerTx}
-            min={0}
-            step={0.5}
-            precision={1}
-            onChange={set('processingCostPerTx')}
-          />
-          <InputRow
-            label="Обслуживание счёта"
-            hint="ДБО, колл-центр, пластик"
-            suffix="₽/мес"
-            value={params.accountServicingCost}
-            min={0}
-            step={5}
-            onChange={set('accountServicingCost')}
-          />
-          <InputRow
-            label="CAC"
-            hint="Стоимость привлечения одного клиента"
-            suffix="₽"
-            value={params.cac}
-            min={0}
-            step={100}
-            onChange={set('cac')}
-          />
-
-          <Divider style={{ margin: '14px 0 12px' }} />
-          <SectionTitle>Параметры LTV</SectionTitle>
-
-          <InputRow
-            label="Отток в месяц (Churn)"
-            hint="% активных карт, уходящих в месяц"
-            suffix="%/мес"
-            value={params.churnRate}
-            min={0.1}
-            max={50}
-            step={0.5}
-            precision={1}
-            onChange={set('churnRate')}
-          />
-          <InputRow
-            label="Ставка дисконтирования"
-            suffix="% год"
-            value={params.discountRate}
-            min={0}
-            max={50}
-            step={1}
-            onChange={set('discountRate')}
-          />
+          {/* Параметры LTV */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <SectionTitle>Параметры LTV</SectionTitle>
+            <InputRow
+              label="Отток в месяц (Churn)"
+              hint="% активных карт, уходящих в месяц"
+              suffix="%/мес"
+              value={params.churnRate}
+              min={0.1}
+              max={50}
+              step={0.5}
+              precision={1}
+              onChange={set('churnRate')}
+            />
+            <InputRow
+              label="Ставка дисконтирования"
+              suffix="% год"
+              value={params.discountRate}
+              min={0}
+              max={50}
+              step={1}
+              onChange={set('discountRate')}
+            />
+          </div>
         </div>
 
         {/* ── Right: results ── */}
@@ -794,8 +798,6 @@ export default function UnitEconomicsPage() {
           </div>
         </div>
       </div>
-
-      <div style={{ height: 24, flexShrink: 0 }} />
     </div>
   );
 }
