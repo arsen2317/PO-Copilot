@@ -275,6 +275,7 @@ export interface KnowledgeArtifact {
   type: ArtifactType;
   description: string;
   createdAt: string;
+  sourceUrl?: string;
 }
 
 export interface CjmFlowNode {

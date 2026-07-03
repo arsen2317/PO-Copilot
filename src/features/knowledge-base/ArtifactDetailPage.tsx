@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Typography, Tag, Button, Breadcrumb, Spin, Divider } from 'antd';
-import { ArrowLeftOutlined, FileTextOutlined, ExperimentOutlined, SearchOutlined, BarChartOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, FileTextOutlined, ExperimentOutlined, SearchOutlined, BarChartOutlined, LinkOutlined } from '@ant-design/icons';
 import { theme } from 'antd';
 import { getArtifactById } from '../../data/api/knowledge';
 import type { ArtifactType } from '../../data/types';
@@ -128,6 +128,27 @@ export default function ArtifactDetailPage() {
       </div>
 
       <Divider style={{ margin: '4px 0' }} />
+
+      {artifact.sourceUrl && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 14px',
+          background: token.colorBgContainer,
+          border: `1px solid ${token.colorBorderSecondary}`,
+          borderRadius: token.borderRadiusLG,
+        }}>
+          <LinkOutlined style={{ fontSize: 13, color: token.colorTextSecondary, flexShrink: 0 }} />
+          <Text style={{ fontSize: 12, color: token.colorTextSecondary, marginRight: 4 }}>Источник:</Text>
+          <a
+            href={artifact.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 12, color: token.colorPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {artifact.sourceUrl}
+          </a>
+        </div>
+      )}
 
       <div
         style={{

@@ -547,11 +547,11 @@ export default function UnitEconomicsPage() {
           background: token.colorBgContainer,
           border: BDR,
           borderRadius: token.borderRadiusLG,
-          overflow: 'hidden',
+          overflowY: 'auto',
           padding: '16px 14px',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between',
+          gap: 20,
         }}>
 
           {/* Доходы */}
@@ -773,11 +773,13 @@ export default function UnitEconomicsPage() {
                   key: 'revenue',
                   label: 'Структура выручки',
                   children: (
-                    <div style={{ padding: '8px 24px 12px' }}>
-                      <Typography.Text style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 8, display: 'block' }}>
+                    <div style={{ padding: '8px 24px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <Typography.Text style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 8, display: 'block', textAlign: 'center' }}>
                         Итого: {fmtRub(result.revenue)} / карта / мес
                       </Typography.Text>
-                      <DonutChart data={result.revenueBreakdown} colors={REVENUE_COLORS} />
+                      <div style={{ width: '100%', maxWidth: 420 }}>
+                        <DonutChart data={result.revenueBreakdown} colors={REVENUE_COLORS} />
+                      </div>
                     </div>
                   ),
                 },
@@ -785,11 +787,13 @@ export default function UnitEconomicsPage() {
                   key: 'cost',
                   label: 'Структура расходов',
                   children: (
-                    <div style={{ padding: '8px 24px 12px' }}>
-                      <Typography.Text style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 8, display: 'block' }}>
+                    <div style={{ padding: '8px 24px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <Typography.Text style={{ fontSize: 12, color: token.colorTextTertiary, marginBottom: 8, display: 'block', textAlign: 'center' }}>
                         Итого: {fmtRub(result.cost)} / карта / мес
                       </Typography.Text>
-                      <DonutChart data={result.costBreakdown} colors={COST_COLORS} />
+                      <div style={{ width: '100%', maxWidth: 420 }}>
+                        <DonutChart data={result.costBreakdown} colors={COST_COLORS} />
+                      </div>
                     </div>
                   ),
                 },

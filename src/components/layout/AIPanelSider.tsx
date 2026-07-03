@@ -1113,6 +1113,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const [inputFocused, setInputFocused] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [pendingTrigger, setPendingTrigger] = useState<{ agent: string; text: string } | null>(null);
+  const [sidebarHovered, setSidebarHovered] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileDocInputRef = useRef<HTMLInputElement>(null);
@@ -1776,8 +1777,12 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
   // ── Sidebar / floating layout ────────────────────────────────────────────────
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-      {!hasMessages && view !== 'history' && <SidebarAuroraGlow />}
+    <div
+      style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}
+      onMouseEnter={() => setSidebarHovered(true)}
+      onMouseLeave={() => setSidebarHovered(false)}
+    >
+      {!hasMessages && view !== 'history' && <SidebarAuroraGlow hovered={sidebarHovered} />}
       <div style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>{TopBar}</div>
 
       {/* ── Center: history / empty state / message list ── */}
@@ -1866,25 +1871,28 @@ function GlowBg() {
       position: 'absolute', left: 0, right: 0, bottom: 0,
       height: '55%', pointerEvents: 'none', zIndex: 0, overflow: 'hidden',
     }}>
+      {/* Blob A — large, bottom-center */}
       <div style={{
-        position: 'absolute', width: 300, height: 200, borderRadius: '50%',
-        background: '#1a6fff', filter: 'blur(72px)', opacity: 0.40,
-        bottom: -70, left: '50%', marginLeft: -150,
+        position: 'absolute', width: 380, height: 260, borderRadius: '50%',
+        background: '#1a6fff', filter: 'blur(80px)', opacity: 0.38,
+        bottom: -110, left: '50%', marginLeft: -190,
         animation: 'aurora-blob-a 10s ease-in-out infinite',
         willChange: 'transform',
       }} />
+      {/* Blob B — left-center, overlaps A */}
       <div style={{
-        position: 'absolute', width: 230, height: 170, borderRadius: '50%',
-        background: '#0040cc', filter: 'blur(62px)', opacity: 0.30,
-        bottom: -50, right: -50,
+        position: 'absolute', width: 300, height: 200, borderRadius: '50%',
+        background: '#0040cc', filter: 'blur(70px)', opacity: 0.28,
+        bottom: -80, left: '32%', marginLeft: -150,
         animation: 'aurora-blob-b 10s ease-in-out infinite',
         animationDelay: '-2s',
         willChange: 'transform',
       }} />
+      {/* Blob C — right-center, overlaps A */}
       <div style={{
-        position: 'absolute', width: 170, height: 140, borderRadius: '50%',
-        background: '#00aaff', filter: 'blur(52px)', opacity: 0.20,
-        bottom: -40, left: -40,
+        position: 'absolute', width: 260, height: 180, borderRadius: '50%',
+        background: '#00aaff', filter: 'blur(65px)', opacity: 0.22,
+        bottom: -60, left: '62%', marginLeft: -130,
         animation: 'aurora-blob-c 10s ease-in-out infinite',
         animationDelay: '-5s',
         willChange: 'transform',
@@ -1894,47 +1902,50 @@ function GlowBg() {
 }
 
 // Animated aurora for the sidebar panel empty state
-function SidebarAuroraGlow() {
+function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
   useEffect(() => { ensureAuroraStyles(); }, []);
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%', pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: '38%', pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
       {/* Blob A — large primary blue, bottom-center */}
       <div style={{
         position: 'absolute',
-        width: 260, height: 180,
+        width: 280, height: 190,
         borderRadius: '50%',
         background: '#1a6fff',
-        filter: 'blur(64px)',
-        opacity: 0.32,
-        bottom: -60, left: '50%', marginLeft: -130,
+        filter: 'blur(60px)',
+        opacity: hovered ? 0.52 : 0.28,
+        bottom: -80, left: '50%', marginLeft: -140,
         animation: 'aurora-blob-a 9s ease-in-out infinite',
         willChange: 'transform',
+        transition: 'opacity 0.5s ease',
       }} />
-      {/* Blob B — darker blue, bottom-right */}
+      {/* Blob B — left-center, overlaps A */}
       <div style={{
         position: 'absolute',
-        width: 200, height: 150,
+        width: 220, height: 160,
         borderRadius: '50%',
         background: '#0a2a8a',
         filter: 'blur(52px)',
-        opacity: 0.38,
-        bottom: -40, right: -40,
+        opacity: hovered ? 0.48 : 0.32,
+        bottom: -60, left: '26%', marginLeft: -110,
         animation: 'aurora-blob-b 11s ease-in-out infinite',
         animationDelay: '-2s',
         willChange: 'transform',
+        transition: 'opacity 0.5s ease',
       }} />
-      {/* Blob C — accent purple, bottom-left */}
+      {/* Blob C — right-center, overlaps A */}
       <div style={{
         position: 'absolute',
-        width: 160, height: 130,
+        width: 180, height: 130,
         borderRadius: '50%',
         background: '#4A30D0',
-        filter: 'blur(44px)',
-        opacity: 0.24,
-        bottom: -30, left: -30,
+        filter: 'blur(46px)',
+        opacity: hovered ? 0.38 : 0.20,
+        bottom: -50, left: '68%', marginLeft: -90,
         animation: 'aurora-blob-c 13s ease-in-out infinite',
         animationDelay: '-4s',
         willChange: 'transform',
+        transition: 'opacity 0.5s ease',
       }} />
     </div>
   );
