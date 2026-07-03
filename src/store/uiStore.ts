@@ -36,6 +36,9 @@ interface UIState {
   focusedFunnelStepId: string | null;
   setFocusedFunnelStep: (id: string | null) => void;
 
+  pendingAgentKey: string | null;
+  setPendingAgent: (key: string | null) => void;
+
   sessions: ChatSession[];
   activeSessionId: string;
   createSession: () => void;
@@ -54,6 +57,9 @@ export const useUIStore = create<UIState>((set) => ({
 
   focusedFunnelStepId: null,
   setFocusedFunnelStep: (id) => set({ focusedFunnelStepId: id }),
+
+  pendingAgentKey: null,
+  setPendingAgent: (key) => set({ pendingAgentKey: key }),
 
   sessions: [initial],
   activeSessionId: initial.id,

@@ -2,8 +2,12 @@ import { getMetricDefinitions, getMetricGroupDefs } from '../data/api/metric-def
 import { getFunnelAnalytics } from '../data/api/funnel-analytics';
 import { getTasks, getEpics, getTeams } from '../data/api/tasks';
 import { getAgents } from '../data/api/agents';
+import { getArtifacts } from '../data/api/knowledge';
+import { getCjmList, getCjmById } from '../data/api/cjm';
 import { getToken } from '../features/auth/auth';
 import { useUIStore } from '../store/uiStore';
+import { useCjmStore } from '../store/cjmStore';
+import type { CjmMap, CjmFlowNode, CjmFlowEdge, CjmNodeData, CjmNodeType, CjmStatus } from '../data/types';
 
 export const TOOL_DEFINITIONS = [
   {
@@ -82,6 +86,106 @@ export const TOOL_DEFINITIONS = [
         query: { type: 'string', description: 'Поисковый запрос на русском или английском языке.' },
       },
       required: ['query'],
+    },
+  },
+  {
+    name: 'get_cjm_list',
+    description: 'Возвращает список всех CJM-карт (карт пути клиента): id, заголовок, персона, статус, описание.',
+    input_schema: { type: 'object' as const, properties: {}, required: [] },
+  },
+  {
+    name: 'get_cjm',
+    description: 'Возвращает полный CJM по id, включая все ноды (этапы, touchpoint, эмоции, боли, возможности) и рёбра.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'ID CJM-карты' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'get_knowledge_artifacts',
+    description: 'Возвращает артефакты из базы знаний: опросы пользователей, UX-исследования, анализы оттока, NPS-отчёты — с полными данными и инсайтами. Используй для обогащения CJM реальными болями и данными.',
+    input_schema: { type: 'object' as const, properties: {}, required: [] },
+  },
+  {
+    name: 'create_cjm',
+    description: 'Создаёт новый CJM и сохраняет его в текущей сессии. Возвращает id и title созданного CJM.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string', description: 'Название CJM (конкретное, описывает сценарий)' },
+        persona: { type: 'string', description: 'Описание персоны (возраст, роль, контекст)' },
+        description: { type: 'string', description: 'Краткое описание CJM (1-2 предложения, со ссылками на данные)' },
+        status: { type: 'string', enum: ['draft', 'active', 'archived'], description: 'Статус. По умолчанию: draft' },
+        nodes: {
+          type: 'array',
+          description: 'Ноды CJM. Для N этапов: N*5 нод (stage, touchpoint, emotion, pain, opportunity для каждой колонки)',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'ID ноды. Формат: {prefix}-s{col+1} для stage, -t для touchpoint, -e для emotion, -p для pain, -o для opportunity' },
+              type: { type: 'string', enum: ['stage', 'touchpoint', 'emotion', 'pain', 'opportunity'] },
+              position: {
+                type: 'object',
+                properties: { x: { type: 'number', description: 'col * 280' }, y: { type: 'number', description: 'stage=0, touchpoint=170, emotion=340, pain=510, opportunity=680' } },
+                required: ['x', 'y'],
+              },
+              data: {
+                type: 'object',
+                properties: {
+                  label: { type: 'string', description: 'Текст ноды' },
+                  metric: { type: 'string', description: 'Только для stage: метрика (число пользователей, CR%)' },
+                  sentiment: { type: 'string', enum: ['positive', 'neutral', 'negative'], description: 'Только для emotion' },
+                  channel: { type: 'string', description: 'Только для touchpoint: канал взаимодействия' },
+                },
+                required: ['label'],
+              },
+            },
+            required: ['id', 'type', 'position', 'data'],
+          },
+        },
+        edges: {
+          type: 'array',
+          description: 'Рёбра между stage-нодами. Для N этапов: N-1 рёбер',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              source: { type: 'string', description: 'ID исходной stage-ноды' },
+              target: { type: 'string', description: 'ID целевой stage-ноды' },
+            },
+            required: ['id', 'source', 'target'],
+          },
+        },
+      },
+      required: ['title', 'persona', 'description', 'nodes', 'edges'],
+    },
+  },
+  {
+    name: 'update_cjm',
+    description: 'Обновляет существующий CJM. Можно обновить метаданные (title, persona, description, status) и/или полный набор нод и рёбер.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        id: { type: 'string', description: 'ID CJM-карты для обновления' },
+        title: { type: 'string' },
+        persona: { type: 'string' },
+        description: { type: 'string' },
+        status: { type: 'string', enum: ['draft', 'active', 'archived'] },
+        nodes: {
+          type: 'array',
+          description: 'Полный новый набор нод (заменяет текущий)',
+          items: { type: 'object' },
+        },
+        edges: {
+          type: 'array',
+          description: 'Полный новый набор рёбер (заменяет текущий)',
+          items: { type: 'object' },
+        },
+      },
+      required: ['id'],
     },
   },
 ] as const;
@@ -255,6 +359,161 @@ export async function executeTool(
       });
       if (!resp.ok) return { error: `Search failed: ${resp.status}`, results: [] };
       return resp.json();
+    }
+
+    case 'get_cjm_list': {
+      const fixtureMaps = await getCjmList();
+      const generatedMaps = useCjmStore.getState().generatedMaps;
+      const all = [...generatedMaps, ...fixtureMaps];
+      return all.map((m) => ({
+        id: m.id,
+        title: m.title,
+        persona: m.persona,
+        status: m.status,
+        description: m.description,
+        updatedAt: m.updatedAt,
+        stagesCount: m.nodes.filter((n) => n.type === 'stage').length,
+        isGenerated: generatedMaps.some((g) => g.id === m.id),
+      }));
+    }
+
+    case 'get_cjm': {
+      const mapId = typeof input.id === 'string' ? input.id : '';
+      if (!mapId) return { error: 'id is required' };
+      const generatedMaps = useCjmStore.getState().generatedMaps;
+      const nodesState = useCjmStore.getState().nodesState;
+      const edgesState = useCjmStore.getState().edgesState;
+      const generated = generatedMaps.find((m) => m.id === mapId);
+      const fixture = generated ? undefined : await getCjmById(mapId);
+      const map = generated ?? fixture;
+      if (!map) return { error: `CJM not found: ${mapId}` };
+      const nodes = nodesState[mapId] ?? map.nodes;
+      const edges = edgesState[mapId] ?? map.edges;
+      return { ...map, nodes, edges };
+    }
+
+    case 'get_knowledge_artifacts': {
+      const artifacts = await getArtifacts();
+      return artifacts.map((a) => ({
+        id: a.id,
+        title: a.title,
+        type: a.type,
+        description: a.description,
+        createdAt: a.createdAt,
+      }));
+    }
+
+    case 'create_cjm': {
+      const prefix = `gen${Date.now().toString(36)}`;
+      const mapId = `cjm-${prefix}`;
+      const today = new Date().toISOString().split('T')[0] ?? new Date().toLocaleDateString('ru-RU');
+
+      const rawNodes = Array.isArray(input.nodes) ? (input.nodes as Record<string, unknown>[]) : [];
+      const rawEdges = Array.isArray(input.edges) ? (input.edges as Record<string, unknown>[]) : [];
+
+      // Build ID remap so edges can reference original IDs
+      const idMap = new Map<string, string>();
+
+      const nodes: CjmFlowNode[] = rawNodes.map((n) => {
+        const origId = String(n.id ?? '');
+        const newId = origId ? `${mapId}-${origId}` : `${mapId}-n${Math.random().toString(36).slice(2)}`;
+        idMap.set(origId, newId);
+
+        const rawData = (n.data && typeof n.data === 'object') ? n.data as Record<string, unknown> : {};
+        const data: CjmNodeData = { label: String(rawData.label ?? '') };
+        if (typeof rawData.metric === 'string')      data.metric = rawData.metric;
+        if (typeof rawData.channel === 'string')     data.channel = rawData.channel;
+        if (typeof rawData.description === 'string') data.description = rawData.description;
+        const sentiments = ['positive', 'neutral', 'negative'] as const;
+        if (sentiments.includes(rawData.sentiment as typeof sentiments[number])) {
+          data.sentiment = rawData.sentiment as 'positive' | 'neutral' | 'negative';
+        }
+
+        const rawPos = (n.position && typeof n.position === 'object') ? n.position as Record<string, unknown> : {};
+        const validTypes: CjmNodeType[] = ['stage', 'touchpoint', 'emotion', 'pain', 'opportunity'];
+        const nodeType = validTypes.includes(String(n.type) as CjmNodeType) ? String(n.type) as CjmNodeType : 'stage';
+
+        return { id: newId, type: nodeType, position: { x: Number(rawPos.x ?? 0), y: Number(rawPos.y ?? 0) }, data };
+      });
+
+      const edges: CjmFlowEdge[] = rawEdges.map((e, i) => ({
+        id: `${mapId}-edge${i}`,
+        source: idMap.get(String(e.source ?? '')) ?? `${mapId}-${String(e.source ?? '')}`,
+        target: idMap.get(String(e.target ?? '')) ?? `${mapId}-${String(e.target ?? '')}`,
+      }));
+
+      const validStatuses: CjmStatus[] = ['draft', 'active', 'archived'];
+      const map: CjmMap = {
+        id: mapId,
+        title: String(input.title ?? 'Новый CJM'),
+        persona: String(input.persona ?? ''),
+        status: validStatuses.includes(String(input.status) as CjmStatus) ? String(input.status) as CjmStatus : 'draft',
+        updatedAt: today,
+        description: String(input.description ?? ''),
+        nodes,
+        edges,
+      };
+
+      useCjmStore.getState().addGeneratedMap(map);
+      return { success: true, id: mapId, title: map.title };
+    }
+
+    case 'update_cjm': {
+      const mapId = typeof input.id === 'string' ? input.id : '';
+      if (!mapId) return { error: 'id is required' };
+
+      const store = useCjmStore.getState();
+      const isGenerated = store.generatedMaps.some((m) => m.id === mapId);
+      const fixture = isGenerated ? undefined : await getCjmById(mapId);
+      if (!isGenerated && !fixture) return { error: `CJM not found: ${mapId}` };
+
+      const today = new Date().toISOString().split('T')[0] ?? new Date().toLocaleDateString('ru-RU');
+
+      // Update metadata for generated maps
+      if (isGenerated) {
+        const metaUpdates: Partial<CjmMap> = { updatedAt: today };
+        if (typeof input.title === 'string')       metaUpdates.title = input.title;
+        if (typeof input.persona === 'string')     metaUpdates.persona = input.persona;
+        if (typeof input.description === 'string') metaUpdates.description = input.description;
+        const validStatuses: CjmStatus[] = ['draft', 'active', 'archived'];
+        if (validStatuses.includes(String(input.status) as CjmStatus)) {
+          metaUpdates.status = String(input.status) as CjmStatus;
+        }
+        store.updateMap(mapId, metaUpdates);
+      }
+
+      // Update nodes/edges if provided
+      if (Array.isArray(input.nodes)) {
+        const rawNodes = input.nodes as Record<string, unknown>[];
+        const nodes: CjmFlowNode[] = rawNodes.map((n) => {
+          const rawData = (n.data && typeof n.data === 'object') ? n.data as Record<string, unknown> : {};
+          const data: CjmNodeData = { label: String(rawData.label ?? '') };
+          if (typeof rawData.metric === 'string')      data.metric = rawData.metric;
+          if (typeof rawData.channel === 'string')     data.channel = rawData.channel;
+          if (typeof rawData.description === 'string') data.description = rawData.description;
+          const sentiments = ['positive', 'neutral', 'negative'] as const;
+          if (sentiments.includes(rawData.sentiment as typeof sentiments[number])) {
+            data.sentiment = rawData.sentiment as 'positive' | 'neutral' | 'negative';
+          }
+          const rawPos = (n.position && typeof n.position === 'object') ? n.position as Record<string, unknown> : {};
+          const validTypes: CjmNodeType[] = ['stage', 'touchpoint', 'emotion', 'pain', 'opportunity'];
+          const nodeType = validTypes.includes(String(n.type) as CjmNodeType) ? String(n.type) as CjmNodeType : 'stage';
+          return { id: String(n.id ?? ''), type: nodeType, position: { x: Number(rawPos.x ?? 0), y: Number(rawPos.y ?? 0) }, data };
+        });
+        store.setMapNodes(mapId, nodes);
+      }
+
+      if (Array.isArray(input.edges)) {
+        const rawEdges = input.edges as Record<string, unknown>[];
+        const edges: CjmFlowEdge[] = rawEdges.map((e) => ({
+          id: String(e.id ?? ''),
+          source: String(e.source ?? ''),
+          target: String(e.target ?? ''),
+        }));
+        store.setMapEdges(mapId, edges);
+      }
+
+      return { success: true, id: mapId };
     }
 
     default:

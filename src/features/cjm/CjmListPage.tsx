@@ -1,14 +1,14 @@
-import { theme, Typography, Badge, Button, Row, Col, Tooltip } from 'antd';
+import { theme, Typography, Badge, Button, Row, Col } from 'antd';
 import {
-  PlusOutlined,
   CalendarOutlined,
   UserOutlined,
-  RobotOutlined,
+  NodeIndexOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCjmList } from '../../data/api/cjm';
 import { useCjmStore } from '../../store/cjmStore';
+import { useUIStore } from '../../store/uiStore';
 import type { CjmMap, CjmStatus } from '../../data/types';
 
 const { Title, Text } = Typography;
@@ -92,6 +92,7 @@ export default function CjmListPage() {
     queryFn: getCjmList,
   });
   const generatedMaps = useCjmStore((s) => s.generatedMaps);
+  const setPendingAgent = useUIStore((s) => s.setPendingAgent);
 
   const allMaps = [...generatedMaps, ...fixtureMaps];
 
@@ -107,16 +108,14 @@ export default function CjmListPage() {
             Карты пути клиента по продукту «Дебетовые карты»
           </Text>
         </div>
-        <Tooltip title="ИИ-агент для генерации CJM — скоро">
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            disabled
-            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-          >
-            <RobotOutlined /> Создать CJM
-          </Button>
-        </Tooltip>
+        <Button
+          type="primary"
+          icon={<NodeIndexOutlined />}
+          onClick={() => setPendingAgent('agent-cjm')}
+          style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+        >
+          Создать CJM с ИИ
+        </Button>
       </div>
 
       {/* Grid */}
