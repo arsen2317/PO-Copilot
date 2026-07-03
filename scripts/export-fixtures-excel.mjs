@@ -777,13 +777,158 @@ with open(src, 'wb') as f:
 print('Content_Types.xml cleaned')
 `.trimStart());
 execSync(`python3 "${pyPath}" "${outFile}"`, { stdio: 'inherit' });
-fs.unlinkSync(pyPath);
 
 console.log(`Файл создан: ${outFile}`);
 console.log(`Листов: ${wb.SheetNames.length}`);
 wb.SheetNames.forEach((name, i) => {
   const ws = wb.Sheets[name];
   const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1:A1');
-  const rowCount = range.e.r - range.s.r; // без заголовка
-  console.log(`  ${i + 1}. ${name} — ${rowCount} строк данных`);
+  console.log(`  ${i + 1}. ${name} — ${range.e.r - range.s.r} строк данных`);
+});
+
+// ─── Второй файл: только итоговые значения (как на карточках) ────────────────
+
+const wbSummary = XLSX.utils.book_new();
+
+// ── Лист 1: Метрики /metrics — значения на карточках ─────────────────────────
+{
+  const rows = [['Группа', 'Метрика', 'Факт (Q2 2026)', 'План', 'Выполнение, %', 'Прошлый квартал (Q1)', 'Ед. изм.']];
+  for (const g of metricGroups) {
+    for (const m of g.metrics) {
+      rows.push([g.name, m.name, m.currentQuarter, m.plan, m.fulfillment, m.lastQuarter, m.unit]);
+    }
+  }
+  const ws = makeSheet(rows);
+  autoCols(ws, rows);
+  XLSX.utils.book_append_sheet(wbSummary, ws, '01_Метрики_Q2');
+}
+
+// ── Лист 2: Расширенные метрики /metrics-definitions — значения на карточках ──
+{
+  const rows = [['Группа', 'Метрика', 'Факт', 'План', 'Прошлый период', 'Ед. изм.', 'Меньше = лучше', 'На дашборде', 'Владелец', 'Обновлено']];
+  for (const m of metricDefs) {
+    rows.push([m.group, m.name, m.currentValue, m.planValue, m.lastPeriodValue, m.unit, m.lowerIsBetter ? 'Да' : 'Нет', m.onDashboard ? 'Да' : 'Нет', m.owner, m.updatedAt]);
+  }
+  const ws = makeSheet(rows);
+  autoCols(ws, rows);
+  XLSX.utils.book_append_sheet(wbSummary, ws, '02_Метрики_расш');
+}
+
+// ── Лист 3: Воронка /funnel — итоги шагов ────────────────────────────────────
+{
+  const rows = [['Шаг', 'Название', 'Пользователей (квартал)', 'Изменение к пр. кварталу', 'Конверсия от первого шага, %', 'Конверсия от предыдущего шага, %']];
+  let prev = null;
+  for (const s of funnelSummary) {
+    const convPrev = prev !== null ? +((s.users / prev) * 100).toFixed(1) : 100;
+    rows.push([s.id, s.name, s.users, s.change, s.conversionFromFirst, convPrev]);
+    prev = s.users;
+  }
+  const ws = makeSheet(rows);
+  autoCols(ws, rows);
+  XLSX.utils.book_append_sheet(wbSummary, ws, '03_Воронка');
+}
+
+// ── Лист 4: Дашборд — виджеты ────────────────────────────────────────────────
+{
+  const rows = [];
+  rows.push(['ВОРОНКА КОНВЕРСИИ (виджет дашборда)']);
+  rows.push(['Шаг', 'Пользователей', 'Конверсия от предыдущего, %', 'Уровень риска']);
+  for (const f of dashboardFunnel) rows.push([f.name, f.value, f.percent, f.riskLevel]);
+
+  rows.push([]);
+  rows.push(['СКОРОСТЬ КОМАНДЫ — Sprint 47']);
+  rows.push(['Story points всего', dashboardSprint.totalPoints]);
+  rows.push(['Story points выполнено', dashboardSprint.completedPoints]);
+  rows.push(['Прогресс, %', +(dashboardSprint.completedPoints / dashboardSprint.totalPoints * 100).toFixed(1)]);
+  rows.push(['Дней всего / прошло', `${dashboardSprint.daysElapsed} / ${dashboardSprint.daysTotal}`]);
+  rows.push(['Прогноз завершения', dashboardSprint.forecastDate]);
+
+  rows.push([]);
+  rows.push(['ИНЦИДЕНТЫ']);
+  rows.push(['Заголовок', 'Критичность', 'Время']);
+  for (const inc of dashboardIncidents) rows.push([inc.title, inc.severity, inc.time]);
+
+  const ws = makeSheet(rows);
+  autoCols(ws, rows);
+  XLSX.utils.book_append_sheet(wbSummary, ws, '04_Дашборд');
+}
+
+// ── Лист 5: Unit-экономика — итоговые KPI ────────────────────────────────────
+{
+  const rows = [];
+  rows.push(['KPI', 'Значение', 'Ед. изм.']);
+  rows.push(['Оборот на карту / мес',         +ueResult.turnover.toFixed(2),       '₽']);
+  rows.push(['Выручка на карту / мес',         +ueResult.revenue.toFixed(2),        '₽']);
+  rows.push(['  → Интерчейндж',               +ueResult.interchange.toFixed(2),     '₽']);
+  rows.push(['  → Процентный доход (NII)',     +ueResult.interestIncome.toFixed(2),  '₽']);
+  rows.push(['  → Комиссии',                  +ueResult.fees.toFixed(2),            '₽']);
+  rows.push(['Расходы на карту / мес',         +ueResult.cost.toFixed(2),           '₽']);
+  rows.push(['  → Кешбэк',                    +ueResult.cashback.toFixed(2),        '₽']);
+  rows.push(['  → Процессинг',                +ueResult.processing.toFixed(2),      '₽']);
+  rows.push(['  → Обслуживание счёта',        +ueResult.servicing.toFixed(2),       '₽']);
+  rows.push(['Contribution Margin (CM)',        +ueResult.cm.toFixed(2),             '₽']);
+  rows.push(['CM, % от выручки',               +ueResult.cmPct.toFixed(1),          '%']);
+  rows.push(['Срок окупаемости',               ueResult.paybackMonths !== null ? +ueResult.paybackMonths.toFixed(1) : 'не окупается', 'мес.']);
+  rows.push(['LTV',                            +ueResult.ltv.toFixed(0),            '₽']);
+  rows.push(['LTV / CAC',                      ueResult.ltvCac !== null ? +ueResult.ltvCac.toFixed(2) : '—', 'x']);
+  rows.push([]);
+  rows.push(['ВХОДНЫЕ ПАРАМЕТРЫ (по умолчанию)']);
+  rows.push(['Транзакций / мес',               ueParams.txPerMonth,                 'шт.']);
+  rows.push(['Средний чек',                    ueParams.avgTxAmount,                '₽']);
+  rows.push(['Ставка интерчейнджа',            ueParams.interchangeRate,            '%']);
+  rows.push(['Остаток на счёте',               ueParams.avgBalance,                 '₽']);
+  rows.push(['Чистая % маржа (NIM)',           ueParams.nim,                        '% год']);
+  rows.push(['Ежемесячная плата',              ueParams.monthlyFee,                 '₽']);
+  rows.push(['Прочие доходы',                  ueParams.otherFeeIncome,             '₽/мес']);
+  rows.push(['Кешбэк / лояльность',            ueParams.cashbackRate,               '% об.']);
+  rows.push(['Процессинг (за транзакцию)',      ueParams.processingCostPerTx,        '₽']);
+  rows.push(['Обслуживание счёта',             ueParams.accountServicingCost,        '₽/мес']);
+  rows.push(['CAC',                            ueParams.cac,                        '₽']);
+  rows.push(['Churn Rate',                     ueParams.churnRate,                  '%/мес']);
+  rows.push(['Ставка дисконтирования',         ueParams.discountRate,               '% год']);
+
+  const ws = makeSheet(rows);
+  autoCols(ws, rows);
+  XLSX.utils.book_append_sheet(wbSummary, ws, '05_Unit_экономика');
+}
+
+// ── Запись второго файла ─────────────────────────────────────────────────────
+const outFileSummary = path.join(outDir, 'barometer-summary.xlsx');
+const bufSummary = XLSX.write(wbSummary, { bookType: 'xlsx', type: 'buffer', compression: true });
+fs.writeFileSync(outFileSummary, bufSummary);
+
+const pyPath2 = path.join(ROOT, 'scripts', '_clean_xlsx_ct2.py');
+fs.writeFileSync(pyPath2, fs.readFileSync(pyPath.replace('_clean_xlsx_ct.py', '_clean_xlsx_ct.py'), 'utf8').replace('print(', 'import sys; sys.stdout.write('));
+// reuse same python cleaner logic written above (still on disk from first pass)
+// actually just re-write it cleanly:
+fs.writeFileSync(pyPath2, `import zipfile, io, re, sys
+src = sys.argv[1]
+with open(src, 'rb') as f:
+    raw = f.read()
+zin = zipfile.ZipFile(io.BytesIO(raw))
+buf = io.BytesIO()
+zout = zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED, compresslevel=6)
+for item in zin.infolist():
+    data = zin.read(item.filename)
+    if item.filename == '[Content_Types].xml':
+        text = data.decode('utf-8')
+        for ext in ['bin','vml','data','bmp','png','gif','emf','wmf','jpg','jpeg','tif','tiff','pdf']:
+            text = re.sub(r'<Default Extension="' + ext + r'"[^>]*/>', '', text)
+        data = text.encode('utf-8')
+    zout.writestr(item, data)
+zout.close()
+with open(src, 'wb') as f:
+    f.write(buf.getvalue())
+print('Content_Types.xml cleaned')
+`);
+execSync(`python3 "${pyPath2}" "${outFileSummary}"`, { stdio: 'inherit' });
+fs.unlinkSync(pyPath);
+fs.unlinkSync(pyPath2);
+
+console.log(`\nФайл создан: ${outFileSummary}`);
+console.log(`Листов: ${wbSummary.SheetNames.length}`);
+wbSummary.SheetNames.forEach((name, i) => {
+  const ws = wbSummary.Sheets[name];
+  const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1:A1');
+  console.log(`  ${i + 1}. ${name} — ${range.e.r - range.s.r} строк данных`);
 });
