@@ -38,6 +38,8 @@ interface UIState {
 
   pendingAgentKey: string | null;
   setPendingAgent: (key: string | null) => void;
+  pendingTriggerText: string | null;
+  setPendingTrigger: (text: string | null) => void;
 
   sessions: ChatSession[];
   activeSessionId: string;
@@ -60,6 +62,8 @@ export const useUIStore = create<UIState>((set) => ({
 
   pendingAgentKey: null,
   setPendingAgent: (key) => set({ pendingAgentKey: key }),
+  pendingTriggerText: null,
+  setPendingTrigger: (text) => set({ pendingTriggerText: text }),
 
   sessions: [initial],
   activeSessionId: initial.id,

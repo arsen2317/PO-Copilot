@@ -93,8 +93,16 @@ export default function CjmListPage() {
   });
   const generatedMaps = useCjmStore((s) => s.generatedMaps);
   const setPendingAgent = useUIStore((s) => s.setPendingAgent);
+  const setPendingTrigger = useUIStore((s) => s.setPendingTrigger);
 
   const allMaps = [...generatedMaps, ...fixtureMaps];
+
+  const handleCreateWithAI = () => {
+    const existingTitles = allMaps.map((m: CjmMap) => `"${m.title}"`).join(', ');
+    const existing = existingTitles ? `Уже существуют: ${existingTitles}.` : 'CJM пока нет.';
+    setPendingAgent('agent-cjm');
+    setPendingTrigger(`Помоги создать новый CJM. ${existing} Предложи 2–3 варианта новых CJM которых ещё нет, объясни каждый в 1-2 предложениях, и задай уточняющие вопросы чтобы понять что нужно пользователю.`);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -111,7 +119,7 @@ export default function CjmListPage() {
         <Button
           type="primary"
           icon={<NodeIndexOutlined />}
-          onClick={() => setPendingAgent('agent-cjm')}
+          onClick={handleCreateWithAI}
           style={{ display: 'flex', alignItems: 'center', gap: 4 }}
         >
           Создать CJM с ИИ
