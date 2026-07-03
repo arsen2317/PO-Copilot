@@ -72,6 +72,16 @@
 
 ## Последние сессии
 
+### Сессия 17 — 2026-07-03
+5 UI-правок:
+1. **Поиск** — SearchModal заменён на реальный поиск по 12 разделам приложения с фильтрацией по лейблу/описанию/ключевым словам и навигацией.
+2. **Градиент в правом панели** — `GlowBg` в sidebar-режиме заменён на `SidebarAuroraGlow` с тремя анимированными блобами (размер больше, чем на карточках агентов).
+3. **Divider над input** — убран горизонтальный разделитель между строкой «Автоматизировать» и textarea в `InputCard`.
+4. **CJM модальные окна** — добавлен `centered` к обоим модалкам в `CjmEditDrawer` (редактор ноды + AddStageDrawer).
+5. **Unit Economics** — левая колонка перестроена с `justifyContent: space-between` (три секции разносятся по высоте); Pie-графики увеличены до 320px; убраны двойные bottom spacer'ы с Dashboard, Funnel и UnitEconomics.
+
+**Следующий шаг:** продолжить разработку заглушек — агенты, сервисы, комнаты, база знаний, профиль.
+
 ### Сессия 16 — 2026-07-03
 Cloudflare Worker прокси починен: `arsen2317/anthropic-proxy` был инициализирован шаблоном «Workflows Starter» (без кода прокси). Написан реальный `worker/index.ts` (роуты `/anthropic/*` → Anthropic, `/brave/*` → Brave Search), упрощён `wrangler.jsonc`, добавлена миграция `deleted_classes: WorkflowStatusDO`. Ключевое: `ANTHROPIC_PROXY_URL` имеет суффикс `/anthropic`, `BRAVE_PROXY_URL` — `/brave`; Worker стрипает префикс перед форвардингом. PR #3 смержен. CLAUDE.md, STATUS.md сжаты, BAROMETER.md удалён.
 

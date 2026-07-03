@@ -712,7 +712,6 @@ export default function FunnelPage() {
         />
       </div>
 
-      <div style={{ height: 24, flexShrink: 0 }} />
     </div>
   );
 }

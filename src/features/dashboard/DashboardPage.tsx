@@ -638,7 +638,6 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div style={{ height: 24, flexShrink: 0 }} />
     </div>
   );
 }
