@@ -15,6 +15,8 @@ import { getFunnelAnalytics } from '../../data/api/funnel-analytics';
 import { getTasks } from '../../data/api/tasks';
 import { useUIStore } from '../../store/uiStore';
 import type { ChatMessage as StoredChatMessage, ChatSession, AttachedFile } from '../../store/uiStore';
+import { useCjmStore } from '../../store/cjmStore';
+import type { CjmFlowNode, CjmFlowEdge } from '../../data/types';
 import {
   ApiOutlined,
   AudioOutlined,
@@ -512,11 +514,101 @@ function MetricSelector({ json, onConfirm }: { json: string; onConfirm: (ids: st
   );
 }
 
-function AssistantBubble({ msg, chipMap, onMetricClick, onSend }: {
+type CjmProposalData = {
+  cjmId: string;
+  title: string;
+  summary: string;
+  nodes: CjmFlowNode[];
+  edges: CjmFlowEdge[];
+};
+
+function CjmUpdateProposal({ json, onApply }: {
+  json: string;
+  onApply: (cjmId: string, nodes: CjmFlowNode[], edges: CjmFlowEdge[]) => void;
+}) {
+  const [applied, setApplied] = useState(false);
+  let data: CjmProposalData | null = null;
+  try { data = JSON.parse(json) as CjmProposalData; } catch { return null; }
+  if (!data) return null;
+  const { cjmId, title, summary } = data;
+
+  const teal = '#2dd4bf';
+  const tealBg = 'rgba(13,148,136,0.08)';
+  const tealBorder = 'rgba(13,148,136,0.30)';
+  const tealBgHover = 'rgba(13,148,136,0.16)';
+
+  if (applied) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '12px 16px', margin: '8px 0',
+        background: tealBg, border: `1px solid ${tealBorder}`,
+        borderRadius: 12,
+      }}>
+        <NodeIndexOutlined style={{ color: teal, fontSize: 16, flexShrink: 0 }} />
+        <span style={{ fontSize: 13, color: teal }}>Изменения применены к «{title}»</span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      margin: '8px 0', border: `1px solid ${tealBorder}`,
+      borderRadius: 12, overflow: 'hidden',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '10px 14px', background: tealBg,
+        borderBottom: `1px solid ${tealBorder}`,
+      }}>
+        <NodeIndexOutlined style={{ color: teal, fontSize: 15, flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, color: '#d1fae5', fontWeight: 600 }}>{title}</div>
+          <div style={{ fontSize: 12, color: TEXT_SECONDARY, marginTop: 2 }}>{summary}</div>
+        </div>
+      </div>
+      <div style={{
+        display: 'flex', gap: 8, padding: '10px 14px', background: '#0a1a18',
+      }}>
+        <div
+          onClick={() => {
+            onApply(cjmId, data!.nodes, data!.edges);
+            setApplied(true);
+          }}
+          style={{
+            flex: 1, padding: '7px 0', borderRadius: 8, textAlign: 'center',
+            fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            background: 'rgba(13,148,136,0.25)', color: teal,
+            border: `1px solid ${tealBorder}`, transition: 'background 0.15s',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = tealBgHover; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(13,148,136,0.25)'; }}
+        >
+          Применить изменения
+        </div>
+        <div
+          onClick={() => setApplied(true)}
+          style={{
+            padding: '7px 16px', borderRadius: 8, fontSize: 13, cursor: 'pointer',
+            background: 'transparent', color: TEXT_SECONDARY,
+            border: `1px solid ${BORDER_COLOR}`, transition: 'background 0.15s',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+        >
+          Отклонить
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
   msg: LocalMessage;
   chipMap: Map<string, string>; // combined: metrics + funnel steps + tasks
   onMetricClick: (id: string) => void;
   onSend: (text: string) => void;
+  onApplyCjm: (cjmId: string, nodes: CjmFlowNode[], edges: CjmFlowEdge[]) => void;
 }) {
   return (
     <div style={{ marginBottom: 16, minWidth: 0 }}>
@@ -658,6 +750,15 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend }: {
                   );
                 }
 
+                // CJM update proposal — apply/reject card
+                if (className === 'language-cjm-update-proposal') {
+                  return (
+                    <CjmUpdateProposal
+                      json={String(children).trim()}
+                      onApply={onApplyCjm}
+                    />
+                  );
+                }
                 // QBR HTML report — render in iframe
                 if (className === 'language-html-report') {
                   const html = String(children);
@@ -1047,14 +1148,28 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const setFocusedFunnelStep = useUIStore((s) => s.setFocusedFunnelStep);
   const pendingAgentKey = useUIStore((s) => s.pendingAgentKey);
   const setPendingAgent = useUIStore((s) => s.setPendingAgent);
+  const pendingTriggerText = useUIStore((s) => s.pendingTriggerText);
+  const setPendingTriggerText = useUIStore((s) => s.setPendingTrigger);
 
-  // Activate agent from external request (e.g., CJM list page button)
+  // Activate agent from external request and optionally auto-fire a trigger message
   useEffect(() => {
     if (!pendingAgentKey) return;
+    const triggerText = pendingTriggerText;
     setPendingAgent(null);
+    setPendingTriggerText(null);
     setSelectedAgent(pendingAgentKey);
+    if (triggerText) {
+      setPendingTrigger({ agent: pendingAgentKey, text: triggerText });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingAgentKey]);
+
+  const handleApplyCjm = (cjmId: string, nodes: CjmFlowNode[], edges: CjmFlowEdge[]) => {
+    const { setMapNodes, setMapEdges } = useCjmStore.getState();
+    setMapNodes(cjmId, nodes);
+    setMapEdges(cjmId, edges);
+    void navigate(`/cjm/${cjmId}`);
+  };
 
   const handleMetricClick = (id: string) => {
     if (id.startsWith('__task__')) {
@@ -1637,7 +1752,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                   {messages.map((msg) =>
                     msg.role === 'user'
                       ? <UserBubble key={msg.id} msg={msg} />
-                      : <AssistantBubble key={msg.id} msg={msg} chipMap={chipMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
+                      : <AssistantBubble key={msg.id} msg={msg} chipMap={chipMap} onMetricClick={handleMetricClick} onSend={handleSendWith} onApplyCjm={handleApplyCjm} />,
                   )}
                                     <div ref={messagesEndRef} />
                 </div>
@@ -1715,7 +1830,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
             {messages.map((msg) =>
               msg.role === 'user'
                 ? <UserBubble key={msg.id} msg={msg} />
-                : <AssistantBubble key={msg.id} msg={msg} chipMap={chipMap} onMetricClick={handleMetricClick} onSend={handleSendWith} />,
+                : <AssistantBubble key={msg.id} msg={msg} chipMap={chipMap} onMetricClick={handleMetricClick} onSend={handleSendWith} onApplyCjm={handleApplyCjm} />,
             )}
                         <div ref={messagesEndRef} />
           </div>

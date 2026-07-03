@@ -13,11 +13,12 @@ import {
   type NodeMouseHandler,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { theme, Typography, Badge, Button, Breadcrumb, Tooltip, Spin } from 'antd';
+import { theme, Typography, Badge, Button, Breadcrumb, Spin } from 'antd';
 import { ArrowLeftOutlined, RobotOutlined, PlusOutlined } from '@ant-design/icons';
 
 import { getCjmById } from '../../data/api/cjm';
 import { useCjmStore } from '../../store/cjmStore';
+import { useUIStore } from '../../store/uiStore';
 import StageNode from './nodes/StageNode';
 import TouchpointNode from './nodes/TouchpointNode';
 import EmotionNode from './nodes/EmotionNode';
@@ -93,6 +94,8 @@ export default function CjmCanvasPage() {
     generatedMaps, nodesState, edgesState,
     setMapNodes, setMapEdges, updateNodeData, addStage,
   } = useCjmStore();
+  const setPendingAgent = useUIStore((s) => s.setPendingAgent);
+  const setPendingTrigger = useUIStore((s) => s.setPendingTrigger);
 
   const { data: fixtureMap, isLoading } = useQuery({
     queryKey: ['cjm', id],
@@ -236,11 +239,15 @@ export default function CjmCanvasPage() {
           <Button icon={<PlusOutlined />} onClick={() => setAddStageOpen(true)}>
             Добавить этап
           </Button>
-          <Tooltip title="ИИ-агент для актуализации CJM — скоро">
-            <Button icon={<RobotOutlined />} disabled>
-              Актуализировать с ИИ
-            </Button>
-          </Tooltip>
+          <Button
+            icon={<RobotOutlined />}
+            onClick={() => {
+              setPendingAgent('agent-cjm');
+              setPendingTrigger(`Актуализируй CJM "${map.title}" (id: ${id ?? ''}) и предложи изменения. Исследуй артефакты базы знаний, воронку и метрики, подумай что можно улучшить, и выведи предложения.`);
+            }}
+          >
+            Актуализировать с ИИ
+          </Button>
         </div>
       </div>
 
