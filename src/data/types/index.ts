@@ -254,6 +254,41 @@ export interface FunnelAnalyticsStep {
   history: MetricPoint[];
 }
 
+export type CjmStatus = 'draft' | 'active' | 'archived';
+export type CjmNodeType = 'stage' | 'touchpoint' | 'emotion' | 'pain' | 'opportunity';
+
+export interface CjmNodeData extends Record<string, unknown> {
+  label: string;
+  description?: string;
+  metric?: string;
+  sentiment?: 'positive' | 'neutral' | 'negative';
+  channel?: string;
+}
+
+export interface CjmFlowNode {
+  id: string;
+  type: CjmNodeType;
+  position: { x: number; y: number };
+  data: CjmNodeData;
+}
+
+export interface CjmFlowEdge {
+  id: string;
+  source: string;
+  target: string;
+}
+
+export interface CjmMap {
+  id: string;
+  title: string;
+  persona: string;
+  status: CjmStatus;
+  updatedAt: string;
+  description: string;
+  nodes: CjmFlowNode[];
+  edges: CjmFlowEdge[];
+}
+
 export interface MetricDefinition {
   id: string;
   name: string;
