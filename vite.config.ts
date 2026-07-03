@@ -1,8 +1,30 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, type Plugin } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
+/**
+ * wx-react-gantt@1.3.1 was built for React 18 and references
+ * React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED which was
+ * removed in React 19. This plugin patches the bundled CJS wrappers to
+ * use a safe fallback object so the module can initialise without crashing.
+ */
+function ganttReact19Compat(): Plugin {
+  return {
+    name: 'gantt-react19-compat',
+    transform(code, id) {
+      if (!id.includes('wx-react-gantt')) return;
+      return {
+        code: code.replace(
+          /([a-zA-Z$_][a-zA-Z$_0-9]*)(\.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED)/g,
+          '($1$2||{ReactCurrentOwner:{current:null},ReactCurrentDispatcher:{current:null},ReactCurrentBatchConfig:{transition:null}})',
+        ),
+        map: null,
+      };
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [ganttReact19Compat(), react()],
   server: {
     proxy: {
       '/api': 'http://localhost:3001',
