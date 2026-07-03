@@ -100,8 +100,8 @@ export const metricDefinitions: MetricDefinition[] = [
   },
   {
     id: 'ltv',
-    name: 'LTV клиента',
-    description: 'Прогнозируемая пожизненная ценность клиента; должен стабильно превышать CAC',
+    name: 'LTV клиента (бизнес)',
+    description: 'Пожизненная ценность клиента по всему портфелю продуктов: дебетовая карта + кредиты + вклады + кросс-продажи. Шире, чем unit-экономика одной карты.',
     groupId: 'business', unit: '₽', lowerIsBetter: false,
     currentValue: 24_500, planValue: 27_000, lastPeriodValue: 22_800,
     format: 'currency', owner: 'Команда аналитики', updatedAt: '2026-06-20', onDashboard: false,

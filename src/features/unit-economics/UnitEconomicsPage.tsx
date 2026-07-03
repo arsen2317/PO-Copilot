@@ -37,20 +37,34 @@ interface CalcResult {
 }
 
 // ─── Defaults ────────────────────────────────────────────────────────────────
+// Значения откалиброваны под фикстуры metric-definitions.ts (группа unit_econ):
+//   revenue_per_card=340₽, cost_per_card=222₽, profit_per_card=118₽
+//
+// txPerMonth=14   ← tx_frequency fixture (14.2)
+// cashbackRate=1.45 ← cashback_cost fixture
+// cac=1850        ← cac fixture (business group)
+// churnRate=3.8   ← churn_rate fixture (cx group)
+//
+// avgTxAmount=560 — «экономический средний чек»: оборот 14×560=7840₽/мес,
+//   при котором cashback 1.45% = 113.7₽ и итоговый cost ≈ 222₽.
+//   Метрика avg_ticket=3240₽ (Метрики → Вовлечение) — среднее по POS-операциям,
+//   оно выше из-за вклада крупных покупок.
+// nim=9.7% — ставка размещения с учётом ключевой ставки ЦБ;
+//   при avgBalance=25000₽ даёт NII≈202₽, итого revenue≈340₽.
 
 const DEFAULTS: CalcParams = {
-  txPerMonth: 15,
-  avgTxAmount: 800,
+  txPerMonth: 14,
+  avgTxAmount: 560,
   interchangeRate: 1.5,
   avgBalance: 25000,
-  nim: 4,
+  nim: 9.7,
   monthlyFee: 0,
   otherFeeIncome: 20,
-  cashbackRate: 1,
+  cashbackRate: 1.45,
   processingCostPerTx: 2,
   accountServicingCost: 80,
-  cac: 1500,
-  churnRate: 5,
+  cac: 1850,
+  churnRate: 3.8,
   discountRate: 12,
 };
 
