@@ -108,16 +108,18 @@ interface AuroraCfg {
   hoverBorder: string;
   iconBg: string;
   iconColor: string;
+  // glow for the icon badge box-shadow (rgba from b1 at ~0.30 opacity)
+  iconGlow: string;
 }
 const AURORA_CFG: Record<string, AuroraCfg> = {
-  'agent-briefing':   { b1: '#1a6fff', b2: '#0040cc', b3: '#00aaff', hoverBorder: 'rgba(106,173,255,0.28)', iconBg: 'rgba(26,111,255,0.13)',  iconColor: '#6aadff' },
-  'agent-metrics':    { b1: '#0ea5e9', b2: '#0058b0', b3: '#38d4ff', hoverBorder: 'rgba(56,189,248,0.28)',  iconBg: 'rgba(14,165,233,0.13)',  iconColor: '#38bdf8' },
-  'agent-qbr':        { b1: '#10b981', b2: '#047857', b3: '#34d399', hoverBorder: 'rgba(52,211,153,0.28)',  iconBg: 'rgba(16,185,129,0.13)',  iconColor: '#34d399' },
-  'agent-tasks':      { b1: '#a855f7', b2: '#7c3aed', b3: '#e040fb', hoverBorder: 'rgba(192,132,252,0.28)', iconBg: 'rgba(168,85,247,0.13)', iconColor: '#c084fc' },
-  'agent-risks':      { b1: '#ef4444', b2: '#b91c1c', b3: '#f97316', hoverBorder: 'rgba(252,165,165,0.28)', iconBg: 'rgba(239,68,68,0.13)',   iconColor: '#fca5a5' },
-  'agent-hypotheses': { b1: '#eab308', b2: '#d97706', b3: '#fde047', hoverBorder: 'rgba(253,224,71,0.28)',  iconBg: 'rgba(234,179,8,0.13)',   iconColor: '#fde047' },
-  'agent-custdev':    { b1: '#06b6d4', b2: '#0891b2', b3: '#818cf8', hoverBorder: 'rgba(34,211,238,0.28)',  iconBg: 'rgba(6,182,212,0.13)',   iconColor: '#22d3ee' },
-  'agent-trends':     { b1: '#8b5cf6', b2: '#6d28d9', b3: '#ec4899', hoverBorder: 'rgba(167,139,250,0.28)', iconBg: 'rgba(139,92,246,0.13)', iconColor: '#a78bfa' },
+  'agent-briefing':   { b1: '#1a6fff', b2: '#0040cc', b3: '#00aaff', hoverBorder: 'rgba(106,173,255,0.28)', iconBg: 'rgba(26,111,255,0.13)',  iconColor: '#6aadff', iconGlow: 'rgba(26,111,255,0.30)' },
+  'agent-metrics':    { b1: '#0ea5e9', b2: '#0058b0', b3: '#38d4ff', hoverBorder: 'rgba(56,189,248,0.28)',  iconBg: 'rgba(14,165,233,0.13)',  iconColor: '#38bdf8', iconGlow: 'rgba(14,165,233,0.30)' },
+  'agent-qbr':        { b1: '#10b981', b2: '#047857', b3: '#34d399', hoverBorder: 'rgba(52,211,153,0.28)',  iconBg: 'rgba(16,185,129,0.13)',  iconColor: '#34d399', iconGlow: 'rgba(16,185,129,0.30)' },
+  'agent-tasks':      { b1: '#a855f7', b2: '#7c3aed', b3: '#e040fb', hoverBorder: 'rgba(192,132,252,0.28)', iconBg: 'rgba(168,85,247,0.13)', iconColor: '#c084fc', iconGlow: 'rgba(168,85,247,0.30)' },
+  'agent-risks':      { b1: '#ef4444', b2: '#b91c1c', b3: '#f97316', hoverBorder: 'rgba(252,165,165,0.28)', iconBg: 'rgba(239,68,68,0.13)',   iconColor: '#fca5a5', iconGlow: 'rgba(239,68,68,0.30)' },
+  'agent-hypotheses': { b1: '#eab308', b2: '#d97706', b3: '#fde047', hoverBorder: 'rgba(253,224,71,0.28)',  iconBg: 'rgba(234,179,8,0.13)',   iconColor: '#fde047', iconGlow: 'rgba(234,179,8,0.30)' },
+  'agent-custdev':    { b1: '#06b6d4', b2: '#0891b2', b3: '#818cf8', hoverBorder: 'rgba(34,211,238,0.28)',  iconBg: 'rgba(6,182,212,0.13)',   iconColor: '#22d3ee', iconGlow: 'rgba(6,182,212,0.30)' },
+  'agent-trends':     { b1: '#8b5cf6', b2: '#6d28d9', b3: '#ec4899', hoverBorder: 'rgba(167,139,250,0.28)', iconBg: 'rgba(139,92,246,0.13)', iconColor: '#a78bfa', iconGlow: 'rgba(139,92,246,0.30)' },
 };
 
 // Blob-based wavy aurora CSS — blobs translate (never scale beyond card bounds)
@@ -176,6 +178,7 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
     b1: '#4A82F7', b2: '#1a3a8a', b3: '#7aa8f9',
     hoverBorder: 'rgba(122,168,249,0.28)',
     iconBg: 'rgba(74,130,247,0.13)', iconColor: '#7aa8f9',
+    iconGlow: 'rgba(74,130,247,0.30)',
   };
 
   useEffect(() => { ensureAuroraStyles(); }, []);
@@ -251,16 +254,23 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         willChange: 'transform',
       }} />
 
-      {/* Icon circle */}
+      {/* Icon badge — gradient border + dark inner + glow */}
       <div style={{
         position: 'relative', zIndex: 1,
-        width: 40, height: 40, borderRadius: '50%',
-        background: cfg.iconBg,
-        border: `1px solid ${cfg.hoverBorder}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: 40, height: 40, borderRadius: 11,
+        background: `linear-gradient(40deg, ${cfg.b1} 0%, #0c0f16 45%, ${cfg.b3} 100%)`,
+        boxShadow: `${cfg.iconGlow} 0px 6px 20px 0px`,
+        padding: 1.5,
         flexShrink: 0,
       }}>
-        <agent.Icon style={{ fontSize: 18, color: cfg.iconColor }} />
+        <div style={{
+          width: '100%', height: '100%',
+          background: '#0c0f16',
+          borderRadius: 9,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <agent.Icon style={{ fontSize: 18, color: cfg.iconColor }} />
+        </div>
       </div>
 
       {/* Text */}
