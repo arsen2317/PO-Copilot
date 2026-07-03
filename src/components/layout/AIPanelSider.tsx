@@ -318,7 +318,7 @@ function AgentCards({ onSelect }: { onSelect: (key: string) => void }) {
   };
 
   return (
-    <div style={{ width: '100%' }}>
+    <div style={{ width: '100%', userSelect: 'none' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingRight: 2 }}>
         <span style={{ fontSize: 12, color: TEXT_SECONDARY, fontWeight: 500 }}>Агенты</span>
         <div style={{ display: 'flex', gap: 4 }}>
