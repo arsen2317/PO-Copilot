@@ -29,6 +29,7 @@ import {
   FormOutlined,
   HistoryOutlined,
   LayoutOutlined,
+  NodeIndexOutlined,
   PaperClipOutlined,
   PlusOutlined,
   RiseOutlined,
@@ -120,6 +121,7 @@ const AURORA_CFG: Record<string, AuroraCfg> = {
   'agent-hypotheses': { b1: '#eab308', b2: '#d97706', b3: '#fde047', hoverBorder: 'rgba(253,224,71,0.28)',  iconBg: 'rgba(234,179,8,0.13)',   iconColor: '#fde047', iconGlow: 'rgba(234,179,8,0.30)' },
   'agent-custdev':    { b1: '#06b6d4', b2: '#0891b2', b3: '#818cf8', hoverBorder: 'rgba(34,211,238,0.28)',  iconBg: 'rgba(6,182,212,0.13)',   iconColor: '#22d3ee', iconGlow: 'rgba(6,182,212,0.30)' },
   'agent-trends':     { b1: '#8b5cf6', b2: '#6d28d9', b3: '#ec4899', hoverBorder: 'rgba(167,139,250,0.28)', iconBg: 'rgba(139,92,246,0.13)', iconColor: '#a78bfa', iconGlow: 'rgba(139,92,246,0.30)' },
+  'agent-cjm':        { b1: '#0d9488', b2: '#0f766e', b3: '#34d399', hoverBorder: 'rgba(52,211,153,0.28)',  iconBg: 'rgba(13,148,136,0.13)',  iconColor: '#2dd4bf', iconGlow: 'rgba(13,148,136,0.30)' },
 };
 
 // Blob-based wavy aurora CSS — blobs translate (never scale beyond card bounds)
@@ -169,6 +171,7 @@ const AGENTS_DATA: AgentDef[] = [
   { key: 'agent-hypotheses',label: 'Гипотезы роста',    desc: 'Предлагает проверяемые гипотезы на основе метрик с ICE-скорингом',      color: '#2A2A0A', Icon: BulbOutlined,       trigger: 'Сгенерируй гипотезы роста на основе текущих метрик' },
   { key: 'agent-custdev',   label: 'CustDev',            desc: 'Подбирает методы исследования и помогает составить бриф',               color: '#0A2530', Icon: TeamOutlined },
   { key: 'agent-trends',    label: 'Трендвотчер',       desc: 'Мониторит фичи конкурентов и тренды банковского рынка со ссылками',     color: '#1A0A35', Icon: RiseOutlined,       trigger: 'Проведи мониторинг последних фич конкурентов в сегменте дебетовых карт' },
+  { key: 'agent-cjm',      label: 'CJM Агент',          desc: 'Генерирует и актуализирует карты пути клиента на основе метрик, воронки и исследований', color: '#0A2520', Icon: NodeIndexOutlined },
 ];
 
 // ── Single aurora agent card ─────────────────────────────────────────────────
@@ -626,6 +629,35 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend }: {
                     </div>
                   );
                 }
+                // CJM result — render as navigable card
+                if (className === 'language-cjm-result') {
+                  let parsed: { id: string; title: string } | null = null;
+                  try { parsed = JSON.parse(String(children).trim()) as { id: string; title: string }; } catch { /* ignore */ }
+                  if (!parsed) return null;
+                  const { id: cjmId, title: cjmTitle } = parsed;
+                  return (
+                    <div
+                      onClick={() => onMetricClick(`__cjm__${cjmId}`)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '12px 16px', margin: '8px 0',
+                        background: 'rgba(13,148,136,0.08)',
+                        border: '1px solid rgba(13,148,136,0.30)',
+                        borderRadius: 12, cursor: 'pointer', transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(13,148,136,0.16)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(13,148,136,0.08)'; }}
+                    >
+                      <NodeIndexOutlined style={{ color: '#2dd4bf', fontSize: 18, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cjmTitle}</div>
+                        <div style={{ fontSize: 11, color: '#2dd4bf', marginTop: 2 }}>CJM создан · Нажмите чтобы открыть</div>
+                      </div>
+                      <span style={{ fontSize: 12, color: '#2dd4bf', flexShrink: 0 }}>Открыть →</span>
+                    </div>
+                  );
+                }
+
                 // QBR HTML report — render in iframe
                 if (className === 'language-html-report') {
                   const html = String(children);
@@ -1013,11 +1045,26 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const chipMap = new Map([...metricMap, ...funnelStepMap, ...taskChipMap]);
 
   const setFocusedFunnelStep = useUIStore((s) => s.setFocusedFunnelStep);
+  const pendingAgentKey = useUIStore((s) => s.pendingAgentKey);
+  const setPendingAgent = useUIStore((s) => s.setPendingAgent);
+
+  // Activate agent from external request (e.g., CJM list page button)
+  useEffect(() => {
+    if (!pendingAgentKey) return;
+    setPendingAgent(null);
+    setSelectedAgent(pendingAgentKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAgentKey]);
 
   const handleMetricClick = (id: string) => {
     if (id.startsWith('__task__')) {
       const draftId = id.slice('__task__'.length);
       void navigate(`/tasks?tab=drafts&draft=${draftId}`);
+      return;
+    }
+    if (id.startsWith('__cjm__')) {
+      const cjmId = id.slice('__cjm__'.length);
+      void navigate(`/cjm/${cjmId}`);
       return;
     }
     if (id.startsWith('funnel:')) {
@@ -1268,6 +1315,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     { key: 'agent-hypotheses', label: 'Генератор гипотез' },
     { key: 'agent-custdev', label: 'CustDev' },
     { key: 'agent-trends', label: 'Трендвотчер' },
+    { key: 'agent-cjm', label: 'CJM Агент' },
   ];
 
   const dropdownItems = [
