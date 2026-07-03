@@ -254,19 +254,23 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         willChange: 'transform',
       }} />
 
-      {/* Icon badge — gradient border + dark inner + glow */}
+      {/* Icon badge — 1px gradient border (dimmed 50%) + dark inner */}
       <div style={{
         position: 'relative', zIndex: 1,
         width: 40, height: 40, borderRadius: 11,
-        background: `linear-gradient(40deg, ${cfg.b1} 0%, #0c0f16 45%, ${cfg.b3} 100%)`,
-        boxShadow: `${cfg.iconGlow} 0px 6px 20px 0px`,
-        padding: 1.5,
         flexShrink: 0,
       }}>
+        {/* Gradient ring at 50% opacity */}
         <div style={{
-          width: '100%', height: '100%',
+          position: 'absolute', inset: 0, borderRadius: 11,
+          background: `linear-gradient(40deg, ${cfg.b1} 0%, #0c0f16 45%, ${cfg.b3} 100%)`,
+          boxShadow: `${cfg.iconGlow} 0px 4px 14px 0px`,
+          opacity: 0.5,
+        }} />
+        {/* Dark inner fills all but 1px edge */}
+        <div style={{
+          position: 'absolute', inset: 1, borderRadius: 10,
           background: '#0c0f16',
-          borderRadius: 9,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <agent.Icon style={{ fontSize: 18, color: cfg.iconColor }} />
@@ -1558,7 +1562,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
         {/* Right: TopBar + content — glow lives here so it never bleeds into sidebar */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-          {!hasMessages && GlowBg}
+          {!hasMessages && <GlowBg />}
 
           {/* TopBar above the glow */}
           <div style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>
@@ -1613,7 +1617,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   // ── Sidebar / floating layout ────────────────────────────────────────────────
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-      {!hasMessages && view !== 'history' && GlowBg}
+      {!hasMessages && view !== 'history' && <GlowBg />}
       <div style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>{TopBar}</div>
 
       {/* ── Center: history / empty state / message list ── */}
@@ -1692,16 +1696,43 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   );
 }
 
-// ── Background glow element ──────────────────────────────────────────────────
-const GlowBg = (
-  <div style={{
-    position: 'absolute', left: 0, right: 0, bottom: 0,
-    height: '50%',
-    background: 'radial-gradient(ellipse at 50% 100%, #1a3a8a 0%, #0a1f5c 40%, transparent 70%)',
-    filter: 'blur(56px)', pointerEvents: 'none', zIndex: 0,
-    opacity: 0.25,
-  }} />
-);
+// ── Background animated aurora glow ─────────────────────────────────────────
+function GlowBg() {
+  useEffect(() => { ensureAuroraStyles(); }, []);
+  return (
+    <div style={{
+      position: 'absolute', left: 0, right: 0, bottom: 0,
+      height: '55%', pointerEvents: 'none', zIndex: 0, overflow: 'hidden',
+    }}>
+      {/* Blob A — large centre */}
+      <div style={{
+        position: 'absolute', width: 300, height: 200, borderRadius: '50%',
+        background: '#1a6fff', filter: 'blur(72px)', opacity: 0.40,
+        bottom: -70, left: '50%', marginLeft: -150,
+        animation: 'aurora-blob-a 10s ease-in-out infinite',
+        willChange: 'transform',
+      }} />
+      {/* Blob B — right accent */}
+      <div style={{
+        position: 'absolute', width: 230, height: 170, borderRadius: '50%',
+        background: '#0040cc', filter: 'blur(62px)', opacity: 0.30,
+        bottom: -50, right: -50,
+        animation: 'aurora-blob-b 10s ease-in-out infinite',
+        animationDelay: '-2s',
+        willChange: 'transform',
+      }} />
+      {/* Blob C — left accent */}
+      <div style={{
+        position: 'absolute', width: 170, height: 140, borderRadius: '50%',
+        background: '#00aaff', filter: 'blur(52px)', opacity: 0.20,
+        bottom: -40, left: -40,
+        animation: 'aurora-blob-c 10s ease-in-out infinite',
+        animationDelay: '-5s',
+        willChange: 'transform',
+      }} />
+    </div>
+  );
+}
 
 // Used inside PanelContent where hasMessages is known
 
