@@ -2,7 +2,7 @@
 
 Инструкции для Claude Code по проекту **«Барометр»**. Этот файл подгружается автоматически в начале каждой сессии — держи его коротким.
 
-## С чего начать каждую сессию
+## С чего начать каждой сессии
 
 1. Прочитай **`STATUS.md`** — текущее состояние, что сделано, что дальше, какие решения приняты.
 2. Загляни в **`BAROMETER.md`** только при необходимости — это полная спецификация (что строим). Не читай её целиком ради мелкой правки.
@@ -50,6 +50,20 @@
 - **Секреты** — хранятся в GitHub Secrets, на сервер попадают через `.env.local` при каждом деплое. Никогда не коммить `.env.local`.
 - **Cloudflare Worker** (`anthropic-proxy.arackelian.workers.dev`) — проксирует запросы к Anthropic и Brave Search, обходя блокировку российских IP. Защищён заголовком `x-proxy-secret`. Worker живёт в репо `arsen2317/anthropic-proxy`.
 - **Необходимые GitHub Secrets:** `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`, `ANTHROPIC_API_KEY`, `APP_LOGIN`, `APP_PASSWORD`, `APP_SESSION_SECRET`, `BRAVE_SEARCH_API_KEY`, `ANTHROPIC_PROXY_URL`, `BRAVE_PROXY_URL`, `PROXY_SECRET`.
+- **Маршруты Worker'а** (критично, не ломать):
+  - `ANTHROPIC_PROXY_URL` = `https://anthropic-proxy.arackelian.workers.dev/anthropic` → SDK шлёт запросы на `/anthropic/v1/messages`, Worker стрипает `/anthropic` и форвардит на `api.anthropic.com`.
+  - `BRAVE_PROXY_URL` = `https://anthropic-proxy.arackelian.workers.dev/brave` → VPS шлёт запросы на `/brave/res/v1/web/search`, Worker стрипает `/brave` и форвардит на `api.search.brave.com`.
+  - Секреты Worker'а в Cloudflare dashboard: `PROXY_SECRET`, `ANTHROPIC_API_KEY`, `BRAVE_SEARCH_API_KEY`.
+- **Диагностика прокси** (если ИИ не отвечает):
+  ```bash
+  # На VPS — должен вернуть HTTP 200 с JSON от Claude:
+  PROXY_SECRET=$(grep ^PROXY_SECRET /var/www/po-copilot/.env.local | cut -d= -f2)
+  PROXY_URL=$(grep ^ANTHROPIC_PROXY_URL /var/www/po-copilot/.env.local | cut -d= -f2)
+  curl -s -w "\nHTTP: %{http_code}\n" "${PROXY_URL}/v1/messages" \
+    -H "x-proxy-secret: ${PROXY_SECRET}" -H "content-type: application/json" \
+    -H "anthropic-version: 2023-06-01" \
+    -d '{"model":"claude-haiku-4-5-20251001","max_tokens":10,"messages":[{"role":"user","content":"test"}]}'
+  ```
 - **Production-деплой — только с моего явного подтверждения** (merge в `main`).
 
 ## Чего не делать без подтверждения
