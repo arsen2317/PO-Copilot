@@ -52,18 +52,18 @@ const STATUS_COLORS: Record<CjmStatus, 'success' | 'processing' | 'default'> = {
 
 const ROW_LABELS = [
   { label: 'Этап',           top: 16 },
-  { label: 'Touchpoint',     top: 186 },
-  { label: 'Мысли / эмоции', top: 356 },
-  { label: 'Боли',           top: 526 },
-  { label: 'Возможности',    top: 696 },
+  { label: 'Touchpoint',     top: 216 },
+  { label: 'Мысли / эмоции', top: 436 },
+  { label: 'Боли',           top: 656 },
+  { label: 'Возможности',    top: 876 },
 ];
 
 const COL = 280;
 const ROW_Y: Record<string, number> = {
-  touchpoint:  170,
-  emotion:     340,
-  pain:        510,
-  opportunity: 680,
+  touchpoint:  200,
+  emotion:     420,
+  pain:        640,
+  opportunity: 860,
 };
 
 function toFlowNodes(cjmNodes: CjmFlowNode[]): Node[] {

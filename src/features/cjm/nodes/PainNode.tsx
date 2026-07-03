@@ -17,6 +17,8 @@ export default function PainNode({ data }: NodeProps<PainNodeType>) {
     <div
       style={{
         width: 220,
+        maxHeight: 160,
+        overflow: 'hidden',
         background: token.colorBgContainer,
         border: `1px solid ${token.colorBorderSecondary}`,
         borderLeft: `3px solid ${token.colorError}`,

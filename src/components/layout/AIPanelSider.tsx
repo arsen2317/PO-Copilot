@@ -1901,51 +1901,52 @@ function GlowBg() {
   );
 }
 
-// Animated aurora for the sidebar panel empty state
+// Animated aurora for the sidebar panel empty state — same style as AuroraCard blobs
 function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
   useEffect(() => { ensureAuroraStyles(); }, []);
+  const dur = hovered ? '3s' : '8s';
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, pointerEvents: 'none', zIndex: 0 }}>
-      {/* Blob A — large primary blue, lower-center */}
+      {/* Blob A — large, bottom-center */}
       <div style={{
         position: 'absolute',
-        width: 300, height: 240,
+        width: 260, height: 180,
         borderRadius: '50%',
-        background: '#1a6fff',
-        filter: 'blur(85px)',
-        opacity: hovered ? 0.50 : 0.26,
-        bottom: '22%', left: '50%', marginLeft: -150,
-        animation: 'aurora-blob-a 9s ease-in-out infinite',
-        willChange: 'transform',
-        transition: 'opacity 0.5s ease',
-      }} />
-      {/* Blob B — left, overlaps A */}
-      <div style={{
-        position: 'absolute',
-        width: 240, height: 190,
-        borderRadius: '50%',
-        background: '#0a2a8a',
+        background: '#4A82F7',
         filter: 'blur(75px)',
-        opacity: hovered ? 0.46 : 0.30,
-        bottom: '20%', left: '22%', marginLeft: -120,
-        animation: 'aurora-blob-b 11s ease-in-out infinite',
-        animationDelay: '-2s',
+        opacity: hovered ? 0.72 : 0.38,
+        bottom: '18%', left: '50%', marginLeft: -130,
+        animation: `aurora-blob-a ${dur} ease-in-out infinite`,
         willChange: 'transform',
-        transition: 'opacity 0.5s ease',
+        transition: 'opacity 0.35s ease',
       }} />
-      {/* Blob C — right, overlaps A */}
+      {/* Blob B — bottom-right */}
       <div style={{
         position: 'absolute',
-        width: 200, height: 160,
+        width: 200, height: 145,
         borderRadius: '50%',
-        background: '#4A30D0',
-        filter: 'blur(70px)',
-        opacity: hovered ? 0.38 : 0.22,
-        bottom: '21%', left: '74%', marginLeft: -100,
-        animation: 'aurora-blob-c 13s ease-in-out infinite',
-        animationDelay: '-4s',
+        background: '#1a3a8a',
+        filter: 'blur(62px)',
+        opacity: hovered ? 0.62 : 0.28,
+        bottom: '16%', right: -40,
+        animation: `aurora-blob-b ${dur} ease-in-out infinite`,
+        animationDelay: '-1.5s',
         willChange: 'transform',
-        transition: 'opacity 0.5s ease',
+        transition: 'opacity 0.35s ease',
+      }} />
+      {/* Blob C — bottom-left */}
+      <div style={{
+        position: 'absolute',
+        width: 160, height: 115,
+        borderRadius: '50%',
+        background: '#7aa8f9',
+        filter: 'blur(52px)',
+        opacity: hovered ? 0.52 : 0.20,
+        bottom: '17%', left: -30,
+        animation: `aurora-blob-c ${dur} ease-in-out infinite`,
+        animationDelay: '-3s',
+        willChange: 'transform',
+        transition: 'opacity 0.35s ease',
       }} />
     </div>
   );

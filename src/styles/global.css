@@ -240,10 +240,10 @@ body {
 .ue-charts-tabs .ant-tabs-content {
   height: 100%;
 }
-.ue-charts-tabs .ant-tabs-tabpane {
-  height: 100%;
+.ue-charts-tabs .ant-tabs-tabpane-active {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .content-scroll {
