@@ -11,6 +11,7 @@
 | Метрики | `/metrics` | ✅ |
 | Ассистент (ИИ-чат) | `/assistant` | ✅ |
 | Воронка конверсии | `/funnel` | ✅ |
+| Unit-экономика | `/unit-economics` | ✅ |
 | Агенты | `/agents` | ⬜ заглушка |
 | ИИ-сервисы | `/services` | ⬜ заглушка |
 | Задачи | `/tasks` | ✅ (канбан, список, бэклог, таймлайн, черновики) |
@@ -47,6 +48,13 @@
 ---
 
 ## Последние сессии
+
+### Сессия 15 — 2026-07-03
+Страница Unit-экономика (`/unit-economics`): интерактивный калькулятор юнит-экономики дебетовой карты. Двухколоночный layout: левая панель ввода (доходы / расходы / параметры LTV), правая — KPI-плитки + вкладки с графиками (график окупаемости SVG, структура выручки и расходов через @ant-design/plots Pie). Формулы: Revenue, Cost, Contribution Margin, Payback, LTV (с дисконтированием и churn), LTV/CAC. Добавлен пункт «Unit-экономика» в навигацию под «Аналитика». Ветка: `claude/unit-economics-calculator-w10cfq`.
+
+**Что проигнорировано из AI-ответа:** A/B-сравнение сценариев, пресеты/экспорт, анализ чувствительности (tornado chart), детализация по когортам — всё это избыточно для первой итерации.
+
+**Следующий шаг:** открыть PR из `claude/unit-economics-calculator-w10cfq` или продолжить разработку других заглушек.
 
 ### Сессия 14 — 2026-07-02
 Миграция с Vercel на VPS (Timeweb, Ubuntu 24.04). Настроен nginx + PM2 + certbot. GitHub Actions CI/CD: build на runner → SCP dist/ → SSH restart PM2. PM2 запускает API через `scripts/start-api.sh` (обёртка с хардкодом `/usr/bin/tsx`). Anthropic и Brave Search проксируются через Cloudflare Worker (`anthropic-proxy.arackelian.workers.dev`) — обход блокировки российских IP. Worker защищён `PROXY_SECRET` заголовком. Все секреты в GitHub Secrets, пишутся в `.env.local` при каждом деплое.

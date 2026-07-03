@@ -5,6 +5,7 @@ const NAMES: Record<string, string> = {
   '/funnel': 'Воронка',
   '/retention': 'Удержание',
   '/features': 'Фичи',
+  '/unit-economics': 'Unit-экономика',
 };
 
 export default function PlaceholderPage() {
