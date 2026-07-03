@@ -48,10 +48,10 @@
 
 ## Последние сессии
 
-### Сессия 15 — 2026-07-03
-Переписан таймлайн с нуля на `wx-react-gantt` (SVAR). Старый SVG-файл удалён без чтения. Установлен `wx-react-gantt` (--legacy-peer-deps). Задачи группируются по Эпикам (summary-строки), зависимости превращаются в стрелки finish-to-start. Кастомный `taskTemplate`: аватарка + точка приоритета + название. Тултип при наведении — стилизован под канбан-карточку. Тёмная тема через `.wx-willow-dark-theme` + CSS-переменные. Задачи без дат скрыты. Изменения (drag/resize/links) — in-memory в библиотеке. Добавлен `src/types/wx-react-gantt.d.ts`. Ветка: `claude/task-timeline-gantt-p2vmbh`.
+### Сессия 16 — 2026-07-03
+`wx-react-gantt` оказался несовместим с React 19 (бандлит React 18 + Svelte). Заменён на `gantt-task-react` (чистый React, без bundled зависимостей). Переписан `TimelineView.tsx`: Эпики → `type:'project'`, задачи → `type:'task'` с группировкой по `epicId`; приоритет-цвета через `styles`; кастомные `TaskListHeader`, `TaskListTable`, `TooltipContent`; зависимости через `dependencies[]`; drag/resize через `onDateChange`. Обновлён `timeline.css` — тёмная тема для obfuscated классов gantt-task-react. Удалены: Vite-плагин `ganttReact19Compat`, `src/types/wx-react-gantt.d.ts`. Typecheck и build — чисты. Ветка: `claude/task-timeline-gantt-p2vmbh`.
 
-**Следующий шаг:** протестировать на проде; возможна доработка CSS тёмной темы под точный дизайн.
+**Следующий шаг:** протестировать визуально; доработать CSS тёмной темы при необходимости.
 
 ### Сессия 14 — 2026-07-02
 Миграция с Vercel на VPS (Timeweb, Ubuntu 24.04). Настроен nginx + PM2 + certbot. GitHub Actions CI/CD: build на runner → SCP dist/ → SSH restart PM2. PM2 запускает API через `scripts/start-api.sh` (обёртка с хардкодом `/usr/bin/tsx`). Anthropic и Brave Search проксируются через Cloudflare Worker (`anthropic-proxy.arackelian.workers.dev`) — обход блокировки российских IP. Worker защищён `PROXY_SECRET` заголовком. Все секреты в GitHub Secrets, пишутся в `.env.local` при каждом деплое.
