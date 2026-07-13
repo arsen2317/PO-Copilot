@@ -1,6 +1,6 @@
 import { type Node, type NodeProps } from '@xyflow/react';
 import { theme, Typography, Tag } from 'antd';
-import { BulbOutlined, LinkOutlined } from '@ant-design/icons';
+import { BulbOutlined, LinkOutlined } from '../../../components/icons';
 import { knowledgeFixtures } from '../../../data/fixtures/knowledge';
 import { NODE_MAX_HEIGHT } from '../cjmLayout';
 

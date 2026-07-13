@@ -1,5 +1,5 @@
 import { Button, Card, Flex, Skeleton, Tag, theme, Tooltip, Typography } from 'antd';
-import { CommentOutlined, WarningOutlined } from '@ant-design/icons';
+import { CommentOutlined, WarningOutlined } from '../../../components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { getFunnelSteps } from '../../../data/api/dashboard';
 import type { FunnelStep } from '../../../data/types';

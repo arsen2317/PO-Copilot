@@ -1,5 +1,5 @@
 import { Button, Card, Flex, List, Skeleton, theme, Typography } from 'antd';
-import { ExclamationCircleFilled, WarningFilled } from '@ant-design/icons';
+import { ExclamationCircleFilled, WarningFilled } from '../../../components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { getIncidents } from '../../../data/api/dashboard';
 import type { Incident } from '../../../data/types';

@@ -5,7 +5,7 @@ import {
   RobotOutlined,
   SendOutlined,
   UserOutlined,
-} from '@ant-design/icons';
+} from '../../components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { getDialogById } from '../../data/api/assistant';
 import type { Message } from '../../data/types';

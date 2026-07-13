@@ -20,7 +20,7 @@ import {
   LinkOutlined,
   SafetyCertificateOutlined,
   TeamOutlined,
-} from '@ant-design/icons';
+} from '../../components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { getTaskById } from '../../data/api/tasks';
 import type { TaskPriority, TaskStatus } from '../../data/types';

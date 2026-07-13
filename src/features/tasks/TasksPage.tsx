@@ -18,7 +18,7 @@ import {
   ScheduleOutlined,
   SortAscendingOutlined,
   UserOutlined,
-} from '@ant-design/icons';
+} from '../../components/icons';
 import TimelineView from './TimelineView';
 import {
   DndContext,

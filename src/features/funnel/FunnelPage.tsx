@@ -10,7 +10,7 @@ import {
   QuestionCircleOutlined,
   ReloadOutlined,
   RightOutlined,
-} from '@ant-design/icons';
+} from '../../components/icons';
 import { Line } from '@ant-design/plots';
 import { useQuery } from '@tanstack/react-query';
 import { getFunnelAnalytics } from '../../data/api/funnel-analytics';

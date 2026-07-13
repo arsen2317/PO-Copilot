@@ -15,7 +15,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { theme, Typography, Badge, Button, Breadcrumb, Spin } from 'antd';
-import { ArrowLeftOutlined, RobotOutlined, PlusOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, RobotOutlined, PlusOutlined } from '../../components/icons';
 
 import { getCjmById } from '../../data/api/cjm';
 import { useCjmStore } from '../../store/cjmStore';

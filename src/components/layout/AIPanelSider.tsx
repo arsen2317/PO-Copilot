@@ -41,7 +41,7 @@ import {
   StarFilled,
   StopOutlined,
   TeamOutlined,
-} from '@ant-design/icons';
+} from '../icons';
 import { Dropdown, Tooltip } from 'antd';
 
 // ── Sparkle / AI icon (three 4-pointed stars) ───────────────────────────────

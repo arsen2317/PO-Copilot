@@ -16,7 +16,7 @@ import {
   SettingOutlined,
   TeamOutlined,
   UserOutlined,
-} from '@ant-design/icons';
+} from '../icons';
 import { Tooltip } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SearchModal from './SearchModal';

@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Typography, Tag, Button, Breadcrumb, Spin, Divider } from 'antd';
-import { ArrowLeftOutlined, FileTextOutlined, ExperimentOutlined, SearchOutlined, BarChartOutlined, LinkOutlined, RobotOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, FileTextOutlined, ExperimentOutlined, SearchOutlined, BarChartOutlined, LinkOutlined, RobotOutlined } from '../../components/icons';
 import { theme } from 'antd';
 import { getArtifactById } from '../../data/api/knowledge';
 import { useUIStore } from '../../store/uiStore';

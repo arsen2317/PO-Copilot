@@ -4,7 +4,7 @@ import {
   PlusOutlined,
   TeamOutlined,
   LinkOutlined,
-} from '@ant-design/icons';
+} from '../../components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { getDialogs } from '../../data/api/assistant';

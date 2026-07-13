@@ -5,7 +5,7 @@ import {
   CommentOutlined,
   RightOutlined,
   StarOutlined,
-} from '@ant-design/icons';
+} from '../../../components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { getNotifications } from '../../../data/api/notifications';

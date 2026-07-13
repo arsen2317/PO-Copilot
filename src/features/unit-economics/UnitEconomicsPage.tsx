@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { InputNumber, Tabs, theme, Tooltip, Typography } from 'antd';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined } from '../../components/icons';
 import { Pie } from '@ant-design/plots';
 
 const { useToken } = theme;
