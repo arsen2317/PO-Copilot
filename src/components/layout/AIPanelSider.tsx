@@ -32,9 +32,11 @@ import {
   FormOutlined,
   HistoryOutlined,
   LayoutOutlined,
+  LeftOutlined,
   NodeIndexOutlined,
   PaperClipOutlined,
   PlusOutlined,
+  RightOutlined,
   RiseOutlined,
   RobotOutlined,
   SafetyOutlined,
@@ -332,10 +334,10 @@ function AgentCards({ onSelect }: { onSelect: (key: string) => void }) {
                   width: 24, height: 24, borderRadius: 6, cursor: active ? 'pointer' : 'default',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: active ? TEXT_SECONDARY : '#3A3B3D',
-                  fontSize: 14, transition: 'color 0.15s', background: 'rgba(255,255,255,0.04)',
+                  fontSize: 11, lineHeight: 1, transition: 'color 0.15s', background: 'rgba(255,255,255,0.04)',
                 }}
               >
-                {dir === 'left' ? '←' : '→'}
+                {dir === 'left' ? <LeftOutlined /> : <RightOutlined />}
               </div>
             );
           })}
