@@ -40,6 +40,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getTasks } from '../../data/api/tasks';
 import { useUIStore } from '../../store/uiStore';
 import type { Task, TaskPriority, TaskStatus } from '../../data/types';
+import ScrollArea from '../../components/ScrollArea';
 
 const { useToken } = theme;
 
@@ -207,14 +208,14 @@ function KanbanColumn({ status, label, tasks, bdr }: { status: TaskStatus; label
         <span style={{ fontSize: 13, fontWeight: 600, color: token.colorText }}>{label}</span>
         <Badge count={tasks.length} style={{ background: '#2D2E30', color: token.colorTextSecondary, boxShadow: 'none', fontSize: 11 }} />
       </div>
-      <div className="content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <ScrollArea style={{ flex: 1 }} contentStyle={{ padding: '10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tasks.map((task) => <KanbanCard key={task.id} task={task} />)}
         </SortableContext>
         {tasks.length === 0 && (
           <div style={{ textAlign: 'center', color: token.colorTextQuaternary, fontSize: 12, padding: '20px 0' }}>Нет задач</div>
         )}
-      </div>
+      </ScrollArea>
     </div>
   );
 }
@@ -733,7 +734,7 @@ export default function TasksPage() {
         {activeTab === 'list' && <ListView tasks={filtered} isLoading={isLoading} />}
         {activeTab === 'backlog' && <BacklogView tasks={filtered} isLoading={isLoading} bdr={BDR} />}
         {activeTab === 'timeline' && <TimelineView bdr={BDR} />}
-        {activeTab === 'drafts' && <div className="content-scroll" style={{ flex: 1, overflowY: 'auto' }}>{highlightDraftId ? <DraftsView bdr={BDR} highlightId={highlightDraftId} /> : <DraftsView bdr={BDR} />}</div>}
+        {activeTab === 'drafts' && <ScrollArea style={{ flex: 1 }}>{highlightDraftId ? <DraftsView bdr={BDR} highlightId={highlightDraftId} /> : <DraftsView bdr={BDR} />}</ScrollArea>}
       </div>
     </div>
   );

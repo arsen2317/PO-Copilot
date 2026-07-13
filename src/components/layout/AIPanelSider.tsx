@@ -17,6 +17,7 @@ import { useUIStore } from '../../store/uiStore';
 import type { ChatMessage as StoredChatMessage, ChatSession, AttachedFile } from '../../store/uiStore';
 import { useCjmStore } from '../../store/cjmStore';
 import type { CjmFlowNode, CjmFlowEdge } from '../../data/types';
+import ScrollArea from '../ScrollArea';
 import {
   ApiOutlined,
   AudioOutlined,
@@ -944,7 +945,7 @@ function HistoryPanel({ sessions, activeSessionId, onSelect }: {
     new Date(ts).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 10px 8px' }}>
+    <ScrollArea style={{ flex: 1 }} contentStyle={{ padding: '4px 10px 8px' }}>
       <div style={{ fontSize: 11, color: TEXT_SECONDARY, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '6px 4px 8px' }}>
         История чатов
       </div>
@@ -976,7 +977,7 @@ function HistoryPanel({ sessions, activeSessionId, onSelect }: {
           </div>
         );
       })}
-    </div>
+    </ScrollArea>
   );
 }
 
@@ -1059,7 +1060,7 @@ function AssistantLeftSidebar({ sessions, activeSessionId, onNewChat, onSelectSe
       <div style={{ height: 1, background: BORDER_COLOR, flexShrink: 0 }} />
 
       {/* History list */}
-      <div className="content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '4px 6px 12px' }}>
+      <ScrollArea style={{ flex: 1 }} contentStyle={{ padding: '4px 6px 12px' }}>
         {todays.length > 0 && (
           <>
             <SectionLabel label="Сегодня" />
@@ -1081,7 +1082,7 @@ function AssistantLeftSidebar({ sessions, activeSessionId, onNewChat, onSelectSe
         {sessions.length === 0 && (
           <div style={{ padding: '16px 12px', fontSize: 13, color: TEXT_PLACEHOLDER }}>История пуста</div>
         )}
-      </div>
+      </ScrollArea>
     </div>
   );
 }

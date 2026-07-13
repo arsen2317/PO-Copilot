@@ -13,6 +13,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import ScrollArea from '../ScrollArea';
 
 const { useToken } = theme;
 
@@ -230,7 +231,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       </Flex>
 
       {/* Results */}
-      <div className="content-scroll" style={{ paddingBottom: 8, maxHeight: 420, overflowY: 'auto' }}>
+      <ScrollArea style={{ maxHeight: 420 }} contentStyle={{ paddingBottom: 8 }}>
         <Typography.Text
           style={{
             display: 'block',
@@ -290,7 +291,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
             <span style={{ fontSize: 11, color: token.colorTextQuaternary, flexShrink: 0 }}>→</span>
           </Flex>
         ))}
-      </div>
+      </ScrollArea>
     </Modal>
   );
 }
