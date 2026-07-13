@@ -177,7 +177,6 @@ export default function MetricsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{ width: 240 }}
-          size="small"
           allowClear
         />
         <Select
@@ -185,7 +184,6 @@ export default function MetricsPage() {
           allowClear
           value={groupFilter}
           onChange={(v) => setGroupFilter(v ?? null)}
-          size="small"
           style={{ width: 220 }}
           options={(groupDefs ?? []).map((g) => ({ value: g.id, label: g.name }))}
         />

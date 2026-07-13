@@ -687,13 +687,13 @@ export default function TasksPage() {
           <FilterOutlined style={{ color: token.colorTextTertiary, fontSize: 13 }} />
           <Select
             placeholder={<><UserOutlined /> Исполнитель</>}
-            allowClear size="small" style={{ width: 155 }}
+            allowClear style={{ width: 170 }}
             value={assigneeFilter} onChange={setAssigneeFilter}
             options={assignees.map((u) => ({ value: u.id, label: u.name }))}
           />
           <Select
             placeholder="Приоритет"
-            allowClear size="small" style={{ width: 140 }}
+            allowClear style={{ width: 155 }}
             value={priorityFilter} onChange={setPriorityFilter}
             options={[
               { value: 'critical', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><PriorityChevrons priority="critical" />{PRIORITY_LABEL.critical}</span> },
