@@ -581,3 +581,44 @@ export function WarningOutlined(props: IconProps) {
     </svg>
   );
 }
+
+export function DashboardSquareIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" {...props}>
+      <path d="M1.25 2C1.25 1.58579 1.58579 1.25 2 1.25H10C10.4142 1.25 10.75 1.58579 10.75 2V10C10.75 10.4142 10.4142 10.75 10 10.75H2C1.58579 10.75 1.25 10.4142 1.25 10V2Z" />
+      <path d="M13.25 2C13.25 1.58579 13.5858 1.25 14 1.25H22C22.4142 1.25 22.75 1.58579 22.75 2V10C22.75 10.4142 22.4142 10.75 22 10.75H14C13.5858 10.75 13.25 10.4142 13.25 10V2Z" />
+      <path d="M1.25 14C1.25 13.5858 1.58579 13.25 2 13.25H10C10.4142 13.25 10.75 13.5858 10.75 14V22C10.75 22.4142 10.4142 22.75 10 22.75H2C1.58579 22.75 1.25 22.4142 1.25 22V14Z" />
+      <path d="M13.25 14C13.25 13.5858 13.5858 13.25 14 13.25H22C22.4142 13.25 22.75 13.5858 22.75 14V22C22.75 22.4142 22.4142 22.75 22 22.75H14C13.5858 22.75 13.25 22.4142 13.25 22V14Z" />
+    </svg>
+  );
+}
+
+export function SearchCircleIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" {...props}>
+      <path d="M1 12C1 5.92487 5.92487 1 12 1C18.0751 1 23 5.92487 23 12C23 18.0751 18.0751 23 12 23C5.92487 23 1 18.0751 1 12ZM12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3Z" fillRule="evenodd" clipRule="evenodd" />
+      <path d="M7 11.6C7 9.05949 9.05949 7 11.6 7C14.1405 7 16.2 9.05949 16.2 11.6C16.2 12.5083 15.9368 13.355 15.4824 14.0682L17.2071 15.7929L15.7929 17.2071L14.0682 15.4824C13.355 15.9368 12.5083 16.2 11.6 16.2C9.05949 16.2 7 14.1405 7 11.6ZM11.6 9C10.1641 9 9 10.1641 9 11.6C9 13.0359 10.1641 14.2 11.6 14.2C13.0359 14.2 14.2 13.0359 14.2 11.6C14.2 10.1641 13.0359 9 11.6 9Z" fillRule="evenodd" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+// NB: the uploaded pack has no "token-circle" icon (no Crypto/Token category) — using a plain
+// solid circle as a neutral placeholder brand mark. Swap the path below if you add that icon later.
+export function TokenCircleIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" {...props}>
+      <path d="M1.25 12C1.25 6.06294 6.06294 1.25 12 1.25C17.9371 1.25 22.75 6.06294 22.75 12C22.75 17.9371 17.9371 22.75 12 22.75C6.06294 22.75 1.25 17.9371 1.25 12Z" />
+    </svg>
+  );
+}
+
+// NB: the uploaded pack has no "Activity01" icon (no Activity/Health category) — using
+// Business and Finance/analytics-02.svg as the closest analytics-style substitute.
+export function Activity01Icon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" {...props}>
+      <path d="M15.25 5C15.25 2.92893 16.9289 1.25 19 1.25C21.0711 1.25 22.75 2.92893 22.75 5C22.75 7.07107 21.0711 8.75 19 8.75C16.9289 8.75 15.25 7.07107 15.25 5Z" />
+      <path d="M13.75 5C13.75 4.38639 13.8553 3.79736 14.0487 3.25H2C1.58579 3.25 1.25 3.58579 1.25 4V22C1.25 22.4142 1.58579 22.75 2 22.75H20C20.4142 22.75 20.75 22.4142 20.75 22V9.95126C20.2026 10.1447 19.6136 10.25 19 10.25C16.1005 10.25 13.75 7.8995 13.75 5ZM11.75 18V9H10.25V18H11.75ZM16.75 18V14H15.25V18H16.75ZM6.75 18V15H5.25V18H6.75Z" fillRule="evenodd" clipRule="evenodd" />
+    </svg>
+  );
+}

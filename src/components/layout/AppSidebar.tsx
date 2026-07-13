@@ -1,20 +1,20 @@
 import { useState } from 'react';
 import {
+  Activity01Icon,
   AppstoreOutlined,
   BellOutlined,
   BookOutlined,
-  BarChartOutlined,
   CheckSquareOutlined,
-  CreditCardOutlined,
+  DashboardSquareIcon,
   DownOutlined,
-  LineChartOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MessageOutlined,
   QuestionCircleOutlined,
-  SearchOutlined,
+  SearchCircleIcon,
   SettingOutlined,
   TeamOutlined,
+  TokenCircleIcon,
   UserOutlined,
 } from '../icons';
 import { Tooltip } from 'antd';
@@ -39,7 +39,7 @@ const ANALYTICS_KEYS = new Set(ANALYTICS_SUBITEMS.map((i) => i.key));
 const ASSISTANT_ITEM = { key: '/assistant', icon: MessageOutlined, label: 'Ассистент' } as const;
 
 const NAV_ITEMS = [
-  { key: '/metrics',    icon: LineChartOutlined,     label: 'Метрики' },
+  { key: '/metrics',    icon: Activity01Icon,        label: 'Метрики' },
   { key: '/services',   icon: AppstoreOutlined,      label: 'ИИ-сервисы' },
   { key: '/tasks',      icon: CheckSquareOutlined,   label: 'Задачи' },
   { key: '/rooms',      icon: TeamOutlined,          label: 'Комнаты' },
@@ -171,7 +171,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
             {!collapsed && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 9.57, overflow: 'hidden' }}>
                 <span style={{ fontSize: 18, color: '#4A82F7', flexShrink: 0, lineHeight: 1 }}>
-                  <CreditCardOutlined />
+                  <TokenCircleIcon />
                 </span>
                 <span style={{ color: '#D7D8DA', fontSize: 15.55, fontWeight: 600, whiteSpace: 'nowrap' }}>
                   PO Copilot
@@ -203,7 +203,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
               onMouseEnter={() => setHoveredKey('__search__')}
               onMouseLeave={() => setHoveredKey(null)}
             >
-              <span style={iconStyle}><SearchOutlined /></span>
+              <span style={iconStyle}><SearchCircleIcon /></span>
               {!collapsed && <span style={labelStyle}>Поиск</span>}
             </div>
           </Tooltip>
@@ -252,7 +252,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 9.57, minWidth: 0 }}>
                 <span style={{ ...iconStyle, color: isAnalyticsActive ? '#D7D8DA' : '#9B9C9E' }}>
-                  <BarChartOutlined />
+                  <DashboardSquareIcon />
                 </span>
                 {!collapsed && (
                   <span style={{ ...labelStyle, color: isAnalyticsActive ? '#D7D8DA' : '#9B9C9E' }}>
