@@ -26,6 +26,7 @@ import {
   CheckSquareOutlined,
   CloseOutlined,
   CodeOutlined,
+  EnterOutlined,
   FileImageOutlined,
   FileTextOutlined,
   FormOutlined,
@@ -37,7 +38,6 @@ import {
   RiseOutlined,
   RobotOutlined,
   SafetyOutlined,
-  SendOutlined,
   StarFilled,
   StopOutlined,
   TeamOutlined,
@@ -1118,6 +1118,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileDocInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollRef = useRef(true);
   const recognitionRef = useRef<ISpeechRecognition | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -1199,8 +1201,17 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const isGenerating = isThinking || messages.some(m => m.streaming);
   const hasMessages = messages.length > 0 || isThinking;
 
+  const handleMessagesScroll = () => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    shouldAutoScrollRef.current = distanceFromBottom < 80;
+  };
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (shouldAutoScrollRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages, isThinking]);
 
   useEffect(() => {
@@ -1248,6 +1259,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
     // Snapshot current messages before state update (closure capture)
     const prevMessages = messages;
+    shouldAutoScrollRef.current = true;
     setMessages((prev) => [...prev, newMsg]);
     if (!overrideText) setInputValue('');
     setAttachedImages([]);
@@ -1361,6 +1373,11 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       setIsThinking(false);
       abortControllerRef.current = null;
     }
+  };
+
+  // ── Stop generation ──────────────────────────────────────────────────────
+  const handleStop = () => {
+    abortControllerRef.current?.abort();
   };
 
   // ── Image attachment ────────────────────────────────────────────────────
@@ -1650,8 +1667,23 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                 </div>
               </Tooltip>
 
-              {canSend && (
-                <Tooltip title="Отправить">
+              {isGenerating ? (
+                <Tooltip title="Остановить ответ">
+                  <div
+                    onClick={handleStop}
+                    style={{
+                      width: 24, height: 24,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', color: TEXT_PRIMARY, fontSize: 12,
+                      background: 'rgba(255,255,255,0.12)', borderRadius: 6,
+                      transition: 'background 0.15s',
+                    }}
+                  >
+                    <StopOutlined />
+                  </div>
+                </Tooltip>
+              ) : canSend ? (
+                <Tooltip title="Отправить (Enter)">
                   <div
                     onClick={() => handleSendWith()}
                     style={{
@@ -1661,10 +1693,10 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                       transition: 'opacity 0.15s',
                     }}
                   >
-                    <SendOutlined />
+                    <EnterOutlined />
                   </div>
                 </Tooltip>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
@@ -1749,7 +1781,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                   </div>
                 </div>
               ) : (
-                <div className="content-scroll" style={{ flex: 1, padding: '24px 24px 8px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
+                <div ref={messagesContainerRef} onScroll={handleMessagesScroll} className="content-scroll" style={{ flex: 1, padding: '24px 24px 8px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
                   {messages.map((msg) =>
                     msg.role === 'user'
                       ? <UserBubble key={msg.id} msg={msg} />
@@ -1831,7 +1863,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           </div>
         ) : (
           /* Message list */
-          <div className="content-scroll" style={{ flex: 1, padding: '16px 14px 8px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
+          <div ref={messagesContainerRef} onScroll={handleMessagesScroll} className="content-scroll" style={{ flex: 1, padding: '16px 14px 8px', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
             {messages.map((msg) =>
               msg.role === 'user'
                 ? <UserBubble key={msg.id} msg={msg} />

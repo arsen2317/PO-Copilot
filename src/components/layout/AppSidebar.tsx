@@ -174,7 +174,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
                   <CreditCardOutlined />
                 </span>
                 <span style={{ color: '#D7D8DA', fontSize: 15.55, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                  Дебетовые карты
+                  PO Copilot
                 </span>
               </div>
             )}

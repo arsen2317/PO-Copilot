@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Select, Skeleton, theme, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Skeleton, theme, Tooltip, Typography } from 'antd';
+import type { MenuProps } from 'antd';
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
+  DownOutlined,
   LeftOutlined,
+  PlusOutlined,
   QuestionCircleOutlined,
   ReloadOutlined,
   RightOutlined,
@@ -594,6 +597,22 @@ export default function FunnelPage() {
   const lastStep = steps[steps.length - 1];
   const overallConversion = lastStep?.conversionFromFirst ?? 0;
 
+  const FUNNEL_NAME = 'Получение карты';
+  const funnelMenu: MenuProps = {
+    items: [{ key: 'card', label: FUNNEL_NAME }],
+  };
+
+  const GRANULARITY_OPTIONS = [
+    { value: 'daily', label: 'По дням' },
+    { value: 'weekly', label: 'По неделям' },
+    { value: 'monthly', label: 'По месяцам' },
+  ];
+  const granularityLabel = GRANULARITY_OPTIONS.find((o) => o.value === granularity)?.label ?? 'По неделям';
+  const granularityMenu: MenuProps = {
+    items: GRANULARITY_OPTIONS.map((o) => ({ key: o.value, label: o.label })),
+    onClick: ({ key }) => setGranularity(key),
+  };
+
   const BDR = `1px solid ${token.colorBorderSecondary}`;
 
   return (
@@ -610,7 +629,7 @@ export default function FunnelPage() {
         }}
       >
         <Typography.Title level={3} style={{ margin: 0, fontSize: 22, color: token.colorText }}>
-          Воронка конверсии
+          Воронки конверсии
         </Typography.Title>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Tooltip title="Помощь">
@@ -628,6 +647,9 @@ export default function FunnelPage() {
               <QuestionCircleOutlined style={{ fontSize: 16 }} />
             </div>
           </Tooltip>
+          <Button type="primary" icon={<PlusOutlined />}>
+            Добавить воронку
+          </Button>
         </div>
       </div>
 
@@ -636,24 +658,26 @@ export default function FunnelPage() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 0,
-          background: token.colorBgContainer,
-          border: BDR,
-          borderRadius: token.borderRadius,
+          justifyContent: 'space-between',
           marginBottom: 12,
           flexShrink: 0,
-          overflow: 'hidden',
         }}
       >
-        {/* Left: status */}
-        <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+        {/* Left: funnel selector dropdown button */}
+        <Dropdown menu={funnelMenu} trigger={['click']}>
+          <Button size="small">
+            {FUNNEL_NAME}
+            <DownOutlined style={{ fontSize: 10 }} />
+          </Button>
+        </Dropdown>
+
+        {/* Right: last-updated info + granularity dropdown button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              padding: '0 14px',
-              height: 36,
               color: token.colorTextTertiary,
               fontSize: 12,
             }}
@@ -661,24 +685,12 @@ export default function FunnelPage() {
             <ReloadOutlined style={{ fontSize: 12 }} />
             II квартал 2026 (апр–июн) · Данные от 22 мин назад
           </div>
-        </div>
-
-        <div style={{ width: 1, height: 36, background: token.colorBorderSecondary }} />
-
-        {/* Right: granularity */}
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <Select
-            value={granularity}
-            onChange={setGranularity}
-            variant="borderless"
-            size="small"
-            style={{ width: 130 }}
-            options={[
-              { value: 'daily', label: 'По дням' },
-              { value: 'weekly', label: 'По неделям' },
-              { value: 'monthly', label: 'По месяцам' },
-            ]}
-          />
+          <Dropdown menu={granularityMenu} trigger={['click']}>
+            <Button size="small">
+              {granularityLabel}
+              <DownOutlined style={{ fontSize: 10 }} />
+            </Button>
+          </Dropdown>
         </div>
       </div>
 

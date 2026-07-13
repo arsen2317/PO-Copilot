@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
-  Select,
+  Button,
+  Dropdown,
   Skeleton,
   Table,
   theme,
   Tooltip,
   Typography,
 } from 'antd';
+import type { MenuProps } from 'antd';
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
+  DownOutlined,
   LeftOutlined,
   LinkOutlined,
   QuestionCircleOutlined,
@@ -422,6 +425,23 @@ export default function DashboardPage() {
   const chartLoading = metricsLoading;
   const yAxisLabel = activeMetric?.unit ?? '';
 
+  const activeGroupName = metricGroupDefs?.find((g) => g.id === activeGroupId)?.name ?? 'Группа метрик';
+  const groupMenu: MenuProps = {
+    items: (metricGroupDefs ?? []).map((g) => ({ key: g.id, label: g.name })),
+    onClick: ({ key }) => setMetricGroupId(key),
+  };
+
+  const GRANULARITY_OPTIONS = [
+    { value: 'daily', label: 'По дням' },
+    { value: 'weekly', label: 'По неделям' },
+    { value: 'monthly', label: 'По месяцам' },
+  ];
+  const granularityLabel = GRANULARITY_OPTIONS.find((o) => o.value === granularity)?.label ?? 'По неделям';
+  const granularityMenu: MenuProps = {
+    items: GRANULARITY_OPTIONS.map((o) => ({ key: o.value, label: o.label })),
+    onClick: ({ key }) => setGranularity(key),
+  };
+
   const BDR = `1px solid ${token.colorBorderSecondary}`;
 
   return (
@@ -431,7 +451,7 @@ export default function DashboardPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, flexShrink: 0 }}>
         <div>
           <Typography.Title level={3} style={{ margin: 0, fontSize: 24, color: token.colorText, fontFamily: "'MTS Wide', 'MTS Text', sans-serif" }}>
-            Обзор продукта
+            Продукт: дебетовые карты
           </Typography.Title>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -471,37 +491,26 @@ export default function DashboardPage() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 0,
-          padding: '0 0',
-          background: token.colorBgContainer,
-          border: BDR,
-          borderRadius: token.borderRadius,
+          justifyContent: 'space-between',
           marginBottom: 12,
           flexShrink: 0,
-          overflow: 'hidden',
         }}
       >
-        {/* Left controls */}
-        <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-          <div style={{ padding: '0 12px' }}>
-            <Select
-              value={activeGroupId || null}
-              onChange={(v: string) => setMetricGroupId(v)}
-              variant="borderless"
-              size="small"
-              style={{ width: 200 }}
-              placeholder="Группа метрик"
-              options={(metricGroupDefs ?? []).map((g) => ({ value: g.id, label: g.name }))}
-            />
-          </div>
-          <div style={{ width: 1, height: 24, background: token.colorBorderSecondary }} />
+        {/* Left: metric group dropdown button */}
+        <Dropdown menu={groupMenu} trigger={['click']}>
+          <Button size="small">
+            {activeGroupName}
+            <DownOutlined style={{ fontSize: 10 }} />
+          </Button>
+        </Dropdown>
+
+        {/* Right: last-updated info + granularity dropdown button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              padding: '0 14px',
-              height: 36,
               color: token.colorTextTertiary,
               fontSize: 12,
             }}
@@ -509,24 +518,12 @@ export default function DashboardPage() {
             <ReloadOutlined style={{ fontSize: 12 }} />
             Данные от 22 мин назад
           </div>
-        </div>
-
-        <div style={{ width: 1, height: 36, background: token.colorBorderSecondary }} />
-
-        {/* Right dropdowns */}
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <Select
-            value={granularity}
-            onChange={setGranularity}
-            variant="borderless"
-            size="small"
-            style={{ width: 130 }}
-            options={[
-              { value: 'daily', label: 'По дням' },
-              { value: 'weekly', label: 'По неделям' },
-              { value: 'monthly', label: 'По месяцам' },
-            ]}
-          />
+          <Dropdown menu={granularityMenu} trigger={['click']}>
+            <Button size="small">
+              {granularityLabel}
+              <DownOutlined style={{ fontSize: 10 }} />
+            </Button>
+          </Dropdown>
         </div>
       </div>
 
