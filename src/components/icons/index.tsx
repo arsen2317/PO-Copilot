@@ -612,13 +612,11 @@ export function TokenCircleIcon(props: IconProps) {
   );
 }
 
-// NB: the uploaded pack has no "Activity01" icon (no Activity/Health category) — using
-// Business and Finance/analytics-02.svg as the closest analytics-style substitute.
+// Business and Finance/analytics-up.svg
 export function Activity01Icon(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" {...props}>
-      <path d="M15.25 5C15.25 2.92893 16.9289 1.25 19 1.25C21.0711 1.25 22.75 2.92893 22.75 5C22.75 7.07107 21.0711 8.75 19 8.75C16.9289 8.75 15.25 7.07107 15.25 5Z" />
-      <path d="M13.75 5C13.75 4.38639 13.8553 3.79736 14.0487 3.25H2C1.58579 3.25 1.25 3.58579 1.25 4V22C1.25 22.4142 1.58579 22.75 2 22.75H20C20.4142 22.75 20.75 22.4142 20.75 22V9.95126C20.2026 10.1447 19.6136 10.25 19 10.25C16.1005 10.25 13.75 7.8995 13.75 5ZM11.75 18V9H10.25V18H11.75ZM16.75 18V14H15.25V18H16.75ZM6.75 18V15H5.25V18H6.75Z" fillRule="evenodd" clipRule="evenodd" />
+      <path d="M2.25 3C2.25 2.58579 2.58579 2.25 3 2.25H21C21.4142 2.25 21.75 2.58579 21.75 3V21C21.75 21.4142 21.4142 21.75 21 21.75H3C2.58579 21.75 2.25 21.4142 2.25 21V3ZM7.75012 16V18H6.25012V16H7.75012ZM12.7501 18V15H11.2501V18H12.7501ZM17.7501 13V18H16.2501V13H17.7501ZM13.5 7.75H15.3006C14.9269 8.09737 14.4562 8.48965 13.8864 8.8826C12.1769 10.0617 9.57282 11.25 6 11.25V12.75C9.92718 12.75 12.8229 11.4383 14.7381 10.1174C15.3375 9.70399 15.8405 9.28998 16.2495 8.91538V10.5H17.7495V6.25H13.5V7.75Z" fillRule="evenodd" clipRule="evenodd" />
     </svg>
   );
 }
