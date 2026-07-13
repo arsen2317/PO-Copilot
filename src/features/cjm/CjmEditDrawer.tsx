@@ -3,7 +3,7 @@ import {
   Modal, Form, Input, Select, Button, Divider, Space,
   Typography, Tag, theme,
 } from 'antd';
-import { LinkOutlined, ExperimentOutlined } from '../../components/icons';
+import { LinkOutlined, ExperimentOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { metricGroupsFixture } from '../../data/fixtures/metrics';

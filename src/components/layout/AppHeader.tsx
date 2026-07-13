@@ -5,7 +5,7 @@ import {
   RobotOutlined,
   SettingOutlined,
   UserOutlined,
-} from '../icons';
+} from '@ant-design/icons';
 import type { ItemType, MenuItemType } from 'antd/es/menu/interface';
 
 const { useToken } = theme;

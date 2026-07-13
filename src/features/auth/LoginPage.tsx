@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button, Form, Input, Typography } from 'antd';
-import { CreditCardOutlined, LockOutlined, UserOutlined } from '../../components/icons';
+import { CreditCardOutlined, LockOutlined, UserOutlined } from '@ant-design/icons';
 import { login } from './auth';
 
 interface LoginPageProps {

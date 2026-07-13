@@ -4,7 +4,7 @@ import {
   PaperClipOutlined,
   ProductOutlined,
   UserOutlined,
-} from '../../components/icons';
+} from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { getDialogById } from '../../data/api/assistant';
 

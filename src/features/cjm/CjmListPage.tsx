@@ -3,7 +3,7 @@ import {
   CalendarOutlined,
   UserOutlined,
   NodeIndexOutlined,
-} from '../../components/icons';
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCjmList } from '../../data/api/cjm';

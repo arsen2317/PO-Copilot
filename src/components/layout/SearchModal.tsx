@@ -11,7 +11,7 @@ import {
   SearchOutlined,
   TeamOutlined,
   UserOutlined,
-} from '../icons';
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 const { useToken } = theme;

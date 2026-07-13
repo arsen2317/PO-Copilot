@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Typography, Tag, Card, Row, Col, Spin, Input, Select } from 'antd';
 import {
   FileTextOutlined, ExperimentOutlined, SearchOutlined, BarChartOutlined,
-} from '../../components/icons';
+} from '@ant-design/icons';
 import { theme } from 'antd';
 import { getArtifacts } from '../../data/api/knowledge';
 import type { ArtifactType } from '../../data/types';

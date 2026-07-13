@@ -1,6 +1,6 @@
 import { type Node, type NodeProps } from '@xyflow/react';
 import { theme, Typography, Tag } from 'antd';
-import { ApiOutlined } from '../../../components/icons';
+import { ApiOutlined } from '@ant-design/icons';
 import { NODE_MAX_HEIGHT } from '../cjmLayout';
 
 const { Text } = Typography;

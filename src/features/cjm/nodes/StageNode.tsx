@@ -1,6 +1,6 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import { theme, Typography, Tag } from 'antd';
-import { ExperimentOutlined } from '../../../components/icons';
+import { ExperimentOutlined } from '@ant-design/icons';
 import { metricGroupsFixture } from '../../../data/fixtures/metrics';
 import { NODE_MAX_HEIGHT } from '../cjmLayout';
 

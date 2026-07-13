@@ -1,5 +1,5 @@
 import { Card, Flex, Skeleton, Statistic, theme, Typography } from 'antd';
-import { ArrowDownOutlined, ArrowUpOutlined } from '../../../components/icons';
+import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { getNpsHistory } from '../../../data/api/dashboard';
 import type { NpsPoint } from '../../../data/types';

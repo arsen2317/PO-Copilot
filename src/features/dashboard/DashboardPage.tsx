@@ -18,7 +18,7 @@ import {
   QuestionCircleOutlined,
   ReloadOutlined,
   RightOutlined,
-} from '../../components/icons';
+} from '@ant-design/icons';
 import { Line } from '@ant-design/plots';
 import { useQuery } from '@tanstack/react-query';
 import { getMetricDefinitions, getMetricGroupDefs } from '../../data/api/metric-definitions';

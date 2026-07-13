@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Select, Skeleton, Tooltip, theme } from 'antd';
-import { FilterOutlined } from '../../components/icons';
+import { FilterOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { getEpics, getTasks } from '../../data/api/tasks';
 import type { Task, TaskStatus } from '../../data/types';

@@ -11,7 +11,7 @@ import {
 import {
   PlusOutlined,
   SearchOutlined,
-} from '../../components/icons';
+} from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { getMetricDefinitions, getMetricGroupDefs } from '../../data/api/metric-definitions';
 import type { MetricDefinition } from '../../data/types';

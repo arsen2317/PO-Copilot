@@ -1,22 +1,22 @@
 import { useState } from 'react';
 import {
-  Activity01Icon,
   AppstoreOutlined,
+  BarChartOutlined,
   BellOutlined,
   BookOutlined,
   CheckSquareOutlined,
-  DashboardSquareIcon,
   DownOutlined,
+  LineChartOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MessageOutlined,
   QuestionCircleOutlined,
-  SearchCircleIcon,
+  SearchOutlined,
   SettingOutlined,
   TeamOutlined,
-  TokenCircleIcon,
   UserOutlined,
-} from '../icons';
+} from '@ant-design/icons';
+import { TokenCircleIcon } from '../icons';
 import { Tooltip } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SearchModal from './SearchModal';
@@ -39,7 +39,7 @@ const ANALYTICS_KEYS = new Set(ANALYTICS_SUBITEMS.map((i) => i.key));
 const ASSISTANT_ITEM = { key: '/assistant', icon: MessageOutlined, label: 'Ассистент' } as const;
 
 const NAV_ITEMS = [
-  { key: '/metrics',    icon: Activity01Icon,        label: 'Метрики' },
+  { key: '/metrics',    icon: LineChartOutlined,     label: 'Метрики' },
   { key: '/services',   icon: AppstoreOutlined,      label: 'ИИ-сервисы' },
   { key: '/tasks',      icon: CheckSquareOutlined,   label: 'Задачи' },
   { key: '/rooms',      icon: TeamOutlined,          label: 'Комнаты' },
@@ -203,7 +203,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
               onMouseEnter={() => setHoveredKey('__search__')}
               onMouseLeave={() => setHoveredKey(null)}
             >
-              <span style={iconStyle}><SearchCircleIcon /></span>
+              <span style={iconStyle}><SearchOutlined /></span>
               {!collapsed && <span style={labelStyle}>Поиск</span>}
             </div>
           </Tooltip>
@@ -252,7 +252,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 9.57, minWidth: 0 }}>
                 <span style={{ ...iconStyle, color: isAnalyticsActive ? '#D7D8DA' : '#9B9C9E' }}>
-                  <DashboardSquareIcon />
+                  <BarChartOutlined />
                 </span>
                 {!collapsed && (
                   <span style={{ ...labelStyle, color: isAnalyticsActive ? '#D7D8DA' : '#9B9C9E' }}>
