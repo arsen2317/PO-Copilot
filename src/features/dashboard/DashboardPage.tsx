@@ -498,9 +498,8 @@ export default function DashboardPage() {
       >
         {/* Left: metric group dropdown button */}
         <Dropdown menu={groupMenu} trigger={['click']}>
-          <Button size="small">
+          <Button icon={<DownOutlined />} iconPosition="end">
             {activeGroupName}
-            <DownOutlined style={{ fontSize: 10 }} />
           </Button>
         </Dropdown>
 
@@ -519,9 +518,8 @@ export default function DashboardPage() {
             Данные от 22 мин назад
           </div>
           <Dropdown menu={granularityMenu} trigger={['click']}>
-            <Button size="small">
+            <Button icon={<DownOutlined />} iconPosition="end">
               {granularityLabel}
-              <DownOutlined style={{ fontSize: 10 }} />
             </Button>
           </Dropdown>
         </div>

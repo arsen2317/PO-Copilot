@@ -665,9 +665,8 @@ export default function FunnelPage() {
       >
         {/* Left: funnel selector dropdown button */}
         <Dropdown menu={funnelMenu} trigger={['click']}>
-          <Button size="small">
+          <Button icon={<DownOutlined />} iconPosition="end">
             {FUNNEL_NAME}
-            <DownOutlined style={{ fontSize: 10 }} />
           </Button>
         </Dropdown>
 
@@ -686,9 +685,8 @@ export default function FunnelPage() {
             II квартал 2026 (апр–июн) · Данные от 22 мин назад
           </div>
           <Dropdown menu={granularityMenu} trigger={['click']}>
-            <Button size="small">
+            <Button icon={<DownOutlined />} iconPosition="end">
               {granularityLabel}
-              <DownOutlined style={{ fontSize: 10 }} />
             </Button>
           </Dropdown>
         </div>
