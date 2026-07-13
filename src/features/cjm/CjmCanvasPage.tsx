@@ -58,17 +58,17 @@ function RowLabelsOverlay({ color }: { color: string }) {
   return (
     <div
       style={{
-        position: 'absolute', left: 0, top: 0, bottom: 0,
-        width: 0, pointerEvents: 'none', zIndex: 5,
+        position: 'absolute', inset: 0,
+        pointerEvents: 'none', zIndex: 5, overflow: 'hidden',
       }}
     >
-      {ROW_LABELS.map(({ label, y }) => (
+      {ROW_LABELS.map(({ label, x, y }) => (
         <div
           key={label}
           style={{
             position: 'absolute',
+            left: viewport.x + x * viewport.zoom,
             top: viewport.y + y * viewport.zoom,
-            left: 8,
             fontSize: 9, fontWeight: 600,
             textTransform: 'uppercase', letterSpacing: '0.5px',
             color, whiteSpace: 'nowrap',
