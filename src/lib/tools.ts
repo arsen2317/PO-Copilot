@@ -7,7 +7,8 @@ import { getCjmList, getCjmById } from '../data/api/cjm';
 import { getToken } from '../features/auth/auth';
 import { useUIStore } from '../store/uiStore';
 import { useCjmStore } from '../store/cjmStore';
-import type { CjmMap, CjmFlowNode, CjmFlowEdge, CjmNodeData, CjmNodeType, CjmStatus } from '../data/types';
+import { buildCjmFromTemplate, type CjmStageInput } from '../features/cjm/cjmLayout';
+import type { CjmMap, CjmNodeData, CjmStatus } from '../data/types';
 
 export const TOOL_DEFINITIONS = [
   {
@@ -111,7 +112,10 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'create_cjm',
-    description: 'Создаёт новый CJM и сохраняет его в текущей сессии. Возвращает id и title созданного CJM.',
+    description:
+      'Создаёт новый CJM и сохраняет его в текущей сессии. Возвращает id и title. ' +
+      'Позиции нод, ID и рёбра между этапами вычисляются автоматически из массива stages — ' +
+      'тебе нужно передать только содержание каждого этапа, а не координаты или технические ID.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -119,53 +123,72 @@ export const TOOL_DEFINITIONS = [
         persona: { type: 'string', description: 'Описание персоны (возраст, роль, контекст)' },
         description: { type: 'string', description: 'Краткое описание CJM (1-2 предложения, со ссылками на данные)' },
         status: { type: 'string', enum: ['draft', 'active', 'archived'], description: 'Статус. По умолчанию: draft' },
-        nodes: {
+        stages: {
           type: 'array',
-          description: 'Ноды CJM. Для N этапов: N*5 нод (stage, touchpoint, emotion, pain, opportunity для каждой колонки)',
+          description: 'Этапы пути клиента по порядку (оптимально 5, не менее 4, не более 7). Для каждого — содержание всех строк карты.',
           items: {
             type: 'object',
             properties: {
-              id: { type: 'string', description: 'ID ноды. Формат: {prefix}-s{col+1} для stage, -t для touchpoint, -e для emotion, -p для pain, -o для opportunity' },
-              type: { type: 'string', enum: ['stage', 'touchpoint', 'emotion', 'pain', 'opportunity'] },
-              position: {
+              label: { type: 'string', description: 'Название этапа (1-3 слова)' },
+              metric: { type: 'string', description: 'Реальная метрика этапа, например "84 000 пользователей · CR 62%" (из get_metrics/get_funnel_steps)' },
+              linkedMetricId: { type: 'string', description: 'ID метрики из get_metrics, если этап однозначно ей соответствует (необязательно)' },
+              touchpoint: {
                 type: 'object',
-                properties: { x: { type: 'number', description: 'col * 280' }, y: { type: 'number', description: 'stage=0, touchpoint=170, emotion=340, pain=510, opportunity=680' } },
-                required: ['x', 'y'],
-              },
-              data: {
-                type: 'object',
+                description: 'Конкретное взаимодействие клиента с продуктом на этом этапе',
                 properties: {
-                  label: { type: 'string', description: 'Текст ноды' },
-                  metric: { type: 'string', description: 'Только для stage: метрика (число пользователей, CR%)' },
-                  sentiment: { type: 'string', enum: ['positive', 'neutral', 'negative'], description: 'Только для emotion' },
-                  channel: { type: 'string', description: 'Только для touchpoint: канал взаимодействия' },
+                  label: { type: 'string', description: 'Конкретное описание взаимодействия' },
+                  channel: { type: 'string', description: '"Приложение", "SMS", "Офлайн", "Браузер" и т.д.' },
+                },
+                required: ['label'],
+              },
+              emotion: {
+                type: 'object',
+                description: 'Реальная мысль/эмоция клиента (из исследований, не абстрактная)',
+                properties: {
+                  label: { type: 'string', description: 'Цитата или описание состояния клиента' },
+                  sentiment: { type: 'string', enum: ['positive', 'neutral', 'negative'] },
+                },
+                required: ['label'],
+              },
+              pain: {
+                type: 'object',
+                description: 'Конкретная боль на этом этапе, желательно с цифрами',
+                properties: {
+                  label: { type: 'string', description: 'Конкретная боль (из get_knowledge_artifacts, воронки, поиска)' },
+                  linkedArtifactId: {
+                    type: 'string',
+                    description: 'ID артефакта из get_knowledge_artifacts, если он напрямую подтверждает эту боль — привязывай, когда есть реально релевантный артефакт',
+                  },
+                },
+                required: ['label'],
+              },
+              opportunity: {
+                type: 'object',
+                description: 'Конкретное actionable решение (фича, UX-изменение, процесс) — не общие слова',
+                properties: {
+                  label: { type: 'string', description: 'Конкретное улучшение' },
+                  linkedArtifactId: {
+                    type: 'string',
+                    description: 'ID артефакта из get_knowledge_artifacts, если он обосновывает именно это решение',
+                  },
                 },
                 required: ['label'],
               },
             },
-            required: ['id', 'type', 'position', 'data'],
-          },
-        },
-        edges: {
-          type: 'array',
-          description: 'Рёбра между stage-нодами. Для N этапов: N-1 рёбер',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              source: { type: 'string', description: 'ID исходной stage-ноды' },
-              target: { type: 'string', description: 'ID целевой stage-ноды' },
-            },
-            required: ['id', 'source', 'target'],
+            required: ['label', 'touchpoint', 'emotion', 'pain', 'opportunity'],
           },
         },
       },
-      required: ['title', 'persona', 'description', 'nodes', 'edges'],
+      required: ['title', 'persona', 'description', 'stages'],
     },
   },
   {
     name: 'update_cjm',
-    description: 'Обновляет существующий CJM. Можно обновить метаданные (title, persona, description, status) и/или полный набор нод и рёбер.',
+    description:
+      'Обновляет существующий CJM. Три независимых типа изменений, можно комбинировать в одном вызове:\n' +
+      '1) метаданные (title/persona/description/status);\n' +
+      '2) stages — полная пересборка нод/рёбер из шаблона (как в create_cjm): используй при добавлении/удалении этапов или полной реактуализации;\n' +
+      '3) nodeUpdates — точечное обновление конкретных нод по id, без пересборки всей карты: самый дешёвый способ поправить 1-2 ноды (например текст и/или linkedArtifactId).',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -174,15 +197,33 @@ export const TOOL_DEFINITIONS = [
         persona: { type: 'string' },
         description: { type: 'string' },
         status: { type: 'string', enum: ['draft', 'active', 'archived'] },
-        nodes: {
+        stages: {
           type: 'array',
-          description: 'Полный новый набор нод (заменяет текущий)',
+          description: 'Полный новый набор этапов той же структуры, что и в create_cjm — заменяет все текущие ноды/рёбра.',
           items: { type: 'object' },
         },
-        edges: {
+        nodeUpdates: {
           type: 'array',
-          description: 'Полный новый набор рёбер (заменяет текущий)',
-          items: { type: 'object' },
+          description: 'Точечные изменения конкретных нод по id (получи id через get_cjm). Не влияет на остальные ноды.',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'ID ноды, которую нужно изменить (из get_cjm)' },
+              data: {
+                type: 'object',
+                description: 'Только те поля, которые нужно изменить.',
+                properties: {
+                  label: { type: 'string' },
+                  metric: { type: 'string' },
+                  channel: { type: 'string' },
+                  sentiment: { type: 'string', enum: ['positive', 'neutral', 'negative'] },
+                  linkedMetricId: { type: 'string' },
+                  linkedArtifactId: { type: 'string', description: 'ID артефакта для привязки. Передай пустую строку "", чтобы отвязать текущий артефакт.' },
+                },
+              },
+            },
+            required: ['id', 'data'],
+          },
         },
       },
       required: ['id'],
@@ -408,39 +449,9 @@ export async function executeTool(
       const mapId = `cjm-${prefix}`;
       const today = new Date().toISOString().split('T')[0] ?? new Date().toLocaleDateString('ru-RU');
 
-      const rawNodes = Array.isArray(input.nodes) ? (input.nodes as Record<string, unknown>[]) : [];
-      const rawEdges = Array.isArray(input.edges) ? (input.edges as Record<string, unknown>[]) : [];
-
-      // Build ID remap so edges can reference original IDs
-      const idMap = new Map<string, string>();
-
-      const nodes: CjmFlowNode[] = rawNodes.map((n) => {
-        const origId = String(n.id ?? '');
-        const newId = origId ? `${mapId}-${origId}` : `${mapId}-n${Math.random().toString(36).slice(2)}`;
-        idMap.set(origId, newId);
-
-        const rawData = (n.data && typeof n.data === 'object') ? n.data as Record<string, unknown> : {};
-        const data: CjmNodeData = { label: String(rawData.label ?? '') };
-        if (typeof rawData.metric === 'string')      data.metric = rawData.metric;
-        if (typeof rawData.channel === 'string')     data.channel = rawData.channel;
-        if (typeof rawData.description === 'string') data.description = rawData.description;
-        const sentiments = ['positive', 'neutral', 'negative'] as const;
-        if (sentiments.includes(rawData.sentiment as typeof sentiments[number])) {
-          data.sentiment = rawData.sentiment as 'positive' | 'neutral' | 'negative';
-        }
-
-        const rawPos = (n.position && typeof n.position === 'object') ? n.position as Record<string, unknown> : {};
-        const validTypes: CjmNodeType[] = ['stage', 'touchpoint', 'emotion', 'pain', 'opportunity'];
-        const nodeType = validTypes.includes(String(n.type) as CjmNodeType) ? String(n.type) as CjmNodeType : 'stage';
-
-        return { id: newId, type: nodeType, position: { x: Number(rawPos.x ?? 0), y: Number(rawPos.y ?? 0) }, data };
-      });
-
-      const edges: CjmFlowEdge[] = rawEdges.map((e, i) => ({
-        id: `${mapId}-edge${i}`,
-        source: idMap.get(String(e.source ?? '')) ?? `${mapId}-${String(e.source ?? '')}`,
-        target: idMap.get(String(e.target ?? '')) ?? `${mapId}-${String(e.target ?? '')}`,
-      }));
+      const rawStages = Array.isArray(input.stages) ? (input.stages as Record<string, unknown>[]) : [];
+      const stages = rawStages.map(sanitizeStageInput);
+      const { nodes, edges } = buildCjmFromTemplate(mapId, stages);
 
       const validStatuses: CjmStatus[] = ['draft', 'active', 'archived'];
       const map: CjmMap = {
@@ -455,7 +466,7 @@ export async function executeTool(
       };
 
       useCjmStore.getState().addGeneratedMap(map);
-      return { success: true, id: mapId, title: map.title };
+      return { success: true, id: mapId, title: map.title, stagesCount: stages.length };
     }
 
     case 'update_cjm': {
@@ -463,13 +474,14 @@ export async function executeTool(
       if (!mapId) return { error: 'id is required' };
 
       const store = useCjmStore.getState();
-      const isGenerated = store.generatedMaps.some((m) => m.id === mapId);
+      const generatedMap = store.generatedMaps.find((m) => m.id === mapId);
+      const isGenerated = !!generatedMap;
       const fixture = isGenerated ? undefined : await getCjmById(mapId);
       if (!isGenerated && !fixture) return { error: `CJM not found: ${mapId}` };
 
       const today = new Date().toISOString().split('T')[0] ?? new Date().toLocaleDateString('ru-RU');
 
-      // Update metadata for generated maps
+      // 1) Metadata — only mutable for AI-generated maps (fixtures are read-only source data)
       if (isGenerated) {
         const metaUpdates: Partial<CjmMap> = { updatedAt: today };
         if (typeof input.title === 'string')       metaUpdates.title = input.title;
@@ -482,35 +494,45 @@ export async function executeTool(
         store.updateMap(mapId, metaUpdates);
       }
 
-      // Update nodes/edges if provided
-      if (Array.isArray(input.nodes)) {
-        const rawNodes = input.nodes as Record<string, unknown>[];
-        const nodes: CjmFlowNode[] = rawNodes.map((n) => {
-          const rawData = (n.data && typeof n.data === 'object') ? n.data as Record<string, unknown> : {};
-          const data: CjmNodeData = { label: String(rawData.label ?? '') };
-          if (typeof rawData.metric === 'string')      data.metric = rawData.metric;
-          if (typeof rawData.channel === 'string')     data.channel = rawData.channel;
-          if (typeof rawData.description === 'string') data.description = rawData.description;
-          const sentiments = ['positive', 'neutral', 'negative'] as const;
-          if (sentiments.includes(rawData.sentiment as typeof sentiments[number])) {
-            data.sentiment = rawData.sentiment as 'positive' | 'neutral' | 'negative';
-          }
-          const rawPos = (n.position && typeof n.position === 'object') ? n.position as Record<string, unknown> : {};
-          const validTypes: CjmNodeType[] = ['stage', 'touchpoint', 'emotion', 'pain', 'opportunity'];
-          const nodeType = validTypes.includes(String(n.type) as CjmNodeType) ? String(n.type) as CjmNodeType : 'stage';
-          return { id: String(n.id ?? ''), type: nodeType, position: { x: Number(rawPos.x ?? 0), y: Number(rawPos.y ?? 0) }, data };
-        });
+      // 2) Full rebuild from a simplified stages template (restructure / re-actualize)
+      if (Array.isArray(input.stages)) {
+        const rawStages = input.stages as Record<string, unknown>[];
+        const stages = rawStages.map(sanitizeStageInput);
+        const { nodes, edges } = buildCjmFromTemplate(mapId, stages);
         store.setMapNodes(mapId, nodes);
+        store.setMapEdges(mapId, edges);
       }
 
-      if (Array.isArray(input.edges)) {
-        const rawEdges = input.edges as Record<string, unknown>[];
-        const edges: CjmFlowEdge[] = rawEdges.map((e) => ({
-          id: String(e.id ?? ''),
-          source: String(e.source ?? ''),
-          target: String(e.target ?? ''),
-        }));
-        store.setMapEdges(mapId, edges);
+      // 3) Surgical partial edits — cheapest path, doesn't require resending the whole graph
+      if (Array.isArray(input.nodeUpdates)) {
+        const rawUpdates = input.nodeUpdates as Record<string, unknown>[];
+        const baseNodes = store.nodesState[mapId] ?? generatedMap?.nodes ?? fixture?.nodes ?? [];
+        let nodes = baseNodes;
+        for (const u of rawUpdates) {
+          const nodeId = String(u.id ?? '');
+          if (!nodeId) continue;
+          const rawData = (u.data && typeof u.data === 'object') ? u.data as Record<string, unknown> : {};
+          const patch: Partial<CjmNodeData> = {};
+          if (typeof rawData.label === 'string')         patch.label = rawData.label;
+          if (typeof rawData.metric === 'string')        patch.metric = rawData.metric;
+          if (typeof rawData.channel === 'string')       patch.channel = rawData.channel;
+          if (typeof rawData.linkedMetricId === 'string') patch.linkedMetricId = rawData.linkedMetricId;
+          const sentiments = ['positive', 'neutral', 'negative'] as const;
+          if (sentiments.includes(rawData.sentiment as typeof sentiments[number])) {
+            patch.sentiment = rawData.sentiment as 'positive' | 'neutral' | 'negative';
+          }
+          const unlinkArtifact = rawData.linkedArtifactId === '';
+          if (!unlinkArtifact && typeof rawData.linkedArtifactId === 'string') {
+            patch.linkedArtifactId = rawData.linkedArtifactId;
+          }
+          nodes = nodes.map((n) => {
+            if (n.id !== nodeId) return n;
+            const newData: CjmNodeData = { ...n.data, ...patch };
+            if (unlinkArtifact) delete newData.linkedArtifactId;
+            return { ...n, data: newData };
+          });
+        }
+        store.setMapNodes(mapId, nodes);
       }
 
       return { success: true, id: mapId };
@@ -519,4 +541,39 @@ export async function executeTool(
     default:
       return { error: `Unknown tool: ${name}` };
   }
+}
+
+function sanitizeStageInput(raw: Record<string, unknown>): CjmStageInput {
+  const stage: CjmStageInput = { label: String(raw.label ?? '') };
+  if (typeof raw.metric === 'string') stage.metric = raw.metric;
+  if (typeof raw.linkedMetricId === 'string') stage.linkedMetricId = raw.linkedMetricId;
+
+  const tp = (raw.touchpoint && typeof raw.touchpoint === 'object') ? raw.touchpoint as Record<string, unknown> : null;
+  if (tp) {
+    stage.touchpoint = { label: String(tp.label ?? '') };
+    if (typeof tp.channel === 'string') stage.touchpoint.channel = tp.channel;
+  }
+
+  const em = (raw.emotion && typeof raw.emotion === 'object') ? raw.emotion as Record<string, unknown> : null;
+  if (em) {
+    stage.emotion = { label: String(em.label ?? '') };
+    const sentiments = ['positive', 'neutral', 'negative'] as const;
+    if (sentiments.includes(em.sentiment as typeof sentiments[number])) {
+      stage.emotion.sentiment = em.sentiment as 'positive' | 'neutral' | 'negative';
+    }
+  }
+
+  const pn = (raw.pain && typeof raw.pain === 'object') ? raw.pain as Record<string, unknown> : null;
+  if (pn) {
+    stage.pain = { label: String(pn.label ?? '') };
+    if (typeof pn.linkedArtifactId === 'string' && pn.linkedArtifactId) stage.pain.linkedArtifactId = pn.linkedArtifactId;
+  }
+
+  const op = (raw.opportunity && typeof raw.opportunity === 'object') ? raw.opportunity as Record<string, unknown> : null;
+  if (op) {
+    stage.opportunity = { label: String(op.label ?? '') };
+    if (typeof op.linkedArtifactId === 'string' && op.linkedArtifactId) stage.opportunity.linkedArtifactId = op.linkedArtifactId;
+  }
+
+  return stage;
 }

@@ -230,7 +230,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       </Flex>
 
       {/* Results */}
-      <div style={{ paddingBottom: 8, maxHeight: 420, overflowY: 'auto' }}>
+      <div className="content-scroll" style={{ paddingBottom: 8, maxHeight: 420, overflowY: 'auto' }}>
         <Typography.Text
           style={{
             display: 'block',

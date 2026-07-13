@@ -84,22 +84,36 @@ function UserAvatar({ user, size = 22 }: { user: { id: string; name: string; ava
   );
 }
 
-const PRIORITY_CHEVRON: Record<TaskPriority, { count: number; color: string }> = {
-  critical: { count: 3, color: '#F5633A' },
-  high:     { count: 2, color: '#F5633A' },
-  medium:   { count: 1, color: '#F08040' },
-  low:      { count: 1, color: '#666' },
+const PRIORITY_LEVEL: Record<TaskPriority, number> = {
+  critical: 3,
+  high:     2,
+  medium:   1,
+  low:      1,
 };
 
+const PRIORITY_COLOR: Record<TaskPriority, string> = {
+  critical: '#F5633A',
+  high:     '#F5633A',
+  medium:   '#F08040',
+  low:      '#666',
+};
+
+const BAR_HEIGHTS = [4, 7, 10];
+
 function PriorityChevrons({ priority }: { priority: TaskPriority }) {
-  const { count, color } = PRIORITY_CHEVRON[priority];
+  const level = PRIORITY_LEVEL[priority];
+  const color = PRIORITY_COLOR[priority];
   return (
     <Tooltip title={PRIORITY_LABEL[priority]}>
-      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0, lineHeight: 1 }}>
-        {Array.from({ length: count }).map((_, i) => (
-          <svg key={i} width="10" height="6" viewBox="0 0 10 6" fill="none">
-            <path d="M1 5L5 1L9 5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+      <span style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 1.5, height: 10, flexShrink: 0 }}>
+        {BAR_HEIGHTS.map((h, i) => (
+          <span
+            key={i}
+            style={{
+              width: 3, height: h, borderRadius: 1,
+              background: i < level ? color : 'rgba(255,255,255,0.12)',
+            }}
+          />
         ))}
       </span>
     </Tooltip>
@@ -176,10 +190,10 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
 
 const COLUMN_STYLE: Record<TaskStatus, { bg: string; borderColor: string }> = {
   backlog:     { bg: '#16171a', borderColor: '' },
-  todo:        { bg: '#0d1629', borderColor: 'rgba(56, 100, 220, 0.4)' },
-  in_progress: { bg: '#091d3a', borderColor: 'rgba(22, 119, 255, 0.35)' },
-  review:      { bg: '#170d2c', borderColor: 'rgba(114, 46, 209, 0.4)' },
-  done:        { bg: '#0c1f14', borderColor: 'rgba(82, 196, 26, 0.3)' },
+  todo:        { bg: '#16171a', borderColor: 'rgba(90, 130, 220, 0.18)' },
+  in_progress: { bg: '#16171a', borderColor: 'rgba(60, 140, 255, 0.18)' },
+  review:      { bg: '#16171a', borderColor: 'rgba(140, 100, 220, 0.18)' },
+  done:        { bg: '#16171a', borderColor: 'rgba(100, 190, 100, 0.16)' },
 };
 
 function KanbanColumn({ status, label, tasks, bdr }: { status: TaskStatus; label: string; tasks: Task[]; bdr: string }) {
@@ -687,13 +701,13 @@ export default function TasksPage() {
           <FilterOutlined style={{ color: token.colorTextTertiary, fontSize: 13 }} />
           <Select
             placeholder={<><UserOutlined /> Исполнитель</>}
-            allowClear size="small" style={{ width: 155 }}
+            allowClear style={{ width: 170 }}
             value={assigneeFilter} onChange={setAssigneeFilter}
             options={assignees.map((u) => ({ value: u.id, label: u.name }))}
           />
           <Select
             placeholder="Приоритет"
-            allowClear size="small" style={{ width: 140 }}
+            allowClear style={{ width: 155 }}
             value={priorityFilter} onChange={setPriorityFilter}
             options={[
               { value: 'critical', label: <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><PriorityChevrons priority="critical" />{PRIORITY_LABEL.critical}</span> },

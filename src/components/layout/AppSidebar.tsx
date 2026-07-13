@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import {
   AppstoreOutlined,
+  BarChartOutlined,
   BellOutlined,
   BookOutlined,
-  BarChartOutlined,
   CheckSquareOutlined,
-  CreditCardOutlined,
   DownOutlined,
   LineChartOutlined,
   MenuFoldOutlined,
@@ -17,6 +16,7 @@ import {
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import { TokenCircleIcon } from '../icons';
 import { Tooltip } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SearchModal from './SearchModal';
@@ -171,10 +171,10 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
             {!collapsed && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 9.57, overflow: 'hidden' }}>
                 <span style={{ fontSize: 18, color: '#4A82F7', flexShrink: 0, lineHeight: 1 }}>
-                  <CreditCardOutlined />
+                  <TokenCircleIcon />
                 </span>
                 <span style={{ color: '#D7D8DA', fontSize: 15.55, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                  Дебетовые карты
+                  PO Copilot
                 </span>
               </div>
             )}
