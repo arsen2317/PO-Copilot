@@ -2,6 +2,7 @@ import { type Node, type NodeProps } from '@xyflow/react';
 import { theme, Typography, Tag } from 'antd';
 import { ExclamationCircleOutlined, LinkOutlined } from '@ant-design/icons';
 import { knowledgeFixtures } from '../../../data/fixtures/knowledge';
+import { NODE_MAX_HEIGHT } from '../cjmLayout';
 
 const { Text } = Typography;
 
@@ -17,7 +18,7 @@ export default function PainNode({ data }: NodeProps<PainNodeType>) {
     <div
       style={{
         width: 220,
-        maxHeight: 160,
+        maxHeight: NODE_MAX_HEIGHT,
         overflow: 'hidden',
         background: token.colorBgContainer,
         border: `1px solid ${token.colorBorderSecondary}`,
@@ -32,7 +33,10 @@ export default function PainNode({ data }: NodeProps<PainNodeType>) {
           Боль
         </Text>
       </div>
-      <Text style={{ fontSize: 12, color: token.colorText, lineHeight: 1.4 }}>
+      <Text style={{
+        display: '-webkit-box', fontSize: 12, color: token.colorText, lineHeight: 1.4,
+        WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+      }}>
         {data.label}
       </Text>
       {artifact && (

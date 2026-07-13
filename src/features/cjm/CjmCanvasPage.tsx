@@ -8,6 +8,7 @@ import {
   BackgroundVariant,
   useNodesState,
   useEdgesState,
+  useViewport,
   type Node,
   type Edge,
   type NodeMouseHandler,
@@ -25,6 +26,7 @@ import EmotionNode from './nodes/EmotionNode';
 import PainNode from './nodes/PainNode';
 import OpportunityNode from './nodes/OpportunityNode';
 import CjmEditDrawer, { AddStageDrawer } from './CjmEditDrawer';
+import { ROW_LABELS, buildStageNodes } from './cjmLayout';
 import type { CjmStatus, CjmFlowNode, CjmFlowEdge, CjmNodeData } from '../../data/types';
 
 const { Title, Text } = Typography;
@@ -50,21 +52,35 @@ const STATUS_COLORS: Record<CjmStatus, 'success' | 'processing' | 'default'> = {
   archived: 'default',
 };
 
-const ROW_LABELS = [
-  { label: 'Этап',           top: 16 },
-  { label: 'Touchpoint',     top: 216 },
-  { label: 'Мысли / эмоции', top: 436 },
-  { label: 'Боли',           top: 656 },
-  { label: 'Возможности',    top: 876 },
-];
-
-const COL = 280;
-const ROW_Y: Record<string, number> = {
-  touchpoint:  200,
-  emotion:     420,
-  pain:        640,
-  opportunity: 860,
-};
+// ── Row labels overlay — tracks the flow's pan/zoom so labels stay pinned to their row ──
+function RowLabelsOverlay({ color }: { color: string }) {
+  const viewport = useViewport();
+  return (
+    <div
+      style={{
+        position: 'absolute', left: 0, top: 0, bottom: 0,
+        width: 0, pointerEvents: 'none', zIndex: 5,
+      }}
+    >
+      {ROW_LABELS.map(({ label, y }) => (
+        <div
+          key={label}
+          style={{
+            position: 'absolute',
+            top: viewport.y + y * viewport.zoom,
+            left: 8,
+            fontSize: 9, fontWeight: 600,
+            textTransform: 'uppercase', letterSpacing: '0.5px',
+            color, whiteSpace: 'nowrap',
+            transform: 'translateY(-50%)',
+          }}
+        >
+          {label}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function toFlowNodes(cjmNodes: CjmFlowNode[]): Node[] {
   return cjmNodes.map((n) => ({
@@ -129,9 +145,9 @@ export default function CjmCanvasPage() {
   };
 
   const handleSave = (nodeId: string, data: Partial<CjmNodeData>) => {
-    if (!id) return;
+    if (!id || !map) return;
     // Ensure store has base nodes first
-    if (!nodesState[id] && map) setMapNodes(id, map.nodes);
+    if (!nodesState[id]) setMapNodes(id, map.nodes);
     updateNodeData(id, nodeId, data);
     // Update React Flow visual state immediately
     setNodes((prev) =>
@@ -139,6 +155,25 @@ export default function CjmCanvasPage() {
         n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n,
       ),
     );
+
+    // If the user just linked (or changed) an artifact, ask the CJM agent to review it:
+    // check the artifact is actually relevant/fresh, then either update the node text or
+    // recommend unlinking — rather than blindly trusting the manual link.
+    const prevArtifactId = selectedNode?.data.linkedArtifactId;
+    const nextArtifactId = data.linkedArtifactId;
+    if (nextArtifactId && nextArtifactId !== prevArtifactId) {
+      const nodeLabel = data.label ?? selectedNode?.data.label ?? '';
+      const nodeType = selectedNode?.type ?? '';
+      setPendingAgent('agent-cjm');
+      setPendingTrigger(
+        `Проверь привязку артефакта (id: ${nextArtifactId}) к пункту "${nodeLabel}" ` +
+        `(нода id: ${nodeId}, тип: ${nodeType}) в CJM "${map.title}" (id: ${id}). ` +
+        `Это ручная привязка от пользователя — найди артефакт через get_knowledge_artifacts и оцени, ` +
+        `действительно ли он релевантен и актуален для этого пункта CJM. Если нет — объясни почему в чате ` +
+        `и предложи отвязать. Если да — обнови текст пункта через update_cjm (nodeUpdates), кратко (не более 2-3 предложений), ` +
+        `сохранив linkedArtifactId.`,
+      );
+    }
   };
 
   const handleAddStage = (label: string) => {
@@ -146,34 +181,18 @@ export default function CjmCanvasPage() {
     const cjmNodes = nodesState[id] ?? map.nodes;
     const cjmEdges = edgesState[id] ?? map.edges;
 
-    // Find rightmost stage x position
     const stageNodes = cjmNodes.filter((n) => n.type === 'stage');
-    const maxX = stageNodes.reduce((acc, n) => Math.max(acc, n.position.x), 0);
-    const newX = maxX + COL;
+    const newIndex = stageNodes.length;
 
-    const newStageId = `${id}-stage-${Date.now()}`;
-    const newNode: CjmFlowNode = {
-      id: newStageId,
-      type: 'stage',
-      position: { x: newX, y: 0 },
-      data: { label },
-    };
+    const allNewNodes = buildStageNodes(id, newIndex, { label });
+    const newNode = allNewNodes.find((n) => n.type === 'stage')!;
 
-    // Also add empty child nodes for the new stage
-    const childNodes: CjmFlowNode[] = Object.entries(ROW_Y).map(([type, y]) => ({
-      id: `${newStageId}-${type}`,
-      type: type as CjmFlowNode['type'],
-      position: { x: newX, y },
-      data: { label: '—' },
-    }));
-
-    // Edge from last stage to new stage
+    // Edge from last stage to new stage (unique id — avoids colliding with template-built edges)
     const lastStage = stageNodes[stageNodes.length - 1];
     const newEdge: CjmFlowEdge | null = lastStage
-      ? { id: `${id}-e-${lastStage.id}-${newStageId}`, source: lastStage.id, target: newStageId }
+      ? { id: `${id}-e-${lastStage.id}-${newNode.id}`, source: lastStage.id, target: newNode.id }
       : null;
 
-    const allNewNodes = [newNode, ...childNodes];
     const newCjmNodes = [...cjmNodes, ...allNewNodes];
     const newCjmEdges = newEdge ? [...cjmEdges, newEdge] : cjmEdges;
 
@@ -285,27 +304,7 @@ export default function CjmCanvasPage() {
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <Controls showInteractive={false} />
 
-          <div
-            style={{
-              position: 'absolute', left: 0, top: 0, bottom: 0,
-              width: 0, pointerEvents: 'none', zIndex: 5,
-            }}
-          >
-            {ROW_LABELS.map(({ label, top }) => (
-              <div
-                key={label}
-                style={{
-                  position: 'absolute', top, left: 8,
-                  fontSize: 9, fontWeight: 600,
-                  textTransform: 'uppercase', letterSpacing: '0.5px',
-                  color: token.colorTextTertiary, whiteSpace: 'nowrap',
-                  transform: 'translateY(-50%)',
-                }}
-              >
-                {label}
-              </div>
-            ))}
-          </div>
+          <RowLabelsOverlay color={token.colorTextTertiary} />
         </ReactFlow>
       </div>
 

@@ -1,4 +1,4 @@
-import { theme, Typography, Badge, Button, Row, Col } from 'antd';
+import { theme, Typography, Button, Row, Col } from 'antd';
 import {
   CalendarOutlined,
   UserOutlined,
@@ -19,15 +19,15 @@ const STATUS_LABELS: Record<CjmStatus, string> = {
   archived: 'Архив',
 };
 
-const STATUS_COLORS: Record<CjmStatus, 'success' | 'processing' | 'default'> = {
-  active:   'success',
-  draft:    'processing',
-  archived: 'default',
-};
-
 function CjmCard({ map }: { map: CjmMap }) {
   const { token } = theme.useToken();
   const navigate = useNavigate();
+
+  const statusDotColor: Record<CjmStatus, string> = {
+    active:   token.colorSuccess,
+    draft:    token.colorPrimary,
+    archived: token.colorTextTertiary,
+  };
 
   return (
     <div
@@ -42,7 +42,8 @@ function CjmCard({ map }: { map: CjmMap }) {
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
-        height: '100%',
+        height: 214,
+        overflow: 'hidden',
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLElement).style.borderColor = token.colorPrimary;
@@ -52,17 +53,21 @@ function CjmCard({ map }: { map: CjmMap }) {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-        <Text strong style={{ fontSize: 14, color: token.colorText, lineHeight: 1.35 }}>
+        <Text strong style={{
+          fontSize: 14, color: token.colorText, lineHeight: 1.35, minWidth: 0,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}>
           {map.title}
         </Text>
-        <Badge
-          status={STATUS_COLORS[map.status]}
-          text={
-            <Text style={{ fontSize: 11, color: token.colorTextSecondary, whiteSpace: 'nowrap' }}>
-              {STATUS_LABELS[map.status]}
-            </Text>
-          }
-        />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, marginTop: 3 }}>
+          <span style={{
+            width: 6, height: 6, borderRadius: '50%',
+            background: statusDotColor[map.status], flexShrink: 0,
+          }} />
+          <Text style={{ fontSize: 11, color: token.colorTextSecondary, whiteSpace: 'nowrap' }}>
+            {STATUS_LABELS[map.status]}
+          </Text>
+        </span>
       </div>
 
       <Text style={{
@@ -75,7 +80,9 @@ function CjmCard({ map }: { map: CjmMap }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <UserOutlined style={{ fontSize: 11, color: token.colorTextTertiary }} />
-          <Text style={{ fontSize: 11, color: token.colorTextTertiary }}>{map.persona}</Text>
+          <Text style={{ fontSize: 11, color: token.colorTextTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {map.persona}
+          </Text>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <CalendarOutlined style={{ fontSize: 11, color: token.colorTextTertiary }} />

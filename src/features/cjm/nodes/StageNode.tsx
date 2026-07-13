@@ -2,6 +2,7 @@ import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import { theme, Typography, Tag } from 'antd';
 import { ExperimentOutlined } from '@ant-design/icons';
 import { metricGroupsFixture } from '../../../data/fixtures/metrics';
+import { NODE_MAX_HEIGHT } from '../cjmLayout';
 
 const { Text } = Typography;
 
@@ -22,6 +23,8 @@ export default function StageNode({ data }: NodeProps<StageNodeType>) {
     <div
       style={{
         width: 220,
+        maxHeight: NODE_MAX_HEIGHT,
+        overflow: 'hidden',
         background: token.colorBgElevated,
         border: `1.5px solid ${token.colorPrimary}`,
         borderRadius: token.borderRadiusLG,
@@ -39,11 +42,17 @@ export default function StageNode({ data }: NodeProps<StageNodeType>) {
       }}>
         Этап
       </Text>
-      <Text strong style={{ display: 'block', fontSize: 13, color: token.colorText, lineHeight: 1.35 }}>
+      <Text strong style={{
+        display: '-webkit-box', fontSize: 13, color: token.colorText, lineHeight: 1.35,
+        WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+      }}>
         {data.label}
       </Text>
       {data.metric && (
-        <Text style={{ display: 'block', fontSize: 11, color: token.colorTextSecondary, marginTop: 6 }}>
+        <Text style={{
+          display: '-webkit-box', fontSize: 11, color: token.colorTextSecondary, marginTop: 6,
+          WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}>
           {data.metric}
         </Text>
       )}
