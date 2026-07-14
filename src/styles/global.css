@@ -344,6 +344,23 @@ body {
   background: #343537;
 }
 
+/* ── OverlayScrollbars custom dark theme ──────────────────────────
+   Used by <ScrollArea> for self-contained lists (search results, agent
+   history, kanban columns) — same look everywhere (Chrome/Firefox/Safari),
+   hidden by default, appears only while actively scrolling. */
+.os-theme-app {
+  box-sizing: border-box;
+  --os-size: 6px;
+  --os-padding-perpendicular: 0px;
+  --os-padding-axis: 2px;
+  --os-track-border-radius: 3px;
+  --os-handle-interactive-area-offset: 4px;
+  --os-handle-border-radius: 3px;
+  --os-handle-bg: #2A2B2D;
+  --os-handle-bg-hover: #343537;
+  --os-handle-bg-active: #3d3e40;
+}
+
 /* ── MTS Wide — заголовки ────────────────────────────────────────── */
 h1, h2, h3, h4,
 .ant-typography h1,
