@@ -203,7 +203,7 @@ function KanbanColumn({ status, label, tasks, bdr }: { status: TaskStatus; label
   const colBorder = borderColor ? `1px solid ${borderColor}` : bdr;
 
   return (
-    <div style={{ flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', background: bg, borderRadius: 10, border: colBorder, overflow: 'hidden', maxHeight: '100%' }}>
+    <div style={{ flex: '1 1 218px', minWidth: 218, display: 'flex', flexDirection: 'column', background: bg, borderRadius: 10, border: colBorder, overflow: 'hidden', maxHeight: '100%' }}>
       <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: colBorder, flexShrink: 0 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: token.colorText }}>{label}</span>
         <Badge count={tasks.length} style={{ background: '#2D2E30', color: token.colorTextSecondary, boxShadow: 'none', fontSize: 11 }} />
@@ -244,7 +244,7 @@ function KanbanView({ tasks, isLoading, bdr }: { tasks: Task[]; isLoading: boole
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <div className="content-scroll" style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'hidden' }}>
         {COLUMNS.map((col) => (
           <KanbanColumn key={col.id} status={col.id} label={col.label} tasks={byStatus(col.id)} bdr={bdr} />
         ))}
