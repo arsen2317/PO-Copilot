@@ -1,5 +1,12 @@
-import { Typography } from 'antd';
+import { TeamOutlined } from '@ant-design/icons';
+import InDevelopmentPage from '../../components/InDevelopmentPage';
 
 export default function RoomsPage() {
-  return <Typography.Title level={2} style={{ fontSize: 24, fontFamily: "'MTS Wide', 'MTS Text', sans-serif" }}>Комнаты</Typography.Title>;
+  return (
+    <InDevelopmentPage
+      title="Комнаты"
+      icon={<TeamOutlined />}
+      description="Планирование спринта, ретро и груминг — совместные сессии команды с ИИ-фасилитатором."
+    />
+  );
 }
