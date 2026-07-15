@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Select, Skeleton, Tooltip, theme } from 'antd';
+import { Button, Select, Skeleton, Tooltip, theme } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { getEpics, getTasks } from '../../data/api/tasks';
 import type { Epic, Task, TaskStatus } from '../../data/types';
@@ -9,7 +9,9 @@ const { useToken } = theme;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ViewRange = 'sprint' | 'month' | 'quarter' | 'halfyear' | 'year';
+// Scale = column unit, not a fixed date window — the timeline itself scrolls
+// infinitely (in both directions) at whatever zoom the user picks.
+type Scale = 'week' | 'sprint' | 'month';
 
 interface TimelineTask extends Task {
   start: Date;
@@ -22,20 +24,17 @@ type Row =
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const VIEW_OPTIONS = [
-  { value: 'sprint' as ViewRange, label: 'Спринт (2 нед.)' },
-  { value: 'month' as ViewRange, label: 'Месяц' },
-  { value: 'quarter' as ViewRange, label: 'Квартал' },
-  { value: 'halfyear' as ViewRange, label: 'Полугодие' },
-  { value: 'year' as ViewRange, label: 'Год' },
+const SCALE_OPTIONS: { value: Scale; label: string }[] = [
+  { value: 'week', label: 'Неделя' },
+  { value: 'sprint', label: 'Спринт (2 нед.)' },
+  { value: 'month', label: 'Месяц' },
 ];
 
-const DAY_PX_MAP: Record<ViewRange, number> = {
-  sprint: 32,
-  month: 26,
-  quarter: 18,
-  halfyear: 12,
-  year: 8,
+// px per calendar day at each zoom level (drives both bar width and column grid).
+const SCALE_PX_PER_DAY: Record<Scale, number> = {
+  week: 18,
+  sprint: 10,
+  month: 6.5,
 };
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
@@ -64,17 +63,32 @@ const LEFT_W = 300;
 const GROUP_ROW_H = 38;
 const TASK_ROW_H = 44;
 const BAR_H = 30;
-const HEADER_H = 44;
-const MONTH_ROW_H = 20;
+const YEAR_ROW_H = 16;
+const MONTH_ROW_H = 22;
+const TICK_ROW_H = 18;
+const HEADER_H = YEAR_ROW_H + MONTH_ROW_H + TICK_ROW_H;
 const BAR_R = 15;
 const TODAY = new Date('2026-07-15');
+
+// A fixed Monday anchor so sprint/week grid boundaries stay stable no matter
+// how far the timeline gets scrolled/expanded in either direction.
+const ANCHOR_MONDAY = new Date(2026, 0, 5);
+
+// Contrast between the issues panel and the timeline itself.
+const LEFT_BG = '#1a1b20';
+const LEFT_BG_GROUP = '#212228';
+const RIGHT_BG = '#0f1013';
+const RIGHT_BG_GROUP = '#181922';
+
+// Infinite horizontal scroll: grow the rendered window as the user nears an edge.
+const EXPAND_CHUNK_DAYS = 90;
+const EXPAND_THRESHOLD_PX = 400;
+const MAX_SPAN_DAYS = 365 * 20;
 
 // The Gantt only covers this product's own roadmap (see AppSidebar "Дебетовые карты").
 const PRODUCT_TEAM_ID = 'team-debit';
 
 // ─── Calendar helpers ─────────────────────────────────────────────────────────
-
-function isWeekend(d: Date): boolean { const w = d.getDay(); return w === 0 || w === 6; }
 
 function parseDate(s: string): Date {
   const [y, m, day] = s.split('-').map(Number);
@@ -85,55 +99,10 @@ function toStr(d: Date): string { return d.toISOString().slice(0, 10); }
 
 function addCal(d: Date, n: number): Date { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 
-function buildBizDays(start: Date, end: Date): Date[] {
-  const out: Date[] = [];
-  const d = new Date(start); d.setHours(0, 0, 0, 0);
-  const e = new Date(end); e.setHours(0, 0, 0, 0);
-  while (d <= e) { if (!isWeekend(d)) out.push(new Date(d)); d.setDate(d.getDate() + 1); }
-  return out;
-}
-
-function rangeWindow(r: ViewRange): [Date, Date] {
-  switch (r) {
-    case 'sprint': return [addCal(TODAY, -3), addCal(TODAY, 11)];
-    case 'month': return [new Date(TODAY.getFullYear(), TODAY.getMonth(), 1), new Date(TODAY.getFullYear(), TODAY.getMonth() + 1, 0)];
-    case 'quarter': { const q = Math.floor(TODAY.getMonth() / 3); return [new Date(TODAY.getFullYear(), q * 3, 1), new Date(TODAY.getFullYear(), q * 3 + 3, 0)]; }
-    case 'halfyear': { const h = TODAY.getMonth() < 6 ? 0 : 6; return [new Date(TODAY.getFullYear(), h, 1), new Date(TODAY.getFullYear(), h + 6, 0)]; }
-    case 'year': return [new Date(TODAY.getFullYear(), 0, 1), new Date(TODAY.getFullYear(), 11, 31)];
-  }
-}
-
-function buildTicks(bizDays: Date[], range: ViewRange, dayPx: number) {
-  let step = 1;
-  if (range === 'quarter') step = 5;
-  else if (range === 'halfyear') step = 9;
-  else if (range === 'year') step = 14;
-  else if (range === 'month') step = 3;
-  return bizDays
-    .map((d, i) => ({ d, i }))
-    .filter(({ i }) => i % step === 0)
-    .map(({ d, i }) => ({
-      x: i * dayPx,
-      label: d.toLocaleDateString('ru', { day: 'numeric', month: 'short' }),
-    }));
-}
-
-function buildMonthBands(bizDays: Date[], dayPx: number): { x: number; label: string; width: number }[] {
-  const bands: { x: number; label: string; width: number }[] = [];
-  let prevMonth = -1;
-  bizDays.forEach((d, i) => {
-    if (d.getMonth() !== prevMonth) {
-      if (bands.length > 0) bands[bands.length - 1]!.width = i * dayPx - bands[bands.length - 1]!.x;
-      bands.push({ x: i * dayPx, label: d.toLocaleDateString('ru', { month: 'long', year: 'numeric' }), width: 0 });
-      prevMonth = d.getMonth();
-    }
-  });
-  if (bands.length > 0) bands[bands.length - 1]!.width = bizDays.length * dayPx - bands[bands.length - 1]!.x;
-  return bands;
-}
+function daysBetween(a: Date, b: Date): number { return Math.round((b.getTime() - a.getTime()) / 86400000); }
 
 function formatDuration(start: Date, end: Date): string {
-  const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
+  const days = Math.max(1, daysBetween(start, end) + 1);
   if (days < 14) return `${days} дн.`;
   if (days < 60) return `~${Math.round(days / 7)} нед.`;
   return `~${Math.round(days / 30)} мес.`;
@@ -144,12 +113,12 @@ function formatDuration(start: Date, end: Date): string {
 function MiniAvatar({ user, size = 22 }: { user: { id: string; name: string; avatar?: string }; size?: number }) {
   const initials = user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
   if (user.avatar) {
-    return <img src={user.avatar} alt={user.name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, display: 'block', border: '1.5px solid #13141a' }} />;
+    return <img src={user.avatar} alt={user.name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, display: 'block', border: `1.5px solid ${RIGHT_BG}` }} />;
   }
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', background: AVATAR_COLORS[user.id] ?? '#555',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #13141a',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${RIGHT_BG}`,
       fontSize: Math.floor(size * 0.38), fontWeight: 700, color: '#fff', flexShrink: 0,
     }}>{initials}</div>
   );
@@ -188,28 +157,61 @@ export default function TimelineView({ bdr }: { bdr: string }) {
   const { token } = useToken();
   const navigate = useNavigate();
 
-  const [range, setRange] = useState<ViewRange>('quarter');
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState<Scale>('month');
+  // The rendered window — grows outward as the user scrolls near either edge;
+  // it is not a "filter", just how much of the infinite calendar is materialized.
+  const [rangeStart, setRangeStart] = useState<Date>(() => addCal(TODAY, -90));
+  const [rangeEnd, setRangeEnd] = useState<Date>(() => addCal(TODAY, 270));
 
-  const DAY_PX = DAY_PX_MAP[range];
+  const [visibleYear, setVisibleYear] = useState<number>(TODAY.getFullYear());
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pendingLeftExpandPx = useRef(0);
+  const didInitScroll = useRef(false);
+
+  const pxPerDay = SCALE_PX_PER_DAY[scale];
 
   const { data: allTasks = [], isLoading: tl } = useQuery({ queryKey: ['tasks'], queryFn: getTasks });
   const { data: allEpics = [], isLoading: el } = useQuery({ queryKey: ['epics'], queryFn: getEpics });
   const isLoading = tl || el;
 
-  const [rangeStart, rangeEnd] = useMemo(() => rangeWindow(range), [range]);
-  const bizDays = useMemo(() => buildBizDays(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
-  const totalW = Math.max(bizDays.length * DAY_PX, 400);
-  const ticks = useMemo(() => buildTicks(bizDays, range, DAY_PX), [bizDays, range, DAY_PX]);
-  const monthBands = useMemo(() => buildMonthBands(bizDays, DAY_PX), [bizDays, DAY_PX]);
+  const totalDays = daysBetween(rangeStart, rangeEnd);
+  const totalW = Math.max(totalDays * pxPerDay, 400);
 
-  const xOf = useMemo(() => (d: Date): number => {
-    const s = toStr(d);
-    const idx = bizDays.findIndex((bd) => toStr(bd) >= s);
-    return (idx === -1 ? bizDays.length : idx) * DAY_PX;
-  }, [bizDays, DAY_PX]);
-
+  const xOf = useCallback((d: Date): number => daysBetween(rangeStart, d) * pxPerDay, [rangeStart, pxPerDay]);
   const todayX = xOf(TODAY);
+
+  // ── Header grid: years / months / (week|sprint ticks) ───────────────────────
+
+  const monthBands = useMemo(() => {
+    const bands: { x: number; width: number; label: string }[] = [];
+    const cursor = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+    while (cursor <= rangeEnd) {
+      const next = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+      const bandStart = cursor < rangeStart ? rangeStart : cursor;
+      const bandEnd = next > rangeEnd ? rangeEnd : next;
+      bands.push({
+        x: xOf(bandStart),
+        width: Math.max(1, xOf(bandEnd) - xOf(bandStart)),
+        label: cursor.toLocaleDateString('ru', { month: 'long' }),
+      });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return bands;
+  }, [rangeStart, rangeEnd, xOf]);
+
+  const ticks = useMemo(() => {
+    if (scale === 'month') return [];
+    const stepDays = scale === 'week' ? 7 : 14;
+    const fromAnchor = daysBetween(ANCHOR_MONDAY, rangeStart);
+    const rem = ((fromAnchor % stepDays) + stepDays) % stepDays;
+    const first = addCal(rangeStart, rem === 0 ? 0 : stepDays - rem);
+    const out: { x: number; label: string }[] = [];
+    for (let d = first; d <= rangeEnd; d = addCal(d, stepDays)) {
+      out.push({ x: xOf(d), label: d.toLocaleDateString('ru', { day: 'numeric', month: 'short' }) });
+    }
+    return out;
+  }, [rangeStart, rangeEnd, scale, xOf]);
 
   // ── Feature groups: epic → its tasks, product-scoped ───────────────────────
 
@@ -235,26 +237,68 @@ export default function TimelineView({ bdr }: { bdr: string }) {
     return out;
   }, [epics, allTasks]);
 
-  const rowOffsets = useMemo(() => {
-    let y = 0;
-    return rows.map((row) => {
-      const h = row.kind === 'group' ? GROUP_ROW_H : TASK_ROW_H;
-      const top = y;
-      y += h;
-      return top;
-    });
-  }, [rows]);
-
-  const totalRowsH = rowOffsets.length > 0
-    ? rowOffsets[rowOffsets.length - 1]! + (rows[rows.length - 1]!.kind === 'group' ? GROUP_ROW_H : TASK_ROW_H)
-    : 0;
+  const totalRowsH = useMemo(
+    () => rows.reduce((sum, row) => sum + (row.kind === 'group' ? GROUP_ROW_H : TASK_ROW_H), 0),
+    [rows],
+  );
 
   const totalTaskCount = allTasks.filter((t) => epics.some((e) => e.id === t.epicId)).length;
 
-  // Scroll to today
+  // ── Infinite horizontal scroll ──────────────────────────────────────────────
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    setVisibleYear(addCal(rangeStart, Math.round(el.scrollLeft / pxPerDay)).getFullYear());
+
+    if (daysBetween(rangeStart, rangeEnd) >= MAX_SPAN_DAYS) return;
+    if (el.scrollLeft < EXPAND_THRESHOLD_PX) {
+      pendingLeftExpandPx.current += EXPAND_CHUNK_DAYS * pxPerDay;
+      setRangeStart((prev) => addCal(prev, -EXPAND_CHUNK_DAYS));
+    }
+    const remainingRight = el.scrollWidth - el.clientWidth - el.scrollLeft;
+    if (remainingRight < EXPAND_THRESHOLD_PX) {
+      setRangeEnd((prev) => addCal(prev, EXPAND_CHUNK_DAYS));
+    }
+  }, [rangeStart, rangeEnd, pxPerDay]);
+
+  // Compensate scrollLeft after a leftward expansion so the visible dates don't jump.
+  useLayoutEffect(() => {
+    if (pendingLeftExpandPx.current > 0 && scrollRef.current) {
+      scrollRef.current.scrollLeft += pendingLeftExpandPx.current;
+      pendingLeftExpandPx.current = 0;
+    }
+  }, [rangeStart]);
+
+  // Initial scroll position: centered on today. Depends on rows.length too —
+  // the Gantt (and its ref) only mounts once loading finishes, so `xOf` alone
+  // wouldn't retrigger this (its identity is unchanged across that transition).
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollLeft = Math.max(0, todayX - 120);
-  }, [todayX, rangeStart]);
+    if (didInitScroll.current || !scrollRef.current) return;
+    scrollRef.current.scrollLeft = Math.max(0, xOf(TODAY) - 220);
+    didInitScroll.current = true;
+  }, [xOf, rows.length]);
+
+  const scrollToToday = () => {
+    if (scrollRef.current) scrollRef.current.scrollLeft = Math.max(0, xOf(TODAY) - 220);
+    setVisibleYear(TODAY.getFullYear());
+  };
+
+  // Changing scale keeps the same rangeStart/rangeEnd window but a very different
+  // pxPerDay, which would otherwise leave the scroll position pointing at an
+  // unrelated date — recenter on today. Done here (not in an effect keyed on
+  // `scale`) so it runs once, from the event that actually changed the scale,
+  // after the re-render with the new pxPerDay has committed.
+  const handleScaleChange = (v: string) => {
+    const next = v as Scale;
+    setScale(next);
+    setVisibleYear(TODAY.getFullYear());
+    requestAnimationFrame(() => {
+      if (!scrollRef.current) return;
+      scrollRef.current.scrollLeft = Math.max(0, daysBetween(rangeStart, TODAY) * SCALE_PX_PER_DAY[next] - 220);
+    });
+  };
 
   if (isLoading) return <Skeleton active paragraph={{ rows: 8 }} />;
 
@@ -267,7 +311,10 @@ export default function TimelineView({ bdr }: { bdr: string }) {
           {epics.length} фич · {totalTaskCount} задач
         </span>
         <div style={{ flex: 1 }} />
-        <Select value={range} onChange={(v) => setRange(v as ViewRange)} style={{ width: 160 }} size="small" options={VIEW_OPTIONS} />
+        <Button size="small" type="text" onClick={scrollToToday} style={{ fontSize: 12, color: token.colorTextTertiary }}>
+          Сегодня
+        </Button>
+        <Select value={scale} onChange={handleScaleChange} style={{ width: 160 }} size="small" options={SCALE_OPTIONS} />
       </div>
 
       {rows.length === 0 && (
@@ -277,43 +324,51 @@ export default function TimelineView({ bdr }: { bdr: string }) {
       {/* Gantt */}
       <div
         ref={scrollRef}
+        onScroll={handleScroll}
         className="content-scroll"
-        style={{ flex: 1, overflow: 'auto', borderRadius: 10, border: bdr, background: '#13141a', minHeight: 0 }}
+        style={{ flex: 1, overflow: 'auto', borderRadius: 10, border: bdr, background: RIGHT_BG, minHeight: 0 }}
       >
         <div style={{ width: LEFT_W + totalW, position: 'relative' }}>
 
-          {/* Header row: sticky top, corner cell sticky left */}
+          {/* Header: sticky top, corner cell sticky left */}
           <div style={{ display: 'flex', position: 'sticky', top: 0, zIndex: 20, height: HEADER_H }}>
             <div style={{
               position: 'sticky', left: 0, zIndex: 21, width: LEFT_W, flexShrink: 0, height: HEADER_H,
-              background: '#181920', borderRight: bdr, borderBottom: bdr,
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 14px',
+              background: LEFT_BG, borderRight: bdr, borderBottom: bdr,
+              display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '0 14px 10px',
             }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: token.colorTextTertiary, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Задачи</span>
               <span style={{ fontSize: 11, fontWeight: 600, color: token.colorTextTertiary, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Срок</span>
             </div>
-            <div style={{ width: totalW, position: 'relative', height: HEADER_H, background: '#181920', borderBottom: bdr }}>
+            <div style={{ width: totalW, position: 'relative', height: HEADER_H, background: RIGHT_BG, borderBottom: bdr }}>
+              {/* Pinned to the viewport (not a date position) so the year stays legible no matter how far the user has scrolled. */}
+              <div style={{
+                position: 'sticky', left: LEFT_W + 8, top: 1, zIndex: 2, width: 'fit-content',
+                fontSize: 10, fontWeight: 600, color: token.colorTextQuaternary, whiteSpace: 'nowrap',
+              }}>
+                {visibleYear}
+              </div>
               {monthBands.map((band, i) => (
                 <div key={i} style={{
-                  position: 'absolute', left: band.x, top: 0, width: band.width, height: MONTH_ROW_H,
+                  position: 'absolute', left: band.x, top: YEAR_ROW_H, width: band.width, height: MONTH_ROW_H,
                   borderRight: '1px solid rgba(255,255,255,0.07)', borderBottom: '1px solid rgba(255,255,255,0.07)',
                   display: 'flex', alignItems: 'center', paddingLeft: 8,
                   fontSize: 11, fontWeight: 600, color: token.colorTextSecondary,
-                  overflow: 'hidden', whiteSpace: 'nowrap',
+                  overflow: 'hidden', whiteSpace: 'nowrap', textTransform: 'capitalize',
                 }}>
                   {band.label}
                 </div>
               ))}
               {ticks.map((tick, i) => (
                 <div key={i} style={{
-                  position: 'absolute', left: tick.x + 4, top: MONTH_ROW_H + 4,
+                  position: 'absolute', left: tick.x + 4, top: YEAR_ROW_H + MONTH_ROW_H + 3,
                   fontSize: 10, fontWeight: 400, color: token.colorTextQuaternary, whiteSpace: 'nowrap',
                 }}>
                   {tick.label}
                 </div>
               ))}
               <div style={{
-                position: 'absolute', left: todayX + 4, top: MONTH_ROW_H + 3, fontSize: 10, fontWeight: 700,
+                position: 'absolute', left: todayX + 4, top: YEAR_ROW_H + MONTH_ROW_H + 2, fontSize: 10, fontWeight: 700,
                 color: token.colorPrimary, background: `${token.colorPrimary}22`, borderRadius: 4, padding: '1px 6px',
                 whiteSpace: 'nowrap',
               }}>
@@ -322,11 +377,16 @@ export default function TimelineView({ bdr }: { bdr: string }) {
             </div>
           </div>
 
-          {/* Today vertical line, spans all rows */}
-          <div style={{
-            position: 'absolute', top: HEADER_H, left: LEFT_W + todayX, width: 1, height: totalRowsH,
-            background: token.colorPrimary, opacity: 0.45, zIndex: 3, pointerEvents: 'none',
-          }} />
+          {/* Vertical gridlines spanning all rows: month boundaries + scale ticks + today */}
+          <div style={{ position: 'absolute', top: HEADER_H, left: LEFT_W, width: totalW, height: totalRowsH, zIndex: 1, pointerEvents: 'none' }}>
+            {monthBands.map((band, i) => (
+              <div key={i} style={{ position: 'absolute', top: 0, left: band.x, width: 1, height: totalRowsH, background: 'rgba(255,255,255,0.05)' }} />
+            ))}
+            {ticks.map((tick, i) => (
+              <div key={i} style={{ position: 'absolute', top: 0, left: tick.x, width: 1, height: totalRowsH, background: 'rgba(255,255,255,0.03)' }} />
+            ))}
+            <div style={{ position: 'absolute', top: 0, left: todayX, width: 1, height: totalRowsH, background: token.colorPrimary, opacity: 0.5 }} />
+          </div>
 
           {/* Rows */}
           {rows.map((row) => {
@@ -337,7 +397,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                 <div key={`g-${row.epic.id}`} style={{ display: 'flex', height: rowH }}>
                   <div style={{
                     position: 'sticky', left: 0, zIndex: 5, width: LEFT_W, flexShrink: 0, height: rowH,
-                    background: '#181920', borderBottom: bdr,
+                    background: LEFT_BG_GROUP, borderBottom: bdr,
                     display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px',
                   }}>
                     <span style={{ width: 6, height: 6, borderRadius: 2, background: row.epic.color, flexShrink: 0 }} />
@@ -346,21 +406,21 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                     </span>
                     <span style={{ fontSize: 11, color: token.colorTextQuaternary, marginLeft: 'auto', flexShrink: 0 }}>{row.taskCount}</span>
                   </div>
-                  <div style={{ width: totalW, height: rowH, background: '#15161b', borderBottom: bdr }} />
+                  <div style={{ width: totalW, height: rowH, background: RIGHT_BG_GROUP, borderBottom: bdr }} />
                 </div>
               );
             }
 
             const t = row.task;
             const bx = xOf(t.start);
-            const bw = Math.max(DAY_PX * 2, xOf(t.end) - bx + DAY_PX);
+            const bw = Math.max(pxPerDay * 2, xOf(t.end) - bx + pxPerDay);
             const displayTitle = t.title.replace(/^\[.*?\]\s*/, '');
 
             return (
               <div key={t.id} style={{ display: 'flex', height: rowH }}>
                 <div style={{
                   position: 'sticky', left: 0, zIndex: 5, width: LEFT_W, flexShrink: 0, height: rowH,
-                  background: '#13141a', borderBottom: bdr,
+                  background: LEFT_BG, borderBottom: bdr,
                   display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px 0 28px',
                 }}>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: STATUS_COLORS[t.status], flexShrink: 0 }} />
@@ -381,7 +441,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                       onClick={() => navigate(`/tasks/${t.id}`)}
                       style={{
                         position: 'absolute', left: bx, top: (rowH - BAR_H) / 2, width: bw, height: BAR_H,
-                        borderRadius: BAR_R, background: '#1e1f22',
+                        borderRadius: BAR_R, background: '#24252b',
                         border: `1px solid ${STATUS_COLORS[t.status]}55`,
                         cursor: 'pointer', zIndex: 4, display: 'flex', alignItems: 'center',
                         padding: '0 4px 0 12px', gap: 6, overflow: 'hidden',
