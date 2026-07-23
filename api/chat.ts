@@ -62,6 +62,20 @@ export default async function handler(req: Request): Promise<Response> {
     ? body.model!
     : 'claude-haiku-4-5-20251001';
 
+  // Prompt caching: пометить стабильный system-промпт + инструменты как кэшируемые (зеркало dev-api-server).
+  // Ниже минимальной длины кэша модели API молча игнорирует это — не ошибка.
+  const cachedSystem = body.system
+    ? [{ type: 'text', text: body.system, cache_control: { type: 'ephemeral' } }]
+    : undefined;
+  const cachedTools =
+    body.tools && body.tools.length > 0
+      ? body.tools.map((t, i) =>
+          i === body.tools!.length - 1
+            ? { ...(t as Record<string, unknown>), cache_control: { type: 'ephemeral' } }
+            : t,
+        )
+      : undefined;
+
   // Call Anthropic API with streaming, pipe response directly to client
   const upstream = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
@@ -74,9 +88,9 @@ export default async function handler(req: Request): Promise<Response> {
       model,
       max_tokens: 4096,
       stream: true,
-      ...(body.system && { system: body.system }),
+      ...(cachedSystem && { system: cachedSystem }),
       messages: body.messages,
-      ...(body.tools && body.tools.length > 0 && { tools: body.tools }),
+      ...(cachedTools && { tools: cachedTools }),
     }),
   });
 

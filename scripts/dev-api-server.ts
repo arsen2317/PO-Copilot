@@ -94,8 +94,24 @@ app.post('/api/chat', async (req, res) => {
     ...(proxyFetch ? { fetch: proxyFetch } : {}),
   });
 
+  // Prompt caching: пометить стабильный system-промпт + определения инструментов как кэшируемые,
+  // чтобы они не пересчитывались на каждом раунде tool-loop и на каждом ходе.
+  // Если префикс короче минимальной длины кэша модели — API молча игнорирует cache_control (не ошибка).
+  const cachedSystem = system
+    ? [{ type: 'text' as const, text: system, cache_control: { type: 'ephemeral' as const } }]
+    : undefined;
+  const cachedTools = tools && tools.length > 0
+    ? tools.map((t, i) => (i === tools.length - 1 ? { ...t, cache_control: { type: 'ephemeral' as const } } : t))
+    : tools;
+
   try {
-    const stream = await client.messages.stream({ model, max_tokens: 4096, system, messages, tools });
+    const stream = await client.messages.stream({
+      model,
+      max_tokens: 4096,
+      ...(cachedSystem ? { system: cachedSystem } : {}),
+      messages,
+      ...(cachedTools ? { tools: cachedTools } : {}),
+    });
     for await (const event of stream) {
       res.write(`data: ${JSON.stringify(event)}\n\n`);
     }
