@@ -7,8 +7,9 @@ import { getCjmList, getCjmById } from '../data/api/cjm';
 import { getToken } from '../features/auth/auth';
 import { useUIStore } from '../store/uiStore';
 import { useCjmStore } from '../store/cjmStore';
+import { useKnowledgeStore } from '../store/knowledgeStore';
 import { buildCjmFromTemplate, type CjmStageInput } from '../features/cjm/cjmLayout';
-import type { CjmMap, CjmNodeData, CjmStatus } from '../data/types';
+import type { CjmMap, CjmNodeData, CjmStatus, KnowledgeArtifact, ArtifactType } from '../data/types';
 
 export const TOOL_DEFINITIONS = [
   {
@@ -107,8 +108,31 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'get_knowledge_artifacts',
-    description: 'Возвращает артефакты из базы знаний: опросы пользователей, UX-исследования, анализы оттока, NPS-отчёты — с полными данными и инсайтами. Используй для обогащения CJM реальными болями и данными.',
+    description: 'Возвращает артефакты из базы знаний: опросы пользователей, UX-исследования, анализы оттока, NPS-отчёты, а также сохранённые заметки — с полными данными и инсайтами. Используй для обогащения CJM реальными болями и данными.',
     input_schema: { type: 'object' as const, properties: {}, required: [] },
+  },
+  {
+    name: 'save_artifact',
+    description:
+      'Сохраняет артефакт в раздел «База знаний»: заметку с саммари обсуждения, бриф на исследование, ключевые выводы, отчёт. ' +
+      'Используй, когда пользователь просит сохранить обсуждённое «в заметку»/«в базу знаний», сохранить созданный бриф или выводы. ' +
+      'Перед сохранением коротко покажи, что именно сохранишь. После успешного вызова ОБЯЗАТЕЛЬНО выведи блок artifact-result со ссылкой на артефакт.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string', description: 'Короткий заголовок артефакта (до 80 символов)' },
+        type: {
+          type: 'string',
+          enum: ['note', 'research', 'analysis', 'report', 'survey'],
+          description: 'note=заметка/саммари, research=бриф/исследование, analysis=анализ, report=отчёт, survey=опрос. По умолчанию note.',
+        },
+        description: {
+          type: 'string',
+          description: 'Содержание артефакта в Markdown. Подзаголовки — строкой **жирным**, списки — через «- », цитаты — через «> ». Структурно и по делу.',
+        },
+      },
+      required: ['title', 'description'],
+    },
   },
   {
     name: 'create_cjm',
@@ -435,13 +459,32 @@ export async function executeTool(
 
     case 'get_knowledge_artifacts': {
       const artifacts = await getArtifacts();
-      return artifacts.map((a) => ({
+      const generated = useKnowledgeStore.getState().generatedArtifacts;
+      return [...generated, ...artifacts].map((a) => ({
         id: a.id,
         title: a.title,
         type: a.type,
         description: a.description,
         createdAt: a.createdAt,
       }));
+    }
+
+    case 'save_artifact': {
+      const validTypes: ArtifactType[] = ['note', 'survey', 'research', 'analysis', 'report'];
+      const type = validTypes.includes(String(input.type) as ArtifactType)
+        ? (String(input.type) as ArtifactType)
+        : 'note';
+      const id = `art-gen${Date.now().toString(36)}`;
+      const today = new Date().toISOString().split('T')[0] ?? new Date().toLocaleDateString('ru-RU');
+      const artifact: KnowledgeArtifact = {
+        id,
+        type,
+        title: String(input.title ?? 'Заметка'),
+        description: String(input.description ?? ''),
+        createdAt: today,
+      };
+      useKnowledgeStore.getState().addArtifact(artifact);
+      return { success: true, id, title: artifact.title };
     }
 
     case 'create_cjm': {

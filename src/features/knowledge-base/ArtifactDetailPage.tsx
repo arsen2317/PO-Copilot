@@ -5,11 +5,13 @@ import { ArrowLeftOutlined, FileTextOutlined, ExperimentOutlined, SearchOutlined
 import { theme } from 'antd';
 import { getArtifactById } from '../../data/api/knowledge';
 import { useUIStore } from '../../store/uiStore';
+import { useKnowledgeStore } from '../../store/knowledgeStore';
 import type { ArtifactType } from '../../data/types';
 
 const { Title, Text, Paragraph } = Typography;
 
 const ARTIFACT_TYPE_CONFIG: Record<ArtifactType, { label: string; color: string; icon: React.ReactNode }> = {
+  note:     { label: 'Заметка',      color: 'cyan',   icon: <FileTextOutlined /> },
   survey:   { label: 'Опрос',        color: 'blue',   icon: <SearchOutlined /> },
   research: { label: 'Исследование', color: 'purple', icon: <ExperimentOutlined /> },
   analysis: { label: 'Анализ',       color: 'orange', icon: <BarChartOutlined /> },
@@ -82,13 +84,16 @@ export default function ArtifactDetailPage() {
   const setPendingAgent = useUIStore((s) => s.setPendingAgent);
   const setPendingTrigger = useUIStore((s) => s.setPendingTrigger);
 
-  const { data: artifact, isLoading } = useQuery({
+  // Session-saved artifacts live in the store; fixtures are fetched. Store wins.
+  const generated = useKnowledgeStore((s) => s.generatedArtifacts.find((a) => a.id === artifactId));
+  const { data: fixtureArtifact, isLoading } = useQuery({
     queryKey: ['artifact', artifactId],
     queryFn: () => getArtifactById(artifactId!),
-    enabled: !!artifactId,
+    enabled: !!artifactId && !generated,
   });
+  const artifact = generated ?? fixtureArtifact;
 
-  if (isLoading) {
+  if (isLoading && !generated) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}>
         <Spin />

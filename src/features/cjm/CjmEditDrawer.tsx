@@ -30,6 +30,7 @@ const NODE_TYPE_LABELS: Record<string, string> = {
 };
 
 const ARTIFACT_TYPE_LABELS: Record<ArtifactType, string> = {
+  note:     'Заметка',
   survey:   'Опрос',
   research: 'Исследование',
   analysis: 'Анализ',
