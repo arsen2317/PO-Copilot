@@ -267,24 +267,28 @@ export default function TaskDetailPage() {
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {task.artifacts!.map((a, i) => {
-                        const iconMap = { pr: '⎇', figma: '◈', confluence: '📄', metric: '📊' } as const;
-                        return (
-                          <a
-                            key={i}
-                            href={a.url}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              padding: '5px 10px',
-                              border: BDR,
-                              borderRadius: 6,
-                              fontSize: 12,
-                              color: token.colorText,
-                              textDecoration: 'none',
-                              background: '#1e1f22',
-                            }}
-                          >
+                        const iconMap = { pr: '⎇', figma: '◈', confluence: '📄', metric: '📊', knowledge: '📘' } as const;
+                        const isInternal = a.url.startsWith('/');
+                        const chipStyle: React.CSSProperties = {
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '5px 10px',
+                          border: BDR,
+                          borderRadius: 6,
+                          fontSize: 12,
+                          color: token.colorText,
+                          textDecoration: 'none',
+                          background: '#1e1f22',
+                          cursor: 'pointer',
+                        };
+                        return isInternal ? (
+                          <span key={i} onClick={() => void navigate(a.url)} style={chipStyle}>
+                            <span>{iconMap[a.type]}</span>
+                            {a.title}
+                          </span>
+                        ) : (
+                          <a key={i} href={a.url} style={chipStyle}>
                             <span>{iconMap[a.type]}</span>
                             {a.title}
                           </a>

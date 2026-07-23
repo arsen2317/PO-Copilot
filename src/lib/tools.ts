@@ -75,6 +75,13 @@ export const TOOL_DEFINITIONS = [
         labels: { type: 'array', items: { type: 'string' }, description: 'Метки (теги)' },
         criteria: { type: 'array', items: { type: 'string' }, description: 'Критерии приёмки (5-8 штук, конкретные и проверяемые)' },
         complianceNotes: { type: 'string', description: 'Комплаенс-заметки или требования (необязательно)' },
+        linkedArtifactIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'ID артефактов Базы знаний (из get_knowledge_artifacts или из save_artifact в этом диалоге), которые нужно привязать к задаче. ' +
+            'Если задача создаётся на основе брифа/исследования/заметки — ОБЯЗАТЕЛЬНО привяжи этот артефакт, не спрашивая пользователя.',
+        },
       },
       required: ['title', 'type', 'priority', 'criteria'],
     },
@@ -410,6 +417,17 @@ export async function executeTool(
       return getAgents();
 
     case 'create_task_draft': {
+      // Resolve linked knowledge-artifact ids → {id, title} (fixtures + session-saved)
+      let linkedArtifacts: { id: string; title: string }[] = [];
+      if (Array.isArray(input.linkedArtifactIds) && input.linkedArtifactIds.length > 0) {
+        const ids = (input.linkedArtifactIds as unknown[]).map(String);
+        const all = [...useKnowledgeStore.getState().generatedArtifacts, ...(await getArtifacts())];
+        linkedArtifacts = ids
+          .map((aid) => all.find((a) => a.id === aid))
+          .filter((a): a is NonNullable<typeof a> => !!a)
+          .map((a) => ({ id: a.id, title: a.title }));
+      }
+
       const draft: Parameters<ReturnType<typeof useUIStore.getState>['addTaskDraft']>[0] = {
         title: String(input.title ?? ''),
         type: (['Story', 'Bug', 'Task', 'Spike'].includes(String(input.type)) ? input.type : 'Task') as 'Story' | 'Bug' | 'Task' | 'Spike',
@@ -420,9 +438,16 @@ export async function executeTool(
         ...(typeof input.complianceNotes === 'string' && { complianceNotes: input.complianceNotes }),
         labels: Array.isArray(input.labels) ? (input.labels as string[]) : [],
         criteria: Array.isArray(input.criteria) ? (input.criteria as string[]) : [],
+        ...(linkedArtifacts.length > 0 && { linkedArtifacts }),
       };
       const draftId = useUIStore.getState().addTaskDraft(draft);
-      return { success: true, draftId, title: draft.title, message: `Черновик «${draft.title}» создан.` };
+      return {
+        success: true,
+        draftId,
+        title: draft.title,
+        linkedArtifacts,
+        message: `Черновик «${draft.title}» создан${linkedArtifacts.length > 0 ? ` (привязано артефактов: ${linkedArtifacts.length})` : ''}.`,
+      };
     }
 
     case 'search_web': {

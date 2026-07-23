@@ -73,8 +73,9 @@ export interface ComplianceCheck {
 }
 
 export interface TaskArtifact {
-  type: 'pr' | 'figma' | 'confluence' | 'metric';
+  type: 'pr' | 'figma' | 'confluence' | 'metric' | 'knowledge';
   title: string;
+  // For type 'knowledge' this is an internal route (/knowledge/:id) — render as in-app navigation.
   url: string;
 }
 
@@ -128,6 +129,8 @@ export interface TaskDraft {
   labels?: string[];
   criteria: string[];
   complianceNotes?: string;
+  // Knowledge-base artifacts linked to this draft (e.g. the research brief it came from)
+  linkedArtifacts?: { id: string; title: string }[];
   createdAt: number;
 }
 

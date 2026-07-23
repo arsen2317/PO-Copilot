@@ -6,6 +6,7 @@ import {
 import {
   AppstoreOutlined,
   BarsOutlined,
+  BookOutlined,
   CheckOutlined,
   ClockCircleOutlined,
   CloseOutlined,
@@ -490,6 +491,7 @@ function BacklogView({ tasks, isLoading, bdr }: { tasks: Task[]; isLoading: bool
 
 function DraftsView({ bdr, highlightId }: { bdr: string; highlightId?: string }) {
   const { token } = useToken();
+  const navigate = useNavigate();
   const drafts = useUIStore((s) => s.taskDrafts);
   const removeTaskDraft = useUIStore((s) => s.removeTaskDraft);
   const highlightRef = useRef<HTMLDivElement | null>(null);
@@ -591,6 +593,32 @@ function DraftsView({ bdr, highlightId }: { bdr: string; highlightId?: string })
             <div style={{ marginTop: 10, padding: '8px 12px', background: `${token.colorWarning}18`, border: `1px solid ${token.colorWarning}40`, borderRadius: 6, fontSize: 12, color: token.colorText }}>
               <span style={{ fontWeight: 600, color: token.colorWarning }}>Compliance: </span>
               {draft.complianceNotes}
+            </div>
+          )}
+
+          {/* Linked knowledge artifacts */}
+          {(draft.linkedArtifacts ?? []).length > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: token.colorTextTertiary, textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>
+                Связанные артефакты
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {draft.linkedArtifacts!.map((a) => (
+                  <span
+                    key={a.id}
+                    onClick={() => void navigate(`/knowledge/${a.id}`)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '4px 10px', border: bdr, borderRadius: 6,
+                      fontSize: 12, color: token.colorPrimary, cursor: 'pointer',
+                      background: '#1e1f22',
+                    }}
+                  >
+                    <BookOutlined style={{ fontSize: 12 }} />
+                    {a.title}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>
