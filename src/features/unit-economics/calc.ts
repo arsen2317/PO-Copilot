@@ -91,7 +91,18 @@ export function calculate(p: CalcParams): CalcResult {
 
   const ltvCac = p.cac > 0 ? ltv / p.cac : null;
 
-  const displayHorizon = Math.min(horizon, 48);
+  // Chart horizon: extend the X axis so the break-even crossing (or, if it never crosses,
+  // the plateau) is actually visible — instead of cutting the curve off at 1/churn mid-rise.
+  const HARD_CAP = 60;
+  let cumulative = -p.cac;
+  let crossMonth = -1;
+  for (let t = 1; t <= 120; t++) {
+    cumulative += cm * Math.pow(retention, t - 1);
+    if (cumulative >= 0) { crossMonth = t; break; }
+  }
+  const displayHorizon = crossMonth > 0
+    ? Math.min(Math.max(Math.ceil(crossMonth * 1.2), 12), HARD_CAP) // show the crossing + ~20% margin
+    : Math.min(Math.max(horizon, 12), 48);                          // never crosses — show the plateau
   const paybackCurve: Array<{ month: number; value: number }> = [
     { month: 0, value: -p.cac },
   ];
