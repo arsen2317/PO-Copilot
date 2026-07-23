@@ -9,6 +9,7 @@ import {
   useNodesState,
   useEdgesState,
   useViewport,
+  useNodes,
   type Node,
   type Edge,
   type NodeMouseHandler,
@@ -26,8 +27,8 @@ import EmotionNode from './nodes/EmotionNode';
 import PainNode from './nodes/PainNode';
 import OpportunityNode from './nodes/OpportunityNode';
 import CjmEditDrawer, { AddStageDrawer } from './CjmEditDrawer';
-import { ROW_LABELS, buildStageNodes } from './cjmLayout';
-import type { CjmStatus, CjmFlowNode, CjmFlowEdge, CjmNodeData } from '../../data/types';
+import { buildStageNodes } from './cjmLayout';
+import type { CjmStatus, CjmFlowNode, CjmFlowEdge, CjmNodeData, CjmNodeType } from '../../data/types';
 
 const { Title, Text } = Typography;
 
@@ -52,9 +53,29 @@ const STATUS_COLORS: Record<CjmStatus, 'success' | 'processing' | 'default'> = {
   archived: 'default',
 };
 
-// ── Row labels overlay — tracks the flow's pan/zoom so labels stay pinned to their row ──
+const ROW_ORDER: { type: CjmNodeType; label: string }[] = [
+  { type: 'stage',       label: 'Этап' },
+  { type: 'touchpoint',  label: 'Touchpoint' },
+  { type: 'emotion',     label: 'Мысли / эмоции' },
+  { type: 'pain',        label: 'Боли' },
+  { type: 'opportunity', label: 'Возможности' },
+];
+
+// ── Row labels overlay — each label sits ABOVE its row, left-aligned to the leftmost card.
+//    Anchored to live node positions (not a fixed ROW_Y constant), so labels stay aligned
+//    for both fixture maps and AI-generated maps regardless of their row spacing, and track pan/zoom.
 function RowLabelsOverlay({ color }: { color: string }) {
   const viewport = useViewport();
+  const nodes = useNodes();
+
+  const rows = ROW_ORDER.map(({ type, label }) => {
+    const typeNodes = nodes.filter((n) => n.type === type);
+    if (typeNodes.length === 0) return null;
+    const x = Math.min(...typeNodes.map((n) => n.position.x));
+    const y = Math.min(...typeNodes.map((n) => n.position.y));
+    return { label, x, y };
+  }).filter((r): r is { label: string; x: number; y: number } => r !== null);
+
   return (
     <div
       style={{
@@ -62,17 +83,17 @@ function RowLabelsOverlay({ color }: { color: string }) {
         pointerEvents: 'none', zIndex: 5, overflow: 'hidden',
       }}
     >
-      {ROW_LABELS.map(({ label, x, y }) => (
+      {rows.map(({ label, x, y }) => (
         <div
           key={label}
           style={{
             position: 'absolute',
             left: viewport.x + x * viewport.zoom,
-            top: viewport.y + y * viewport.zoom,
+            top: viewport.y + y * viewport.zoom - 6,
+            transform: 'translateY(-100%)',
             fontSize: 9, fontWeight: 600,
             textTransform: 'uppercase', letterSpacing: '0.5px',
             color, whiteSpace: 'nowrap',
-            transform: 'translateY(-50%)',
           }}
         >
           {label}

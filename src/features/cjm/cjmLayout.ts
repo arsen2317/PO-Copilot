@@ -15,20 +15,8 @@ export const ROW_Y: Record<CjmNodeType, number> = {
   opportunity: 860,
 };
 
-// Vertical offset from a row's node y to its row-label y (label sits above the node top).
-const LABEL_OFFSET = 16;
-
-// Flow-space X for every row label — a fixed point just left of column 0 (nodes start at x=0),
-// anchored in canvas coordinates like a Figma section chip, not clamped to the viewport edge.
-export const LABEL_X = -50;
-
-export const ROW_LABELS: { label: string; x: number; y: number }[] = [
-  { label: 'Этап',           x: LABEL_X, y: ROW_Y.stage       + LABEL_OFFSET },
-  { label: 'Touchpoint',     x: LABEL_X, y: ROW_Y.touchpoint  + LABEL_OFFSET },
-  { label: 'Мысли / эмоции', x: LABEL_X, y: ROW_Y.emotion     + LABEL_OFFSET },
-  { label: 'Боли',           x: LABEL_X, y: ROW_Y.pain        + LABEL_OFFSET },
-  { label: 'Возможности',    x: LABEL_X, y: ROW_Y.opportunity + LABEL_OFFSET },
-];
+// Row labels are rendered in CjmCanvasPage (RowLabelsOverlay), anchored to live node
+// positions rather than a fixed constant — so they stay aligned regardless of row spacing.
 
 // Max rendered node height: rows are 200px apart at the tightest gap (stage → touchpoint),
 // keep every node under this so long AI-generated text never overlaps the next row.
