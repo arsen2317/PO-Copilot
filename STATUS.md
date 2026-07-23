@@ -101,7 +101,7 @@
   - Подробная история обсуждения и отвергнутые варианты — в `agent-architecture-notes.txt` (не читается при старте сессии).
 
 ### B. Мёртвый код
-- [ ] **B1. Наследие Vercel** — VPS запускает `scripts/dev-api-server.ts` (подтверждено `scripts/start-api.sh`). Мертвы: `api/chat.ts`, `api/auth.ts`, `api/search.ts` (Vercel edge-функции, дублируют логику), `vercel.json`, devDependency `vercel`. ⚠️ `api/_lib/token.ts` — ЖИВОЙ (импортируется в `dev-api-server.ts`), не удалять. Опасность дубля: `ALLOWED_MODELS` прописан в двух местах (`dev-api-server.ts:68` и `api/chat.ts:5`) и может разъехаться.
+- ⛔ **B1. Наследие Vercel — НЕ УДАЛЯТЬ (решение 2026-07-23).** `api/chat.ts`, `api/auth.ts`, `api/search.ts`, `vercel.json`, devDep `vercel` — это **живой запасной канал деплоя** на случай проблем с доступом к ИИ-модели с российского VPS. Пути осознанно разные: `api/chat.ts` бьёт в Anthropic напрямую (Vercel вне РФ), `dev-api-server.ts` — через Cloudflare-прокси (VPS в РФ). ⚠️ Следствие: серверные ИИ-правки (C2 модели, A1 кэш) надо ЗЕРКАЛИТЬ в оба файла (`dev-api-server.ts` и `api/chat.ts`), иначе запасной путь отстанет. Рекомендация: общее (напр. `ALLOWED_MODELS`) вынести в один общий модуль, импортируемый обоими, чтобы не разъезжалось. Клиентские правки (A3/A4) общие автоматически.
 - [ ] **B2.** `ToolResultBlock` (`claude.ts:20`) — интерфейс объявлен, нигде не используется.
 
 ### C. Баги / некорректность
