@@ -65,7 +65,7 @@ app.post('/api/chat', async (req, res) => {
     return;
   }
 
-  const ALLOWED_MODELS = ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6'];
+  const ALLOWED_MODELS = ['claude-haiku-4-5-20251001'];
   const { messages, system, tools, model: reqModel } = req.body as {
     messages: Anthropic.MessageParam[];
     system?: string;

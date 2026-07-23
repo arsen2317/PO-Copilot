@@ -2,7 +2,7 @@ import { verifyToken } from './_lib/token';
 
 export const config = { runtime: 'edge' };
 
-const ALLOWED_MODELS = ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6'];
+const ALLOWED_MODELS = ['claude-haiku-4-5-20251001'];
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
 export default async function handler(req: Request): Promise<Response> {

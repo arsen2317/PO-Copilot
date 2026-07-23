@@ -324,7 +324,7 @@ export async function executeTool(
         });
       });
 
-      const today = '2026-07-02';
+      const today = new Date().toISOString().split('T')[0] ?? new Date().toLocaleDateString('ru-RU');
 
       return {
         epics: relevantEpics.map((e) => ({
