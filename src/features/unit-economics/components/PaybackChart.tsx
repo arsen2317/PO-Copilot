@@ -21,18 +21,31 @@ function PaybackChart({ data, size }: PaybackChartProps) {
   const values = data.map((d) => d.value);
   const dataMin = Math.min(...values);
   const dataMax = Math.max(...values);
-  // Y domain anchored to CM-independent references so the plot doesn't rescale to itself
-  // (otherwise a curve that only differs by a CM factor — e.g. when interchange changes —
-  // looks identical). Bottom = -CAC (the acquisition hole, where the curve always starts);
-  // top = 0 (break-even target). Expand either bound only if the curve actually exceeds it,
-  // so we never waste half the plot yet still show the effect of input changes.
-  // data[0].value is always -CAC, so CAC is derivable without an extra prop.
-  const cac = -data[0]!.value;
-  const domainMin = Math.min(-(Math.abs(cac) || 1), dataMin);
-  const domainMax = Math.max(0, dataMax);
-  const pad = (domainMax - domainMin) * 0.08 || 1;
-  const minV = domainMin - pad;
-  const maxV = domainMax + pad;
+  const cac = -data[0]!.value; // data[0] is always {month:0, value:-CAC}
+  const curveSpan = dataMax - dataMin;
+
+  // Y domain (B+): the curve should fill most of the plot AND still react to input changes
+  // AND show break-even (0) when it's reasonably in view.
+  // - bottom = the curve's start (-CAC for profitable cards, lower for loss-making ones);
+  // - top aims at 0 (break-even), but the empty space above the curve is capped at
+  //   HEADROOM×(curve span) so a weak-margin curve never collapses into a thin sliver.
+  // When 0 ends up above the domain (curve far below break-even), the top y-axis label is
+  // negative, which itself signals "not yet paid back".
+  let minV: number;
+  let maxV: number;
+  if (curveSpan < 1) {
+    // ~flat curve (CM ≈ 0): show a CAC-scaled window around it instead of a bare line.
+    const half = (Math.abs(cac) || 1) * 0.6;
+    minV = dataMin - half;
+    maxV = dataMin + half;
+  } else {
+    const HEADROOM = 0.35;
+    const lo = dataMin;
+    const hi = Math.min(Math.max(0, dataMax), dataMax + curveSpan * HEADROOM);
+    const pad = (hi - lo) * 0.06;
+    minV = lo - pad;
+    maxV = hi + pad;
+  }
   const range = maxV - minV || 1;
 
   const toX = (m: number) => (m / (data.length - 1)) * cw;
