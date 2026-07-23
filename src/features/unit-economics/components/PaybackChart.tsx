@@ -29,21 +29,37 @@ function PaybackChart({ data, size }: PaybackChartProps) {
   const zeroY = toY(0);
   const zeroInRange = minV < 0 && maxV > 0;
 
-  // Find payback month index (first positive)
+  // Payback crossing — interpolate the exact month where the cumulative flow hits zero,
+  // instead of snapping to the first data point that is already positive.
   const paybackIdx = data.findIndex((d) => d.value >= 0);
+  const crossMonth =
+    paybackIdx > 0
+      ? (() => {
+          const prev = data[paybackIdx - 1]!;
+          const cur = data[paybackIdx]!;
+          const denom = cur.value - prev.value;
+          const frac = denom !== 0 ? (0 - prev.value) / denom : 0;
+          return prev.month + frac * (cur.month - prev.month);
+        })()
+      : null;
 
   // Build polyline points
   const pts = data.map((d) => `${toX(d.month)},${toY(d.value)}`).join(' ');
 
-  // Gradient area path (above zero)
-  const areaPath =
-    data.map((d, i) => {
-      const x = toX(d.month);
-      const y = toY(Math.max(d.value, 0));
-      return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
-    }).join(' ') +
-    ` L ${toX(data[data.length - 1]!.month)} ${zeroInRange ? zeroY : ch}` +
-    ` L ${toX(data[0]!.month)} ${zeroInRange ? zeroY : ch} Z`;
+  const firstX = toX(data[0]!.month);
+  const lastX = toX(data[data.length - 1]!.month);
+
+  // Positive area (blue) — between the curve and the zero line, only where value > 0.
+  // Bottom edge is always the zero line, so an all-negative curve yields an empty area
+  // (previously it filled down to the chart bottom and flooded the whole plot).
+  const posArea =
+    data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(d.month)} ${toY(Math.max(d.value, 0))}`).join(' ') +
+    ` L ${lastX} ${zeroY} L ${firstX} ${zeroY} Z`;
+
+  // Negative area (red) — between the zero line and the curve, only where value < 0.
+  const negArea =
+    data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(d.month)} ${toY(Math.min(d.value, 0))}`).join(' ') +
+    ` L ${lastX} ${zeroY} L ${firstX} ${zeroY} Z`;
 
   // Y-axis labels: pick ~5 nice values
   const yStep = range / 4;
@@ -87,7 +103,11 @@ function PaybackChart({ data, size }: PaybackChartProps) {
                 x={-8} y={y} textAnchor="end" dominantBaseline="middle"
                 fill="rgba(255,255,255,0.38)" fontSize={10} fontFamily="Inter,sans-serif"
               >
-                {Math.abs(v) >= 1000 ? `${fmt(v / 1000, 0)}k` : fmt(v, 0)}
+                {Math.abs(v) >= 10000
+                  ? `${fmt(v / 1000, 0)}k`
+                  : Math.abs(v) >= 1000
+                    ? `${fmt(v / 1000, 1)}k`
+                    : fmt(Math.round(v), 0)}
               </text>
             </g>
           );
@@ -101,26 +121,9 @@ function PaybackChart({ data, size }: PaybackChartProps) {
           />
         )}
 
-        {/* Area fill (positive part) */}
-        <path d={areaPath} fill="url(#ue-area-grad)" clipPath="url(#ue-clip)" />
-
-        {/* Negative area */}
-        {zeroInRange && (
-          <path
-            d={
-              data.map((d, i) => {
-                const x = toX(d.month);
-                const y = toY(Math.min(d.value, 0));
-                return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
-              }).join(' ') +
-              ` L ${toX(data[data.length - 1]!.month)} ${zeroY}` +
-              ` L ${toX(data[0]!.month)} ${zeroY} Z`
-            }
-            fill={dangerColor}
-            fillOpacity={0.08}
-            clipPath="url(#ue-clip)"
-          />
-        )}
+        {/* Area fills — both bounded by the zero line, clipped to the plot rect */}
+        <path d={posArea} fill="url(#ue-area-grad)" clipPath="url(#ue-clip)" />
+        <path d={negArea} fill={dangerColor} fillOpacity={0.08} clipPath="url(#ue-clip)" />
 
         {/* Line */}
         <polyline
@@ -132,33 +135,33 @@ function PaybackChart({ data, size }: PaybackChartProps) {
           clipPath="url(#ue-clip)"
         />
 
-        {/* Payback marker */}
-        {paybackIdx > 0 && paybackIdx < data.length && (
+        {/* Payback marker — sits on the exact zero crossing (interpolated) */}
+        {crossMonth !== null && (
           <g>
             <line
-              x1={toX(data[paybackIdx]!.month)} y1={0}
-              x2={toX(data[paybackIdx]!.month)} y2={ch}
+              x1={toX(crossMonth)} y1={0}
+              x2={toX(crossMonth)} y2={ch}
               stroke={token.colorSuccess}
               strokeWidth={1.5}
               strokeDasharray="4 3"
             />
             <circle
-              cx={toX(data[paybackIdx]!.month)}
-              cy={toY(data[paybackIdx]!.value)}
+              cx={toX(crossMonth)}
+              cy={toY(0)}
               r={5}
               fill={token.colorSuccess}
               stroke={token.colorBgContainer}
               strokeWidth={2}
             />
             <text
-              x={toX(data[paybackIdx]!.month) + 8}
-              y={Math.max(toY(data[paybackIdx]!.value) - 8, 12)}
+              x={toX(crossMonth) + 8}
+              y={Math.max(toY(0) - 8, 12)}
               fill={token.colorSuccess}
               fontSize={10}
               fontFamily="Inter,sans-serif"
               fontWeight={600}
             >
-              {data[paybackIdx]!.month} мес.
+              {Math.round(crossMonth)} мес.
             </text>
           </g>
         )}
