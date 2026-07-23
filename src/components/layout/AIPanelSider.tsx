@@ -649,6 +649,25 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
             h4: ({ children }) => (
               <div style={{ fontWeight: 600, fontSize: 13, color: TEXT_PRIMARY, margin: '6px 0 3px' }}>{children}</div>
             ),
+            a: ({ href, children }) => {
+              const url = String(href ?? '');
+              // Internal app routes → in-app navigation (no full reload); external → new tab.
+              if (url.startsWith('/')) {
+                return (
+                  <span
+                    onClick={() => onMetricClick(`__nav__${url}`)}
+                    style={{ color: ACCENT, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}
+                  >
+                    {children}
+                  </span>
+                );
+              }
+              return (
+                <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: ACCENT }}>
+                  {children}
+                </a>
+              );
+            },
             code: ({ children, className }) => {
               const isBlock = className?.startsWith('language-');
               if (isBlock) {
@@ -749,6 +768,35 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                         <div style={{ fontSize: 11, color: '#2dd4bf', marginTop: 2 }}>CJM создан · Нажмите чтобы открыть</div>
                       </div>
                       <span style={{ fontSize: 12, color: '#2dd4bf', flexShrink: 0 }}>Открыть →</span>
+                    </div>
+                  );
+                }
+
+                // Saved knowledge artifact — navigable card
+                if (className === 'language-artifact-result') {
+                  let parsed: { id: string; title: string } | null = null;
+                  try { parsed = JSON.parse(String(children).trim()) as { id: string; title: string }; } catch { /* ignore */ }
+                  if (!parsed) return null;
+                  const { id: artId, title: artTitle } = parsed;
+                  return (
+                    <div
+                      onClick={() => onMetricClick(`__artifact__${artId}`)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '12px 16px', margin: '8px 0',
+                        background: 'rgba(74,130,247,0.08)',
+                        border: '1px solid rgba(74,130,247,0.30)',
+                        borderRadius: 12, cursor: 'pointer', transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(74,130,247,0.16)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(74,130,247,0.08)'; }}
+                    >
+                      <FileTextOutlined style={{ color: ACCENT, fontSize: 18, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{artTitle}</div>
+                        <div style={{ fontSize: 11, color: ACCENT, marginTop: 2 }}>Сохранено в Базу знаний · Нажмите чтобы открыть</div>
+                      </div>
+                      <span style={{ fontSize: 12, color: ACCENT, flexShrink: 0 }}>Открыть →</span>
                     </div>
                   );
                 }
@@ -1186,6 +1234,15 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     if (id.startsWith('__cjm__')) {
       const cjmId = id.slice('__cjm__'.length);
       void navigate(`/cjm/${cjmId}`);
+      return;
+    }
+    if (id.startsWith('__artifact__')) {
+      const artId = id.slice('__artifact__'.length);
+      void navigate(`/knowledge/${artId}`);
+      return;
+    }
+    if (id.startsWith('__nav__')) {
+      void navigate(id.slice('__nav__'.length));
       return;
     }
     if (id.startsWith('funnel:')) {

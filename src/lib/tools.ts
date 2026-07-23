@@ -1,6 +1,6 @@
 import { getMetricDefinitions, getMetricGroupDefs } from '../data/api/metric-definitions';
 import { getFunnelAnalytics } from '../data/api/funnel-analytics';
-import { getTasks, getEpics, getTeams } from '../data/api/tasks';
+import { getTasks, getEpics, getTeams, getEmployees } from '../data/api/tasks';
 import { getAgents } from '../data/api/agents';
 import { getArtifacts } from '../data/api/knowledge';
 import { getCjmList, getCjmById } from '../data/api/cjm';
@@ -253,6 +253,21 @@ export const TOOL_DEFINITIONS = [
       required: ['id'],
     },
   },
+  {
+    name: 'get_navigation',
+    description:
+      'Возвращает карту разделов приложения (маршруты, что где находится) и подсказки «как сделать» (создать CJM, добавить задачу и т.п.). ' +
+      'Вызывай, когда пользователь спрашивает где что находится, как куда попасть или как что-то создать. ' +
+      'В ответе давай кликабельную ссылку на раздел в формате Markdown на внутренний путь, например [Задачи](/tasks).',
+    input_schema: { type: 'object' as const, properties: {}, required: [] },
+  },
+  {
+    name: 'get_team_workload',
+    description:
+      'Возвращает загрузку сотрудников команды: сколько у каждого задач всего/активных/в работе/просроченных, сумму story points и флаг простоя (isIdle). ' +
+      'Используй для поиска бутылочных горлышек, перегруженных и простаивающих сотрудников и рекомендаций по перераспределению задач.',
+    input_schema: { type: 'object' as const, properties: {}, required: [] },
+  },
 ] as const;
 
 export async function executeTool(
@@ -485,6 +500,55 @@ export async function executeTool(
       };
       useKnowledgeStore.getState().addArtifact(artifact);
       return { success: true, id, title: artifact.title };
+    }
+
+    case 'get_navigation': {
+      return {
+        sections: [
+          { label: 'Ассистент', route: '/assistant', about: 'ИИ-помощник: анализ, планирование, генерация' },
+          { label: 'Дашборд', route: '/dashboard', about: 'Виджеты: воронка, NPS, скорость команды, инциденты' },
+          { label: 'Метрики', route: '/metrics', about: 'Ключевые показатели продукта и тренды' },
+          { label: 'Воронка конверсии', route: '/funnel', about: 'Шаги конверсии и падения; «Добавить воронку» — кнопка справа' },
+          { label: 'Unit-экономика', route: '/unit-economics', about: 'Калькулятор прибыльности одной карты: CM, окупаемость, LTV' },
+          { label: 'CJM', route: '/cjm', about: 'Карты пути клиента. Создать: кнопка «Создать CJM с ИИ» или «Добавить»' },
+          { label: 'Задачи', route: '/tasks', about: 'Канбан/Список/Бэклог/Таймлайн/Черновики. Черновик создаёт ассистент (агент «Постановщик задач»)' },
+          { label: 'База знаний', route: '/knowledge', about: 'Артефакты: опросы, исследования, анализы, отчёты, сохранённые заметки' },
+          { label: 'Агенты', route: '/agents', about: 'Готовые агенты и конструктор (/agents/builder)' },
+          { label: 'ИИ-сервисы', route: '/services', about: 'Каталог сторонних ИИ-инструментов' },
+          { label: 'Комнаты', route: '/rooms', about: 'Планирование спринта, ретро, груминг' },
+          { label: 'Уведомления', route: '/notifications', about: 'Лента уведомлений' },
+          { label: 'Профиль', route: '/profile', about: 'Настройки профиля, интеграций, персонализации' },
+        ],
+        howTo: [
+          { task: 'Создать CJM', steps: 'Раздел CJM (/cjm) → «Создать CJM с ИИ», либо попроси меня — я соберу карту' },
+          { task: 'Добавить задачу', steps: 'Задачи (/tasks). Оформить черновик проще через меня — агент «Постановщик задач»' },
+          { task: 'Посчитать unit-экономику', steps: 'Раздел Unit-экономика (/unit-economics), меняй параметры слева' },
+          { task: 'Сохранить заметку в базу знаний', steps: 'Попроси меня «сохрани это в заметку» — я создам артефакт в Базе знаний' },
+        ],
+        linkFormat: 'Давай ссылку на раздел в чат как Markdown-ссылку на внутренний путь, напр. [Задачи](/tasks).',
+      };
+    }
+
+    case 'get_team_workload': {
+      const [tasks, employees] = await Promise.all([getTasks(), getEmployees()]);
+      const today = new Date().toISOString().split('T')[0] ?? '';
+      const activeStatuses = new Set(['todo', 'in_progress', 'review']);
+      return employees.map((e) => {
+        const assigned = tasks.filter((t) => t.assignee?.id === e.id);
+        const active = assigned.filter((t) => activeStatuses.has(t.status));
+        return {
+          id: e.id,
+          name: e.name,
+          role: e.role,
+          department: e.department,
+          totalTasks: assigned.length,
+          activeTasks: active.length,
+          inProgress: assigned.filter((t) => t.status === 'in_progress').length,
+          overdueTasks: assigned.filter((t) => t.deadline && t.deadline < today && t.status !== 'done').length,
+          activeStoryPoints: active.reduce((s, t) => s + (t.storyPoints ?? 0), 0),
+          isIdle: active.length === 0,
+        };
+      });
     }
 
     case 'create_cjm': {
