@@ -21,14 +21,18 @@ function PaybackChart({ data, size }: PaybackChartProps) {
   const values = data.map((d) => d.value);
   const dataMin = Math.min(...values);
   const dataMax = Math.max(...values);
-  // Anchor the Y domain to ±CAC (expanding if the curve exceeds it) instead of auto-fitting
-  // to the curve's own extent. Otherwise the plot rescales to itself and a curve that only
-  // differs by a CM factor (e.g. when interchange changes) looks identical. data[0].value is
-  // always -CAC, so CAC is derivable without an extra prop.
+  // Y domain anchored to CM-independent references so the plot doesn't rescale to itself
+  // (otherwise a curve that only differs by a CM factor — e.g. when interchange changes —
+  // looks identical). Bottom = -CAC (the acquisition hole, where the curve always starts);
+  // top = 0 (break-even target). Expand either bound only if the curve actually exceeds it,
+  // so we never waste half the plot yet still show the effect of input changes.
+  // data[0].value is always -CAC, so CAC is derivable without an extra prop.
   const cac = -data[0]!.value;
-  const anchor = Math.abs(cac) || 1;
-  const minV = Math.min(-anchor, dataMin);
-  const maxV = Math.max(anchor, dataMax);
+  const domainMin = Math.min(-(Math.abs(cac) || 1), dataMin);
+  const domainMax = Math.max(0, dataMax);
+  const pad = (domainMax - domainMin) * 0.08 || 1;
+  const minV = domainMin - pad;
+  const maxV = domainMax + pad;
   const range = maxV - minV || 1;
 
   const toX = (m: number) => (m / (data.length - 1)) * cw;
