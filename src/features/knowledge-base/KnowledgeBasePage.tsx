@@ -7,11 +7,13 @@ import {
 } from '@ant-design/icons';
 import { theme } from 'antd';
 import { getArtifacts } from '../../data/api/knowledge';
+import { useKnowledgeStore } from '../../store/knowledgeStore';
 import type { ArtifactType } from '../../data/types';
 
 const { Title, Text } = Typography;
 
 const ARTIFACT_TYPE_CONFIG: Record<ArtifactType, { label: string; color: string; icon: React.ReactNode }> = {
+  note:     { label: 'Заметка',      color: 'cyan',   icon: <FileTextOutlined /> },
   survey:   { label: 'Опрос',        color: 'blue',   icon: <SearchOutlined /> },
   research: { label: 'Исследование', color: 'purple', icon: <ExperimentOutlined /> },
   analysis: { label: 'Анализ',       color: 'orange', icon: <BarChartOutlined /> },
@@ -20,6 +22,7 @@ const ARTIFACT_TYPE_CONFIG: Record<ArtifactType, { label: string; color: string;
 
 const TYPE_OPTIONS = [
   { value: 'all', label: 'Все типы' },
+  { value: 'note',     label: 'Заметка' },
   { value: 'survey',   label: 'Опрос' },
   { value: 'research', label: 'Исследование' },
   { value: 'analysis', label: 'Анализ' },
@@ -37,7 +40,11 @@ export default function KnowledgeBasePage() {
     queryFn: getArtifacts,
   });
 
-  const filtered = artifacts.filter((a) => {
+  // Session-saved artifacts (created by the assistant) shown alongside fixtures.
+  const generated = useKnowledgeStore((s) => s.generatedArtifacts);
+  const allArtifacts = [...generated, ...artifacts];
+
+  const filtered = allArtifacts.filter((a) => {
     const matchType = filterType === 'all' || a.type === filterType;
     const q = search.toLowerCase();
     const matchSearch = !q

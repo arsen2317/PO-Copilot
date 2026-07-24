@@ -1,14 +1,15 @@
 import { getMetricDefinitions, getMetricGroupDefs } from '../data/api/metric-definitions';
 import { getFunnelAnalytics } from '../data/api/funnel-analytics';
-import { getTasks, getEpics, getTeams } from '../data/api/tasks';
+import { getTasks, getEpics, getTeams, getEmployees } from '../data/api/tasks';
 import { getAgents } from '../data/api/agents';
 import { getArtifacts } from '../data/api/knowledge';
 import { getCjmList, getCjmById } from '../data/api/cjm';
 import { getToken } from '../features/auth/auth';
 import { useUIStore } from '../store/uiStore';
 import { useCjmStore } from '../store/cjmStore';
+import { useKnowledgeStore } from '../store/knowledgeStore';
 import { buildCjmFromTemplate, type CjmStageInput } from '../features/cjm/cjmLayout';
-import type { CjmMap, CjmNodeData, CjmStatus } from '../data/types';
+import type { CjmMap, CjmNodeData, CjmStatus, KnowledgeArtifact, ArtifactType } from '../data/types';
 
 export const TOOL_DEFINITIONS = [
   {
@@ -74,6 +75,13 @@ export const TOOL_DEFINITIONS = [
         labels: { type: 'array', items: { type: 'string' }, description: 'Метки (теги)' },
         criteria: { type: 'array', items: { type: 'string' }, description: 'Критерии приёмки (5-8 штук, конкретные и проверяемые)' },
         complianceNotes: { type: 'string', description: 'Комплаенс-заметки или требования (необязательно)' },
+        linkedArtifactIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'ID артефактов Базы знаний (из get_knowledge_artifacts или из save_artifact в этом диалоге), которые нужно привязать к задаче. ' +
+            'Если задача создаётся на основе брифа/исследования/заметки — ОБЯЗАТЕЛЬНО привяжи этот артефакт, не спрашивая пользователя.',
+        },
       },
       required: ['title', 'type', 'priority', 'criteria'],
     },
@@ -107,8 +115,31 @@ export const TOOL_DEFINITIONS = [
   },
   {
     name: 'get_knowledge_artifacts',
-    description: 'Возвращает артефакты из базы знаний: опросы пользователей, UX-исследования, анализы оттока, NPS-отчёты — с полными данными и инсайтами. Используй для обогащения CJM реальными болями и данными.',
+    description: 'Возвращает артефакты из базы знаний: опросы пользователей, UX-исследования, анализы оттока, NPS-отчёты, а также сохранённые заметки — с полными данными и инсайтами. Используй для обогащения CJM реальными болями и данными.',
     input_schema: { type: 'object' as const, properties: {}, required: [] },
+  },
+  {
+    name: 'save_artifact',
+    description:
+      'Сохраняет артефакт в раздел «База знаний»: заметку с саммари обсуждения, бриф на исследование, ключевые выводы, отчёт. ' +
+      'Используй, когда пользователь просит сохранить обсуждённое «в заметку»/«в базу знаний», сохранить созданный бриф или выводы. ' +
+      'Перед сохранением коротко покажи, что именно сохранишь. После успешного вызова ОБЯЗАТЕЛЬНО выведи блок artifact-result со ссылкой на артефакт.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string', description: 'Короткий заголовок артефакта (до 80 символов)' },
+        type: {
+          type: 'string',
+          enum: ['note', 'research', 'analysis', 'report', 'survey'],
+          description: 'note=заметка/саммари, research=бриф/исследование, analysis=анализ, report=отчёт, survey=опрос. По умолчанию note.',
+        },
+        description: {
+          type: 'string',
+          description: 'Содержание артефакта в Markdown. Подзаголовки — строкой **жирным**, списки — через «- », цитаты — через «> ». Структурно и по делу.',
+        },
+      },
+      required: ['title', 'description'],
+    },
   },
   {
     name: 'create_cjm',
@@ -229,6 +260,21 @@ export const TOOL_DEFINITIONS = [
       required: ['id'],
     },
   },
+  {
+    name: 'get_navigation',
+    description:
+      'Возвращает карту разделов приложения (маршруты, что где находится) и подсказки «как сделать» (создать CJM, добавить задачу и т.п.). ' +
+      'Вызывай, когда пользователь спрашивает где что находится, как куда попасть или как что-то создать. ' +
+      'В ответе давай кликабельную ссылку на раздел в формате Markdown на внутренний путь, например [Задачи](/tasks).',
+    input_schema: { type: 'object' as const, properties: {}, required: [] },
+  },
+  {
+    name: 'get_team_workload',
+    description:
+      'Возвращает загрузку сотрудников команды: сколько у каждого задач всего/активных/в работе/просроченных, сумму story points и флаг простоя (isIdle). ' +
+      'Используй для поиска бутылочных горлышек, перегруженных и простаивающих сотрудников и рекомендаций по перераспределению задач.',
+    input_schema: { type: 'object' as const, properties: {}, required: [] },
+  },
 ] as const;
 
 export async function executeTool(
@@ -324,7 +370,7 @@ export async function executeTool(
         });
       });
 
-      const today = '2026-07-02';
+      const today = new Date().toISOString().split('T')[0] ?? new Date().toLocaleDateString('ru-RU');
 
       return {
         epics: relevantEpics.map((e) => ({
@@ -371,6 +417,17 @@ export async function executeTool(
       return getAgents();
 
     case 'create_task_draft': {
+      // Resolve linked knowledge-artifact ids → {id, title} (fixtures + session-saved)
+      let linkedArtifacts: { id: string; title: string }[] = [];
+      if (Array.isArray(input.linkedArtifactIds) && input.linkedArtifactIds.length > 0) {
+        const ids = (input.linkedArtifactIds as unknown[]).map(String);
+        const all = [...useKnowledgeStore.getState().generatedArtifacts, ...(await getArtifacts())];
+        linkedArtifacts = ids
+          .map((aid) => all.find((a) => a.id === aid))
+          .filter((a): a is NonNullable<typeof a> => !!a)
+          .map((a) => ({ id: a.id, title: a.title }));
+      }
+
       const draft: Parameters<ReturnType<typeof useUIStore.getState>['addTaskDraft']>[0] = {
         title: String(input.title ?? ''),
         type: (['Story', 'Bug', 'Task', 'Spike'].includes(String(input.type)) ? input.type : 'Task') as 'Story' | 'Bug' | 'Task' | 'Spike',
@@ -381,9 +438,16 @@ export async function executeTool(
         ...(typeof input.complianceNotes === 'string' && { complianceNotes: input.complianceNotes }),
         labels: Array.isArray(input.labels) ? (input.labels as string[]) : [],
         criteria: Array.isArray(input.criteria) ? (input.criteria as string[]) : [],
+        ...(linkedArtifacts.length > 0 && { linkedArtifacts }),
       };
       const draftId = useUIStore.getState().addTaskDraft(draft);
-      return { success: true, draftId, title: draft.title, message: `Черновик «${draft.title}» создан.` };
+      return {
+        success: true,
+        draftId,
+        title: draft.title,
+        linkedArtifacts,
+        message: `Черновик «${draft.title}» создан${linkedArtifacts.length > 0 ? ` (привязано артефактов: ${linkedArtifacts.length})` : ''}.`,
+      };
     }
 
     case 'search_web': {
@@ -435,13 +499,81 @@ export async function executeTool(
 
     case 'get_knowledge_artifacts': {
       const artifacts = await getArtifacts();
-      return artifacts.map((a) => ({
+      const generated = useKnowledgeStore.getState().generatedArtifacts;
+      return [...generated, ...artifacts].map((a) => ({
         id: a.id,
         title: a.title,
         type: a.type,
         description: a.description,
         createdAt: a.createdAt,
       }));
+    }
+
+    case 'save_artifact': {
+      const validTypes: ArtifactType[] = ['note', 'survey', 'research', 'analysis', 'report'];
+      const type = validTypes.includes(String(input.type) as ArtifactType)
+        ? (String(input.type) as ArtifactType)
+        : 'note';
+      const id = `art-gen${Date.now().toString(36)}`;
+      const today = new Date().toISOString().split('T')[0] ?? new Date().toLocaleDateString('ru-RU');
+      const artifact: KnowledgeArtifact = {
+        id,
+        type,
+        title: String(input.title ?? 'Заметка'),
+        description: String(input.description ?? ''),
+        createdAt: today,
+      };
+      useKnowledgeStore.getState().addArtifact(artifact);
+      return { success: true, id, title: artifact.title };
+    }
+
+    case 'get_navigation': {
+      return {
+        sections: [
+          { label: 'Ассистент', route: '/assistant', about: 'ИИ-помощник: анализ, планирование, генерация' },
+          { label: 'Дашборд', route: '/dashboard', about: 'Виджеты: воронка, NPS, скорость команды, инциденты' },
+          { label: 'Метрики', route: '/metrics', about: 'Ключевые показатели продукта и тренды' },
+          { label: 'Воронка конверсии', route: '/funnel', about: 'Шаги конверсии и падения; «Добавить воронку» — кнопка справа' },
+          { label: 'Unit-экономика', route: '/unit-economics', about: 'Калькулятор прибыльности одной карты: CM, окупаемость, LTV' },
+          { label: 'CJM', route: '/cjm', about: 'Карты пути клиента. Создать: кнопка «Создать CJM с ИИ» или «Добавить»' },
+          { label: 'Задачи', route: '/tasks', about: 'Канбан/Список/Бэклог/Таймлайн/Черновики. Черновик создаёт ассистент (агент «Постановщик задач»)' },
+          { label: 'База знаний', route: '/knowledge', about: 'Артефакты: опросы, исследования, анализы, отчёты, сохранённые заметки' },
+          { label: 'Агенты', route: '/agents', about: 'Готовые агенты и конструктор (/agents/builder)' },
+          { label: 'ИИ-сервисы', route: '/services', about: 'Каталог сторонних ИИ-инструментов' },
+          { label: 'Комнаты', route: '/rooms', about: 'Планирование спринта, ретро, груминг' },
+          { label: 'Уведомления', route: '/notifications', about: 'Лента уведомлений' },
+          { label: 'Профиль', route: '/profile', about: 'Настройки профиля, интеграций, персонализации' },
+        ],
+        howTo: [
+          { task: 'Создать CJM', steps: 'Раздел CJM (/cjm) → «Создать CJM с ИИ», либо попроси меня — я соберу карту' },
+          { task: 'Добавить задачу', steps: 'Задачи (/tasks). Оформить черновик проще через меня — агент «Постановщик задач»' },
+          { task: 'Посчитать unit-экономику', steps: 'Раздел Unit-экономика (/unit-economics), меняй параметры слева' },
+          { task: 'Сохранить заметку в базу знаний', steps: 'Попроси меня «сохрани это в заметку» — я создам артефакт в Базе знаний' },
+        ],
+        linkFormat: 'Давай ссылку на раздел в чат как Markdown-ссылку на внутренний путь, напр. [Задачи](/tasks).',
+      };
+    }
+
+    case 'get_team_workload': {
+      const [tasks, employees] = await Promise.all([getTasks(), getEmployees()]);
+      const today = new Date().toISOString().split('T')[0] ?? '';
+      const activeStatuses = new Set(['todo', 'in_progress', 'review']);
+      return employees.map((e) => {
+        const assigned = tasks.filter((t) => t.assignee?.id === e.id);
+        const active = assigned.filter((t) => activeStatuses.has(t.status));
+        return {
+          id: e.id,
+          name: e.name,
+          role: e.role,
+          department: e.department,
+          totalTasks: assigned.length,
+          activeTasks: active.length,
+          inProgress: assigned.filter((t) => t.status === 'in_progress').length,
+          overdueTasks: assigned.filter((t) => t.deadline && t.deadline < today && t.status !== 'done').length,
+          activeStoryPoints: active.reduce((s, t) => s + (t.storyPoints ?? 0), 0),
+          isIdle: active.length === 0,
+        };
+      });
     }
 
     case 'create_cjm': {
