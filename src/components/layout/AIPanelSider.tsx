@@ -27,7 +27,6 @@ import {
   CheckSquareOutlined,
   CloseOutlined,
   CodeOutlined,
-  EnterOutlined,
   FileImageOutlined,
   FileTextOutlined,
   FormOutlined,
@@ -46,17 +45,24 @@ import {
   TeamOutlined,
 } from '@ant-design/icons';
 import { Dropdown, Tooltip } from 'antd';
+import { TokenCircleIcon } from '../icons';
 
 // ── Sparkle / AI icon (three 4-pointed stars) ───────────────────────────────
-function SparkleIcon({ size = 20, color = 'currentColor' }: { size?: number; color?: string }) {
+// Clean filled square — universal "stop generation" glyph.
+function StopSquareIcon({ size = 12 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" fill={color} xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
-      {/* large star top-right */}
-      <path d="M14 1.5 L14.65 4.35 L17.5 5 L14.65 5.65 L14 8.5 L13.35 5.65 L10.5 5 L13.35 4.35 Z"/>
-      {/* medium star bottom-left */}
-      <path d="M6.5 10 L7 12 L9 12.5 L7 13 L6.5 15 L6 13 L4 12.5 L6 12 Z"/>
-      {/* small star top-left */}
-      <path d="M5 3 L5.3 4.2 L6.5 4.5 L5.3 4.8 L5 6 L4.7 4.8 L3.5 4.5 L4.7 4.2 Z"/>
+    <svg width={size} height={size} viewBox="0 0 12 12" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+      <rect x="1.5" y="1.5" width="9" height="9" rx="2.5" />
+    </svg>
+  );
+}
+
+// Return / enter arrow (corner-down-left) — send action, same glyph style as Claude's chat.
+function EnterKeyIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+      <polyline points="9 10 4 15 9 20" />
+      <path d="M20 4v7a4 4 0 0 1-4 4H4" />
     </svg>
   );
 }
@@ -1526,7 +1532,11 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     {
       key: 'agents',
       label: 'Агенты',
-      icon: <SparkleIcon size={14} color={TEXT_SECONDARY} />,
+      icon: (
+        <span className="anticon" style={{ color: TEXT_SECONDARY }}>
+          <TokenCircleIcon style={{ fontSize: 15 }} />
+        </span>
+      ),
       children: AGENT_ITEMS,
     },
     {
@@ -1596,7 +1606,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
               height: 28, padding: '0 8px',
               background: '#1C1D1F', borderRadius: 8, marginBottom: 8,
             }}>
-              <SparkleIcon size={14} color={ACCENT} />
+              <TokenCircleIcon style={{ fontSize: 14, color: ACCENT }} />
               <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, whiteSpace: 'nowrap' }}>
                 {AGENTS_DATA.find(a => a.key === selectedAgent)?.label ?? selectedAgent}
               </span>
@@ -1739,7 +1749,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                       transition: 'background 0.15s',
                     }}
                   >
-                    <StopOutlined />
+                    <StopSquareIcon size={11} />
                   </div>
                 </Tooltip>
               ) : canSend ? (
@@ -1749,11 +1759,13 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                     style={{
                       width: 24, height: 24,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', color: ACCENT, fontSize: 14,
-                      transition: 'opacity 0.15s',
+                      cursor: 'pointer', color: TEXT_SECONDARY,
+                      transition: 'color 0.15s',
                     }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.color = TEXT_PRIMARY; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.color = TEXT_SECONDARY; }}
                   >
-                    <EnterOutlined />
+                    <EnterKeyIcon size={15} />
                   </div>
                 </Tooltip>
               ) : null}
@@ -2106,7 +2118,7 @@ export function AIPanelFAB({ onClick }: { onClick: () => void }) {
         style={{ position: 'fixed', bottom: 24, right: 24, width: 48, height: 48, borderRadius: '50%' }}
       >
         <span>
-          <SparkleIcon size={20} color="#fff" />
+          <TokenCircleIcon style={{ fontSize: 20, color: '#fff' }} />
         </span>
       </button>
     </Tooltip>
