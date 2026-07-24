@@ -20,7 +20,6 @@ import type { CjmFlowNode, CjmFlowEdge } from '../../data/types';
 import ScrollArea from '../ScrollArea';
 import {
   ApiOutlined,
-  ArrowUpOutlined,
   AudioOutlined,
   BarChartOutlined,
   BulbOutlined,
@@ -54,6 +53,16 @@ function StopSquareIcon({ size = 12 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 12 12" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
       <rect x="1.5" y="1.5" width="9" height="9" rx="2.5" />
+    </svg>
+  );
+}
+
+// Return / enter arrow (corner-down-left) — send action, same glyph style as Claude's chat.
+function EnterKeyIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+      <polyline points="9 10 4 15 9 20" />
+      <path d="M20 4v7a4 4 0 0 1-4 4H4" />
     </svg>
   );
 }
@@ -1523,7 +1532,11 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     {
       key: 'agents',
       label: 'Агенты',
-      icon: <TokenCircleIcon style={{ fontSize: 14, color: TEXT_SECONDARY }} />,
+      icon: (
+        <span className="anticon" style={{ color: TEXT_SECONDARY }}>
+          <TokenCircleIcon style={{ fontSize: 15 }} />
+        </span>
+      ),
       children: AGENT_ITEMS,
     },
     {
@@ -1746,11 +1759,13 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                     style={{
                       width: 24, height: 24,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', color: ACCENT, fontSize: 14,
-                      transition: 'opacity 0.15s',
+                      cursor: 'pointer', color: TEXT_SECONDARY,
+                      transition: 'color 0.15s',
                     }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.color = TEXT_PRIMARY; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.color = TEXT_SECONDARY; }}
                   >
-                    <ArrowUpOutlined />
+                    <EnterKeyIcon size={15} />
                   </div>
                 </Tooltip>
               ) : null}
