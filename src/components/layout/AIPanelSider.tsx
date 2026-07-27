@@ -696,17 +696,21 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                     <div
                       onClick={() => onMetricClick(`__task__${draftId}`)}
                       style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 8,
-                        padding: '8px 14px', margin: '8px 0',
-                        background: 'rgba(74,130,247,0.1)', border: `1px solid rgba(74,130,247,0.35)`,
-                        borderRadius: 10, cursor: 'pointer', transition: 'background 0.15s',
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '12px 16px', margin: '8px 0',
+                        background: 'rgba(74,130,247,0.08)',
+                        border: '1px solid rgba(74,130,247,0.30)',
+                        borderRadius: 12, cursor: 'pointer', transition: 'background 0.15s',
                       }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(74,130,247,0.18)'; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(74,130,247,0.1)'; }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(74,130,247,0.16)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(74,130,247,0.08)'; }}
                     >
-                      <CheckSquareOutlined style={{ color: ACCENT, fontSize: 15 }} />
-                      <span style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 500 }}>{draftTitle}</span>
-                      <span style={{ fontSize: 12, color: ACCENT, marginLeft: 4 }}>Открыть черновик →</span>
+                      <CheckSquareOutlined style={{ color: ACCENT, fontSize: 18, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{draftTitle}</div>
+                        <div style={{ fontSize: 11, color: ACCENT, marginTop: 2 }}>Черновик задачи создан · Нажмите чтобы открыть</div>
+                      </div>
+                      <span style={{ fontSize: 12, color: ACCENT, flexShrink: 0 }}>Открыть →</span>
                     </div>
                   );
                 }
