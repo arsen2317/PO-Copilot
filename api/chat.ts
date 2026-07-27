@@ -76,8 +76,12 @@ export default async function handler(req: Request): Promise<Response> {
         )
       : undefined;
 
-  // Call Anthropic API with streaming, pipe response directly to client
-  const upstream = await fetch(ANTHROPIC_API_URL, {
+  // Call Anthropic API with streaming, pipe response directly to client.
+  // Зеркало устойчивости dev-api-server: транзиентные 429 (rate_limit) / 529 (overloaded)
+  // и 5xx переживаем повтором с экспоненциальным бэкоффом (уважая retry-after), до начала
+  // стрима — иначе под нагрузкой запрос «рандомно» падает к юзеру. SDK здесь нет (raw fetch),
+  // поэтому ретраим вручную.
+  const requestInit: RequestInit = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -92,7 +96,18 @@ export default async function handler(req: Request): Promise<Response> {
       messages: body.messages,
       ...(cachedTools && { tools: cachedTools }),
     }),
-  });
+  };
+  const RETRYABLE = new Set([408, 409, 429, 500, 502, 503, 529]);
+  const MAX_RETRIES = 4;
+  let upstream = await fetch(ANTHROPIC_API_URL, requestInit);
+  for (let attempt = 0; attempt < MAX_RETRIES && RETRYABLE.has(upstream.status); attempt++) {
+    const retryAfter = Number(upstream.headers.get('retry-after'));
+    const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? retryAfter * 1000
+      : Math.min(500 * 2 ** attempt, 8000);
+    await new Promise((r) => setTimeout(r, delayMs));
+    upstream = await fetch(ANTHROPIC_API_URL, requestInit);
+  }
 
   if (!upstream.ok || !upstream.body) {
     const text = await upstream.text().catch(() => 'Unknown error');
