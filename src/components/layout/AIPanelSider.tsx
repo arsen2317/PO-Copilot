@@ -27,7 +27,6 @@ import {
   CalendarOutlined,
   CheckSquareOutlined,
   CloseOutlined,
-  CodeOutlined,
   FileImageOutlined,
   FileTextOutlined,
   FormOutlined,
@@ -1428,7 +1427,9 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       const specBubbleId = `spec-${Date.now()}-${Math.random()}`;
       setMessages((prev) => [...prev, { id: specBubbleId, role: 'assistant', content: '', streaming: true }]);
       let specMessages: { role: 'user' | 'assistant'; content: string | object[] }[] = [{ role: 'user', content: request }];
-      let lastText = '';
+      // Накапливаем текст ПО ВСЕМ раундам (рассуждения до вызова инструмента + финальный
+      // вывод), а не заменяем — иначе «размышления» специалиста стирались карточкой.
+      let accumulated = '';
       // Кап на число раундов — защита от зацикливания вложенного tool-loop.
       for (let round = 0; round < 8; round++) {
         const res = await streamChat({
@@ -1442,11 +1443,12 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
             setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, content: m.content + delta } : m)));
           },
         });
-        lastText = res.blocks
+        const iterText = res.blocks
           .filter((b) => b.type === 'text')
           .map((b) => (b as { type: 'text'; text: string }).text)
           .join('');
-        setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, content: lastText, streaming: res.stopReason === 'tool_use' } : m)));
+        accumulated = accumulated ? (iterText ? `${accumulated}\n\n${iterText}` : accumulated) : iterText;
+        setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, content: accumulated, streaming: res.stopReason === 'tool_use' } : m)));
         if (res.stopReason !== 'tool_use') break;
         const specToolUse = res.blocks.filter((b): b is ToolUseBlock => b.type === 'tool_use');
         specMessages = [...specMessages, { role: 'assistant', content: res.blocks }];
@@ -1680,11 +1682,6 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       icon: <ApiOutlined />,
       children: [{ key: 'connectors-soon', label: 'Скоро', disabled: true }],
     },
-    {
-      key: 'commands',
-      label: 'Команды',
-      icon: <CodeOutlined />,
-    },
   ];
 
   const onDropdownClick = ({ key }: { key: string }) => {
@@ -1814,7 +1811,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           <textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder={isListening ? 'Слушаю...' : 'Напишите сообщение или введите / для команд'}
+            placeholder={isListening ? 'Слушаю...' : 'Задайте вопрос ассистенту...'}
             rows={2}
             onFocus={() => setInputFocused(true)}
             onBlur={() => setInputFocused(false)}
