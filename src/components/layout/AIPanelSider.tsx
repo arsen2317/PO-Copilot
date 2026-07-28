@@ -715,6 +715,53 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                     </div>
                   );
                 }
+                // Choice cards — answers to a question the assistant just asked.
+                // Deterministic render (click = the answer); distinct from next-step suggestions.
+                if (className === 'language-choices') {
+                  const raw = String(children).trim();
+                  let items: string[];
+                  try { items = JSON.parse(raw) as string[]; } catch { items = []; }
+                  if (!items.length) return null;
+                  return (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                      gap: 8, marginTop: 12,
+                    }}>
+                      {items.map((label, i) => (
+                        <button
+                          key={i}
+                          onClick={() => onSend(label)}
+                          style={{
+                            display: 'flex', alignItems: 'flex-start', textAlign: 'left',
+                            width: '100%', height: '100%',
+                            background: 'rgba(74,130,247,0.08)',
+                            border: `1px solid rgba(74,130,247,0.28)`,
+                            borderRadius: 14,
+                            padding: '12px 14px',
+                            fontSize: 13,
+                            color: TEXT_PRIMARY,
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                            transition: 'background 0.15s, border-color 0.15s',
+                            lineHeight: 1.45,
+                            minWidth: 0,
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,130,247,0.16)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(74,130,247,0.5)';
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,130,247,0.08)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(74,130,247,0.28)';
+                          }}
+                        >
+                          <span style={{ minWidth: 0 }}>{label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                }
                 // Suggestion chips — rendered as clickable action chips
                 if (className === 'language-suggestions') {
                   const raw = String(children).trim();
