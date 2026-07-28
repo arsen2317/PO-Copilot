@@ -27,8 +27,8 @@ import {
   CalendarOutlined,
   CheckSquareOutlined,
   CloseOutlined,
-  CodeOutlined,
   FileImageOutlined,
+  ExportOutlined,
   FileTextOutlined,
   FormOutlined,
   HistoryOutlined,
@@ -669,9 +669,40 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                   </span>
                 );
               }
+              // Внешние ссылки — в стиле чипов метрик + иконка внешней ссылки.
               return (
-                <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: ACCENT }}>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={url}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: '#242526',
+                    border: '1px solid #3A3B3D',
+                    borderRadius: 5,
+                    padding: '0px 6px',
+                    fontSize: 12,
+                    color: TEXT_PRIMARY,
+                    lineHeight: '20px',
+                    verticalAlign: 'middle',
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                    transition: 'background 0.15s, border-color 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLAnchorElement).style.background = '#2D2E30';
+                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#4A4B4D';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLAnchorElement).style.background = '#242526';
+                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#3A3B3D';
+                  }}
+                >
                   {children}
+                  <ExportOutlined style={{ fontSize: 11, opacity: 0.7, flexShrink: 0 }} />
                 </a>
               );
             },
@@ -712,6 +743,53 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                         <div style={{ fontSize: 11, color: ACCENT, marginTop: 2 }}>Черновик задачи создан · Нажмите чтобы открыть</div>
                       </div>
                       <span style={{ fontSize: 12, color: ACCENT, flexShrink: 0 }}>→</span>
+                    </div>
+                  );
+                }
+                // Choice cards — answers to a question the assistant just asked.
+                // Deterministic render (click = the answer); distinct from next-step suggestions.
+                if (className === 'language-choices') {
+                  const raw = String(children).trim();
+                  let items: string[];
+                  try { items = JSON.parse(raw) as string[]; } catch { items = []; }
+                  if (!items.length) return null;
+                  return (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                      gap: 8, marginTop: 12,
+                    }}>
+                      {items.map((label, i) => (
+                        <button
+                          key={i}
+                          onClick={() => onSend(label)}
+                          style={{
+                            display: 'flex', alignItems: 'flex-start', textAlign: 'left',
+                            width: '100%', height: '100%',
+                            background: 'rgba(74,130,247,0.08)',
+                            border: `1px solid rgba(74,130,247,0.28)`,
+                            borderRadius: 14,
+                            padding: '12px 14px',
+                            fontSize: 13,
+                            color: TEXT_PRIMARY,
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                            transition: 'background 0.15s, border-color 0.15s',
+                            lineHeight: 1.45,
+                            minWidth: 0,
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,130,247,0.16)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(74,130,247,0.5)';
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,130,247,0.08)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(74,130,247,0.28)';
+                          }}
+                        >
+                          <span style={{ minWidth: 0 }}>{label}</span>
+                        </button>
+                      ))}
                     </div>
                   );
                 }
@@ -1381,7 +1459,9 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       const specBubbleId = `spec-${Date.now()}-${Math.random()}`;
       setMessages((prev) => [...prev, { id: specBubbleId, role: 'assistant', content: '', streaming: true }]);
       let specMessages: { role: 'user' | 'assistant'; content: string | object[] }[] = [{ role: 'user', content: request }];
-      let lastText = '';
+      // Накапливаем текст ПО ВСЕМ раундам (рассуждения до вызова инструмента + финальный
+      // вывод), а не заменяем — иначе «размышления» специалиста стирались карточкой.
+      let accumulated = '';
       // Кап на число раундов — защита от зацикливания вложенного tool-loop.
       for (let round = 0; round < 8; round++) {
         const res = await streamChat({
@@ -1395,11 +1475,12 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
             setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, content: m.content + delta } : m)));
           },
         });
-        lastText = res.blocks
+        const iterText = res.blocks
           .filter((b) => b.type === 'text')
           .map((b) => (b as { type: 'text'; text: string }).text)
           .join('');
-        setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, content: lastText, streaming: res.stopReason === 'tool_use' } : m)));
+        accumulated = accumulated ? (iterText ? `${accumulated}\n\n${iterText}` : accumulated) : iterText;
+        setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, content: accumulated, streaming: res.stopReason === 'tool_use' } : m)));
         if (res.stopReason !== 'tool_use') break;
         const specToolUse = res.blocks.filter((b): b is ToolUseBlock => b.type === 'tool_use');
         specMessages = [...specMessages, { role: 'assistant', content: res.blocks }];
@@ -1467,6 +1548,17 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     let apiMessages: { role: 'user' | 'assistant'; content: string | object[] }[] =
       [...prevMessages, newMsg].map((m) => ({ role: m.role, content: toApiContent(m) }));
 
+    // Детерминированная карточка артефакта: id берём из результата save_artifact, а не
+    // полагаемся на то, что модель верно перепишет его в блок artifact-result (иначе
+    // ссылка ведёт в «артефакт не найден»). Захватываем при вызове инструмента.
+    let savedArtifact: { id: string; title: string } | null = null;
+    const withCorrectArtifactCard = (text: string, art: { id: string; title: string }): string => {
+      const block = '```artifact-result\n' + JSON.stringify({ id: art.id, title: art.title }) + '\n```';
+      const re = /```artifact-result[\s\S]*?```/;
+      if (re.test(text)) return text.replace(re, block);
+      return text.trim() ? `${text.trim()}\n\n${block}` : block;
+    };
+
     try {
       while (true) {
         const assistantId = `ast-${Date.now()}-${Math.random()}`;
@@ -1491,11 +1583,16 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           .map((b) => (b as { type: 'text'; text: string }).text)
           .join('');
 
+        const isFinal = result.stopReason !== 'tool_use';
+        // На финальном ходу, если в этом запросе сохраняли артефакт — гарантируем
+        // корректную карточку (правильный id) даже если модель ошиблась/забыла блок.
+        const finalText = isFinal && savedArtifact ? withCorrectArtifactCard(fullText, savedArtifact) : fullText;
+
         setMessages((prev) => prev.map((m) =>
-          m.id === assistantId ? { ...m, content: fullText, streaming: false } : m,
+          m.id === assistantId ? { ...m, content: finalText, streaming: false } : m,
         ));
 
-        if (result.stopReason !== 'tool_use') break;
+        if (isFinal) break;
 
         const toolUseBlocks = result.blocks.filter((b): b is ToolUseBlock => b.type === 'tool_use');
 
@@ -1509,6 +1606,12 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
         for (const tb of toolUseBlocks) {
           const spec = SPECIALISTS[tb.name];
           const output = spec ? await runSpecialist(spec, tb.input) : await executeTool(tb.name, tb.input);
+          if (tb.name === 'save_artifact') {
+            const o = output as { id?: unknown; title?: unknown };
+            if (o && typeof o.id === 'string') {
+              savedArtifact = { id: o.id, title: typeof o.title === 'string' ? o.title : 'Артефакт' };
+            }
+          }
           toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: JSON.stringify(output) });
         }
 
@@ -1632,11 +1735,6 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       label: 'Коннекторы',
       icon: <ApiOutlined />,
       children: [{ key: 'connectors-soon', label: 'Скоро', disabled: true }],
-    },
-    {
-      key: 'commands',
-      label: 'Команды',
-      icon: <CodeOutlined />,
     },
   ];
 
@@ -1767,7 +1865,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           <textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder={isListening ? 'Слушаю...' : 'Напишите сообщение или введите / для команд'}
+            placeholder={isListening ? 'Слушаю...' : 'Задайте вопрос ассистенту...'}
             rows={2}
             onFocus={() => setInputFocused(true)}
             onBlur={() => setInputFocused(false)}
