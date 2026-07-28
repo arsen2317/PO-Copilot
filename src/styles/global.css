@@ -396,6 +396,18 @@ body {
   --ai-text-hover: rgba(255,255,255,0.72);
   --ai-hover-10: rgba(255,255,255,0.1);
   --ai-hover-20: rgba(255,255,255,0.2);
+  /* Контент сообщений ассистента (маркдаун, чипы, карточки инструментов) */
+  --ai-strong: #fff;                 /* strong/h1-h3 в маркдауне */
+  --ai-code: #A8C7FA;                /* инлайн-код и код-блоки */
+  --ai-chip-hover-bg: #2D2E30;       /* ховер чипов метрик/внешних ссылок */
+  --ai-chip-hover-bd: #4A4B4D;
+  --ai-teal: #2dd4bf;                /* акцент CJM-карточек */
+  --ai-teal-strong: #d1fae5;         /* заголовок CJM-предложения */
+  --ai-teal-surface: #0a1a18;        /* футер CJM-предложения */
+  --ai-funnel-chip: #B5AAFF;         /* текст чипа шага воронки */
+  --ai-task-chip: #6BCB3A;           /* текст чипа задачи */
+  --ai-user-bubble-bg: #1E3A5F;      /* пузырь сообщения пользователя */
+  --ai-user-bubble-bd: #2A4A75;
 }
 :root[data-theme='light'] {
   --ai-bg: #FFFFFF;
@@ -418,6 +430,17 @@ body {
   --ai-text-hover: rgba(0,0,0,0.72);
   --ai-hover-10: rgba(0,0,0,0.08);
   --ai-hover-20: rgba(0,0,0,0.16);
+  --ai-strong: #111214;
+  --ai-code: #2F54C4;
+  --ai-chip-hover-bg: #DFE1E6;
+  --ai-chip-hover-bd: #B7BAC2;
+  --ai-teal: #0F766E;
+  --ai-teal-strong: #0B4F46;
+  --ai-teal-surface: #EAF6F3;
+  --ai-funnel-chip: #6D3FD8;
+  --ai-task-chip: #3E7E12;
+  --ai-user-bubble-bg: #E3EDFF;
+  --ai-user-bubble-bd: #C9DBFB;
 }
 
 /* ── Светлая тема: скроллбары ──────────────────────────────────────
