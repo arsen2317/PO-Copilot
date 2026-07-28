@@ -208,11 +208,13 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
   const descColor  = hovered
     ? (isDark ? 'rgba(255,255,255,0.72)' : 'rgba(0,0,0,0.68)')
     : (isDark ? '#9B9C9E' : '#5B5D63');
-  const blobFactor = isDark ? 1 : 0.42; // на белом градиенты сильно приглушаем (≥50%)
-  // Иконка-бейдж: в светлой теме — светлая подложка + тёмный (насыщенный) цвет иконки.
-  const badgeMid   = isDark ? '#0c0f16' : '#FFFFFF';
-  const badgeInner = isDark ? '#0c0f16' : '#FFFFFF';
-  const iconColor  = isDark ? cfg.iconColor : cfg.b2;
+  // В светлой теме градиенты/цвета в карточках убираем полностью — чистые нейтральные карточки.
+  const blobFactor  = isDark ? 1 : 0;
+  const ringOpacity = isDark ? 0.5 : 0;
+  const badgeMid    = isDark ? '#0c0f16' : '#FFFFFF';
+  const badgeInner  = isDark ? '#0c0f16' : '#EFF0F3';
+  const badgeBorder = isDark ? 'none' : '1px solid #E3E3E6';
+  const iconColor   = isDark ? cfg.iconColor : '#5B5D63';
 
   useEffect(() => { ensureAuroraStyles(); }, []);
 
@@ -293,17 +295,18 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         width: 40, height: 40, borderRadius: 11,
         flexShrink: 0,
       }}>
-        {/* Gradient ring at 50% opacity */}
+        {/* Gradient ring (только тёмная тема) */}
         <div style={{
           position: 'absolute', inset: 0, borderRadius: 11,
           background: `linear-gradient(40deg, ${cfg.b1} 0%, ${badgeMid} 45%, ${cfg.b3} 100%)`,
-          boxShadow: `${cfg.iconGlow} 0px 4px 14px 0px`,
-          opacity: isDark ? 0.5 : 0.75,
+          boxShadow: isDark ? `${cfg.iconGlow} 0px 4px 14px 0px` : 'none',
+          opacity: ringOpacity,
         }} />
         {/* Inner fills all but 1px edge */}
         <div style={{
-          position: 'absolute', inset: 1, borderRadius: 10,
+          position: 'absolute', inset: isDark ? 1 : 0, borderRadius: 11,
           background: badgeInner,
+          border: badgeBorder,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <agent.Icon style={{ fontSize: 18, color: iconColor }} />
@@ -2230,7 +2233,7 @@ function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
         background: '#4A82F7',
         filter: 'blur(75px)',
         opacity: (hovered ? 0.72 : 0.38) * gf,
-        bottom: '18%', left: '50%', marginLeft: -130,
+        bottom: '3%', left: '50%', marginLeft: -130,
         animation: `aurora-blob-a ${dur} ease-in-out infinite`,
         willChange: 'transform',
         transition: 'opacity 0.35s ease',
@@ -2243,7 +2246,7 @@ function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
         background: '#1a3a8a',
         filter: 'blur(62px)',
         opacity: (hovered ? 0.62 : 0.28) * gf,
-        bottom: '16%', right: -40,
+        bottom: '1%', right: -40,
         animation: `aurora-blob-b ${dur} ease-in-out infinite`,
         animationDelay: '-1.5s',
         willChange: 'transform',
@@ -2257,7 +2260,7 @@ function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
         background: '#7aa8f9',
         filter: 'blur(52px)',
         opacity: (hovered ? 0.52 : 0.20) * gf,
-        bottom: '17%', left: -30,
+        bottom: '2%', left: -30,
         animation: `aurora-blob-c ${dur} ease-in-out infinite`,
         animationDelay: '-3s',
         willChange: 'transform',

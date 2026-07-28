@@ -1,7 +1,9 @@
 import { Pie } from '@ant-design/plots';
 import { fmtRub } from '../format';
+import { useThemeStore } from '../../../store/themeStore';
 
 export function DonutChart({ data, colors }: { data: Array<{ type: string; value: number }>; colors: string[] }) {
+  const isDark = useThemeStore((s) => s.isDark);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, width: '100%' }}>
       <Pie
@@ -10,7 +12,7 @@ export function DonutChart({ data, colors }: { data: Array<{ type: string; value
         colorField="type"
         radius={0.85}
         innerRadius={0.6}
-        theme="classicDark"
+        theme={isDark ? 'classicDark' : 'classic'}
         color={colors}
         label={false}
         legend={false}
@@ -31,7 +33,7 @@ export function DonutChart({ data, colors }: { data: Array<{ type: string; value
         {data.map((d, i) => (
           <div key={d.type} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 10, height: 10, borderRadius: 2, background: colors[i] ?? '#888', flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)' }}>{d.type}</span>
+            <span style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.65)' }}>{d.type}</span>
           </div>
         ))}
       </div>

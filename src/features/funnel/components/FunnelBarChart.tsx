@@ -45,14 +45,26 @@ export function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
   const yLabels = [0, 25, 50, 75, 100];
   const totalUsers = steps[0]?.users ?? 1;
 
-  // Принцип: без наведения — более светлый цвет; при наведении — темнее (на той зоне, что под курсором).
+  // Тёмная тема — прежнее поведение (ховер осветляет). Светлая — инверсия (ховер затемняет).
   const getBlueColor = (i: number): string => {
-    if (hover && hover.zone === 'blue' && hover.barIdx === i) return '#3346C9'; // hover → темнее
-    return '#4E6AF6'; // покой → светлее
+    if (!hover) return '#4E6AF6';
+    if (isDark) {
+      if (hover.zone === 'blue' && hover.barIdx === i) return '#7B93FF';
+      if (hover.zone === 'hatch') return '#2E4099';
+      return '#4E6AF6';
+    }
+    if (hover.zone === 'blue' && hover.barIdx === i) return '#3346C9'; // light: ховер → темнее
+    return '#4E6AF6';
   };
 
   const getHatchOverlay = (i: number): string | null => {
-    if (hover && hover.zone === 'hatch' && hover.barIdx === i) return 'rgba(0,0,0,0.22)'; // hover → затемнение
+    if (!hover) return null;
+    if (isDark) {
+      if (hover.zone === 'hatch' && hover.barIdx === i) return 'rgba(200,220,255,0.18)';
+      if (hover.zone === 'blue') return 'rgba(0,0,0,0.28)';
+      return null;
+    }
+    if (hover.zone === 'hatch' && hover.barIdx === i) return 'rgba(0,0,0,0.22)'; // light: затемнение
     return null;
   };
 

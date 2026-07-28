@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { theme } from 'antd';
 import { fmt } from '../format';
+import { useThemeStore } from '../../../store/themeStore';
 
 const { useToken } = theme;
 
@@ -11,6 +12,15 @@ interface PaybackChartProps {
 
 function PaybackChart({ data, size }: PaybackChartProps) {
   const { token } = useToken();
+  const isDark = useThemeStore((s) => s.isDark);
+  // Оси/сетка/подписи: тёмные значения — как были; для светлой темы — тёмные аналоги.
+  const AX = {
+    gridZero: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.20)',
+    grid:     isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.10)',
+    label:    isDark ? 'rgba(255,255,255,0.38)' : 'rgba(0,0,0,0.48)',
+    labelDim: isDark ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.38)',
+    axisLine: isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.22)',
+  };
 
   if (data.length < 2) return null;
 
@@ -120,13 +130,13 @@ function PaybackChart({ data, size }: PaybackChartProps) {
             <g key={i}>
               <line
                 x1={0} y1={y} x2={cw} y2={y}
-                stroke={isZero ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.06)'}
+                stroke={isZero ? AX.gridZero : AX.grid}
                 strokeWidth={isZero ? 1.5 : 1}
                 strokeDasharray={isZero ? 'none' : '3 3'}
               />
               <text
                 x={-8} y={y} textAnchor="end" dominantBaseline="middle"
-                fill="rgba(255,255,255,0.38)" fontSize={10} fontFamily="Inter,sans-serif"
+                fill={AX.label} fontSize={10} fontFamily="Inter,sans-serif"
               >
                 {Math.abs(v) >= 10000
                   ? `${fmt(v / 1000, 0)}k`
@@ -142,7 +152,7 @@ function PaybackChart({ data, size }: PaybackChartProps) {
         {zeroInRange && (
           <line
             x1={0} y1={zeroY} x2={cw} y2={zeroY}
-            stroke="rgba(255,255,255,0.25)" strokeWidth={1}
+            stroke={AX.axisLine} strokeWidth={1}
           />
         )}
 
@@ -197,7 +207,7 @@ function PaybackChart({ data, size }: PaybackChartProps) {
             key={d.month}
             x={toX(d.month)} y={ch + 18}
             textAnchor="middle"
-            fill="rgba(255,255,255,0.38)"
+            fill={AX.label}
             fontSize={10}
             fontFamily="Inter,sans-serif"
           >
@@ -209,7 +219,7 @@ function PaybackChart({ data, size }: PaybackChartProps) {
         <text
           x={cw / 2} y={ch + 36}
           textAnchor="middle"
-          fill="rgba(255,255,255,0.28)"
+          fill={AX.labelDim}
           fontSize={10}
           fontFamily="Inter,sans-serif"
         >
