@@ -43,12 +43,22 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 export default function TasksPage() {
   const { token } = useToken();
   const BDR = `1px solid ${token.colorBorderSecondary}`;
-  const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<TabId>(() => {
-    const tab = searchParams.get('tab');
-    return (['drafts', 'kanban', 'list', 'backlog', 'timeline'] as const).includes(tab as TabId) ? tab as TabId : 'kanban';
-  });
-  const [highlightDraftId] = useState<string | null>(() => searchParams.get('draft'));
+  const [searchParams, setSearchParams] = useSearchParams();
+  // URL — источник истины для активной вкладки и подсветки черновика.
+  // Так вкладка сохраняется при переходе на задачу и обратно, а внешняя навигация
+  // (напр. ссылка ассистента на созданный черновик) переключает вкладку, даже если
+  // страница уже открыта.
+  const tabParam = searchParams.get('tab');
+  const activeTab: TabId = (['drafts', 'kanban', 'list', 'backlog', 'timeline'] as const).includes(tabParam as TabId)
+    ? (tabParam as TabId)
+    : 'kanban';
+  const highlightDraftId = searchParams.get('draft');
+  const setActiveTab = (id: TabId) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', id);
+    next.delete('draft'); // подсветка актуальна только при переходе по ссылке, не при ручном клике
+    setSearchParams(next, { replace: true });
+  };
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
   const draftsCount = useUIStore((s) => s.taskDrafts.length);
@@ -162,7 +172,7 @@ export default function TasksPage() {
         {activeTab === 'list' && <ListView tasks={filtered} isLoading={isLoading} />}
         {activeTab === 'backlog' && <BacklogView tasks={filtered} isLoading={isLoading} bdr={BDR} />}
         {activeTab === 'timeline' && <TimelineView bdr={BDR} />}
-        {activeTab === 'drafts' && <ScrollArea style={{ flex: 1 }}>{highlightDraftId ? <DraftsView bdr={BDR} highlightId={highlightDraftId} /> : <DraftsView bdr={BDR} />}</ScrollArea>}
+        {activeTab === 'drafts' && <ScrollArea style={{ flex: 1 }}><DraftsView bdr={BDR} {...(highlightDraftId ? { highlightId: highlightDraftId } : {})} /></ScrollArea>}
       </div>
     </div>
   );

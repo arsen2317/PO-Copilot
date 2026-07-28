@@ -90,6 +90,13 @@ app.post('/api/chat', async (req, res) => {
 
   const client = new Anthropic({
     apiKey,
+    // Прод ходит в Anthropic через Cloudflare Worker из РФ. Anthropic под конкурентной
+    // нагрузкой утром отдаёт транзиентные 429 (rate_limit) / 529 (overloaded) — SDK
+    // сам ретраит их (и 408/409/5xx, и сетевые обрывы) с экспоненциальным бэкоффом,
+    // уважая заголовок retry-after. Поднимаем число попыток с дефолтных 2 до 4,
+    // чтобы «рандомные» отказы под нагрузкой переживались повтором, а не падали к юзеру.
+    // Ретраи срабатывают до старта стрима (на установке соединения), дублей вывода нет.
+    maxRetries: 4,
     ...(process.env.ANTHROPIC_PROXY_URL ? { baseURL: process.env.ANTHROPIC_PROXY_URL } : {}),
     ...(proxyFetch ? { fetch: proxyFetch } : {}),
   });
@@ -117,8 +124,28 @@ app.post('/api/chat', async (req, res) => {
     }
     res.write('data: [DONE]\n\n');
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Stream error';
-    res.write(`data: ${JSON.stringify({ type: 'error', error: msg })}\n\n`);
+    // Разбор ошибки: у APIError есть статус/тип тела/request-id — логируем их на сервере
+    // (видно в `pm2 logs po-copilot-api`), чтобы «рандомные» отказы прода были диагностируемы,
+    // и отдаём юзеру внятное сообщение вместо сырого текста SDK.
+    let clientMsg = err instanceof Error ? err.message : 'Stream error';
+    if (err instanceof Anthropic.APIError) {
+      const status = err.status;
+      const type = (err.error as { error?: { type?: string } } | undefined)?.error?.type;
+      const requestId = err.request_id ?? null;
+      console.error('[api/chat] Anthropic error', { status, type, requestId, message: err.message });
+      if (status === 429 || type === 'rate_limit_error') {
+        clientMsg = 'Модель перегружена запросами (лимит). Повторите через несколько секунд.';
+      } else if (status === 529 || type === 'overloaded_error') {
+        clientMsg = 'Сервис Anthropic временно перегружен. Повторите запрос.';
+      } else if (status === 401 || status === 403) {
+        clientMsg = `Ошибка авторизации у прокси/API (${status}). Проверьте PROXY_SECRET и ANTHROPIC_API_KEY.`;
+      } else {
+        clientMsg = `Ошибка API${status ? ` (${status})` : ''}${type ? ` [${type}]` : ''}: ${err.message}`;
+      }
+    } else {
+      console.error('[api/chat] stream error', err);
+    }
+    res.write(`data: ${JSON.stringify({ type: 'error', error: clientMsg })}\n\n`);
   } finally {
     res.end();
   }

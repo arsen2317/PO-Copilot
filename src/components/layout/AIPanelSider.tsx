@@ -7,9 +7,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useQuery } from '@tanstack/react-query';
 import { streamChat } from '../../lib/claude';
-import { TOOL_DEFINITIONS, executeTool } from '../../lib/tools';
+import { executeTool } from '../../lib/tools';
 import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
-import { getBaseSystemPrompt, AGENT_PROMPTS } from '../../lib/agentPrompts';
+import { getOrchestratorSystemPrompt, AGENT_PROMPTS } from '../../lib/agentPrompts';
+import { SPECIALISTS, getOrchestratorTools, toolsForSpecialist, type Specialist } from '../../lib/specialists';
 import { getMetricDefinitions } from '../../data/api/metric-definitions';
 import { getFunnelAnalytics } from '../../data/api/funnel-analytics';
 import { getTasks } from '../../data/api/tasks';
@@ -696,17 +697,21 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                     <div
                       onClick={() => onMetricClick(`__task__${draftId}`)}
                       style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 8,
-                        padding: '8px 14px', margin: '8px 0',
-                        background: 'rgba(74,130,247,0.1)', border: `1px solid rgba(74,130,247,0.35)`,
-                        borderRadius: 10, cursor: 'pointer', transition: 'background 0.15s',
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '12px 16px', margin: '8px 0',
+                        background: 'rgba(74,130,247,0.08)',
+                        border: '1px solid rgba(74,130,247,0.30)',
+                        borderRadius: 12, cursor: 'pointer', transition: 'background 0.15s',
                       }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(74,130,247,0.18)'; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(74,130,247,0.1)'; }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(74,130,247,0.16)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(74,130,247,0.08)'; }}
                     >
-                      <CheckSquareOutlined style={{ color: ACCENT, fontSize: 15 }} />
-                      <span style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 500 }}>{draftTitle}</span>
-                      <span style={{ fontSize: 12, color: ACCENT, marginLeft: 4 }}>Открыть черновик →</span>
+                      <CheckSquareOutlined style={{ color: ACCENT, fontSize: 18, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{draftTitle}</div>
+                        <div style={{ fontSize: 11, color: ACCENT, marginTop: 2 }}>Черновик задачи создан · Нажмите чтобы открыть</div>
+                      </div>
+                      <span style={{ fontSize: 12, color: ACCENT, flexShrink: 0 }}>→</span>
                     </div>
                   );
                 }
@@ -717,33 +722,41 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                   try { items = JSON.parse(raw) as string[]; } catch { items = []; }
                   if (!items.length) return null;
                   return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                      gap: 8, marginTop: 12,
+                    }}>
                       {items.map((label, i) => (
                         <button
                           key={i}
                           onClick={() => onSend(label)}
                           style={{
-                            background: 'rgba(74,130,247,0.08)',
-                            border: '1px solid rgba(74,130,247,0.25)',
-                            borderRadius: 20,
-                            padding: '5px 12px',
-                            fontSize: 12,
-                            color: '#9ab4f5',
+                            display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                            gap: 12, textAlign: 'left', width: '100%', height: '100%',
+                            background: 'rgba(255,255,255,0.035)',
+                            border: '1px solid rgba(255,255,255,0.07)',
+                            borderRadius: 14,
+                            padding: '12px 14px',
+                            fontSize: 13,
+                            color: TEXT_PRIMARY,
                             cursor: 'pointer',
                             fontFamily: 'inherit',
                             transition: 'background 0.15s, border-color 0.15s',
-                            lineHeight: 1.4,
+                            lineHeight: 1.45,
+                            minWidth: 0,
                           }}
                           onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,130,247,0.18)';
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(74,130,247,0.45)';
+                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.07)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.12)';
                           }}
                           onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,130,247,0.08)';
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(74,130,247,0.25)';
+                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.035)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.07)';
                           }}
                         >
-                          {label}
+                          <span style={{ minWidth: 0 }}>{label}</span>
+                          <span style={{ marginTop: 'auto', fontSize: 15, lineHeight: 1, color: TEXT_SECONDARY }}>↪</span>
                         </button>
                       ))}
                     </div>
@@ -773,7 +786,7 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                         <div style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cjmTitle}</div>
                         <div style={{ fontSize: 11, color: '#2dd4bf', marginTop: 2 }}>CJM создан · Нажмите чтобы открыть</div>
                       </div>
-                      <span style={{ fontSize: 12, color: '#2dd4bf', flexShrink: 0 }}>Открыть →</span>
+                      <span style={{ fontSize: 12, color: '#2dd4bf', flexShrink: 0 }}>→</span>
                     </div>
                   );
                 }
@@ -802,7 +815,7 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                         <div style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{artTitle}</div>
                         <div style={{ fontSize: 11, color: ACCENT, marginTop: 2 }}>Сохранено в Базу знаний · Нажмите чтобы открыть</div>
                       </div>
-                      <span style={{ fontSize: 12, color: ACCENT, flexShrink: 0 }}>Открыть →</span>
+                      <span style={{ fontSize: 12, color: ACCENT, flexShrink: 0 }}>→</span>
                     </div>
                   );
                 }
@@ -943,9 +956,12 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
             },
             pre: ({ children }) => <>{children}</>,
             table: ({ children }) => (
-              <div style={{ overflowX: 'auto', margin: '8px 0' }}>
+              <div className="content-scroll" style={{ overflowX: 'auto', margin: '8px 0', maxWidth: '100%' }}>
                 <table style={{
-                  borderCollapse: 'collapse', width: '100%',
+                  // width:max-content + minWidth:100% — узкие таблицы заполняют ширину,
+                  // а широкие растут по контенту и скроллятся горизонтально в обёртке,
+                  // вместо посимвольного переноса и сжатия колонок в узкой панели.
+                  borderCollapse: 'collapse', width: 'max-content', minWidth: '100%',
                   fontSize: 12, color: TEXT_PRIMARY,
                 }}>
                   {children}
@@ -968,7 +984,7 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
               }}>{children}</th>
             ),
             td: ({ children }) => (
-              <td style={{ padding: '6px 10px', verticalAlign: 'top' }}>{children}</td>
+              <td style={{ padding: '6px 10px', verticalAlign: 'top', whiteSpace: 'nowrap' }}>{children}</td>
             ),
             hr: () => (
               <hr style={{ border: 'none', borderTop: `1px solid ${BORDER_COLOR}`, margin: '10px 0' }} />
@@ -1335,6 +1351,76 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     const abort = new AbortController();
     abortControllerRef.current = abort;
 
+    // Системный промпт оркестратора. Ручной выбор агента → МЯГКАЯ ПОДСКАЗКА (акцент),
+    // а не жёсткий режим: инструменты и специалисты остаются доступны. Для непереведённых
+    // на специалистов агентов их фокусный промпт добавляется как guidance.
+    const buildOrchestratorSystem = (agent: string | null): string => {
+      const orch = getOrchestratorSystemPrompt();
+      if (!agent) return orch;
+      const label = AGENT_ITEMS.find((a) => a.key === agent)?.label ?? agent;
+      // Все домены переведены в специалистов — их фокусные промпты живут у специалистов,
+      // ручной чип даёт лишь мягкий АКЦЕНТ, не подменяя system.
+      // ИСКЛЮЧЕНИЕ: agent-cjm добавляет свой промпт как guidance — интерактивные инлайн-правки
+      // CJM (актуализация / правка нод / проверка-отвязка артефакта) остаются у оркестратора.
+      if (agent === 'agent-cjm') {
+        const p = AGENT_PROMPTS['agent-cjm'];
+        return p
+          ? `${orch}\n\n[Пользователь работает с CJM. Ниже — инструкции для правки/актуализации/проверки артефактов существующего CJM (делай инлайн). Создание нового CJM по-прежнему через двухфазный сбор + generate_cjm.]\n\n${p}`
+          : orch;
+      }
+      return `${orch}\n\n[Акцент пользователя: роль «${label}». Мягкая подсказка, не жёсткий режим — используй все возможности и вызывай нужные инструменты по необходимости.]`;
+    };
+
+    // Запуск специалиста как инструмента (агент-как-тул). Вложенный агентный цикл с
+    // фокусным промптом специалиста и его подмножеством инструментов; вывод стримится
+    // в отдельный видимый пузырь (чтобы карточки task-link/cjm-result отрендерились),
+    // а оркестратору возвращается компактный tool_result.
+    const runSpecialist = async (spec: Specialist, input: Record<string, unknown>): Promise<object> => {
+      const request = typeof input.request === 'string' ? input.request : JSON.stringify(input);
+      const specTools = toolsForSpecialist(spec);
+      const specBubbleId = `spec-${Date.now()}-${Math.random()}`;
+      setMessages((prev) => [...prev, { id: specBubbleId, role: 'assistant', content: '', streaming: true }]);
+      let specMessages: { role: 'user' | 'assistant'; content: string | object[] }[] = [{ role: 'user', content: request }];
+      let lastText = '';
+      // Кап на число раундов — защита от зацикливания вложенного tool-loop.
+      for (let round = 0; round < 8; round++) {
+        const res = await streamChat({
+          messages: specMessages as ChatMessage[],
+          system: spec.system,
+          tools: specTools,
+          signal: abort.signal,
+          onTextDelta: (delta) => {
+            setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, content: m.content + delta } : m)));
+          },
+        });
+        lastText = res.blocks
+          .filter((b) => b.type === 'text')
+          .map((b) => (b as { type: 'text'; text: string }).text)
+          .join('');
+        setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, content: lastText, streaming: res.stopReason === 'tool_use' } : m)));
+        if (res.stopReason !== 'tool_use') break;
+        const specToolUse = res.blocks.filter((b): b is ToolUseBlock => b.type === 'tool_use');
+        specMessages = [...specMessages, { role: 'assistant', content: res.blocks }];
+        const specResults = await Promise.all(
+          specToolUse.map(async (tb) => ({
+            type: 'tool_result' as const,
+            tool_use_id: tb.id,
+            content: JSON.stringify(await executeTool(tb.name, tb.input)),
+          })),
+        );
+        specMessages = [...specMessages, { role: 'user', content: specResults }];
+      }
+      setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, streaming: false } : m)));
+      // Текст исполнителя НЕ возвращаем оркестратору — иначе он его пересказывает.
+      // Результат уже показан пользователю карточкой. Инструкцию кладём прямо в tool_result
+      // (последнее перед финальной генерацией — надёжнее правила в system-промпте).
+      return {
+        ok: true,
+        shown_to_user: true,
+        instruction: 'Результат уже показан пользователю (карточка или разбор). НЕ пиши подтверждающий текст и НЕ пересказывай сделанное. Ответь пользователю РОВНО одним блоком ```suggestions``` со следующими действиями — без какого-либо текста до или после него. Никогда не упоминай слова «специалист», «агент», «инструмент», «делегирую».',
+      };
+    };
+
     // Convert a local message to Anthropic API content
     const toApiContent = (m: LocalMessage): string | object[] => {
       const hasImages = m.role === 'user' && m.images && m.images.length > 0;
@@ -1388,10 +1474,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
         const result = await streamChat({
           messages: apiMessages as ChatMessage[],
-          system: selectedAgent && AGENT_PROMPTS[selectedAgent]
-            ? `${getBaseSystemPrompt()}\n\n${AGENT_PROMPTS[selectedAgent]}`
-            : getBaseSystemPrompt(),
-          tools: TOOL_DEFINITIONS as unknown as object[],
+          system: buildOrchestratorSystem(selectedAgent),
+          tools: getOrchestratorTools(),
           signal: abort.signal,
           onTextDelta: (delta) => {
             setMessages((prev) => prev.map((m) =>
@@ -1416,13 +1500,15 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
         apiMessages = [...apiMessages, { role: 'assistant', content: result.blocks }];
 
         setIsThinking(true);
-        const toolResults = await Promise.all(
-          toolUseBlocks.map(async (tb) => ({
-            type: 'tool_result' as const,
-            tool_use_id: tb.id,
-            content: JSON.stringify(await executeTool(tb.name, tb.input)),
-          })),
-        );
+        // Последовательно (не Promise.all): специалист стримит в свой пузырь, параллельный
+        // запуск двух специалистов перемешал бы вывод. Специалист → вложенный агентный цикл,
+        // остальные инструменты → обычное исполнение.
+        const toolResults: { type: 'tool_result'; tool_use_id: string; content: string }[] = [];
+        for (const tb of toolUseBlocks) {
+          const spec = SPECIALISTS[tb.name];
+          const output = spec ? await runSpecialist(spec, tb.input) : await executeTool(tb.name, tb.input);
+          toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: JSON.stringify(output) });
+        }
 
         apiMessages = [...apiMessages, { role: 'user', content: toolResults }];
       }

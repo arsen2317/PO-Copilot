@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Avatar,
   Badge,
@@ -108,6 +108,14 @@ export default function TaskDetailPage() {
   const { taskId } = useParams<{ taskId: string }>();
   const { token } = useToken();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Возврат на предыдущий экран (сохраняет вкладку списка задач, с которой пришли:
+  // канбан/таймлайн/черновики). Если задачу открыли по прямой ссылке без истории —
+  // ведём на список задач.
+  const goBack = () => {
+    if (location.key === 'default') void navigate('/tasks');
+    else void navigate(-1);
+  };
   const [activeTab, setActiveTab] = useState('description');
   const BDR = `1px solid ${token.colorBorderSecondary}`;
 
@@ -155,7 +163,7 @@ export default function TaskDetailPage() {
           icon={<ArrowLeftOutlined />}
           size="small"
           style={{ color: token.colorTextTertiary, fontSize: 13, padding: '0 4px', marginBottom: 12 }}
-          onClick={() => navigate('/tasks')}
+          onClick={goBack}
         >
           Задачи
         </Button>
