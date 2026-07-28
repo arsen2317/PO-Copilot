@@ -947,9 +947,12 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
             },
             pre: ({ children }) => <>{children}</>,
             table: ({ children }) => (
-              <div style={{ overflowX: 'auto', margin: '8px 0' }}>
+              <div className="content-scroll" style={{ overflowX: 'auto', margin: '8px 0', maxWidth: '100%' }}>
                 <table style={{
-                  borderCollapse: 'collapse', width: '100%',
+                  // width:max-content + minWidth:100% — узкие таблицы заполняют ширину,
+                  // а широкие растут по контенту и скроллятся горизонтально в обёртке,
+                  // вместо посимвольного переноса и сжатия колонок в узкой панели.
+                  borderCollapse: 'collapse', width: 'max-content', minWidth: '100%',
                   fontSize: 12, color: TEXT_PRIMARY,
                 }}>
                   {children}
@@ -972,7 +975,7 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
               }}>{children}</th>
             ),
             td: ({ children }) => (
-              <td style={{ padding: '6px 10px', verticalAlign: 'top' }}>{children}</td>
+              <td style={{ padding: '6px 10px', verticalAlign: 'top', whiteSpace: 'nowrap' }}>{children}</td>
             ),
             hr: () => (
               <hr style={{ border: 'none', borderTop: `1px solid ${BORDER_COLOR}`, margin: '10px 0' }} />
