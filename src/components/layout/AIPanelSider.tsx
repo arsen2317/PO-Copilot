@@ -17,6 +17,7 @@ import { getTasks } from '../../data/api/tasks';
 import { useUIStore } from '../../store/uiStore';
 import type { ChatMessage as StoredChatMessage, ChatSession, AttachedFile } from '../../store/uiStore';
 import { useCjmStore } from '../../store/cjmStore';
+import { useThemeStore } from '../../store/themeStore';
 import type { CjmFlowNode, CjmFlowEdge } from '../../data/types';
 import ScrollArea from '../ScrollArea';
 import {
@@ -191,12 +192,23 @@ const AGENTS_DATA: AgentDef[] = [
 // ── Single aurora agent card ─────────────────────────────────────────────────
 function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: string) => void }) {
   const [hovered, setHovered] = useState(false);
+  const isDark = useThemeStore((s) => s.isDark);
   const cfg: AuroraCfg = AURORA_CFG[agent.key] ?? {
     b1: '#4A82F7', b2: '#1a3a8a', b3: '#7aa8f9',
     hoverBorder: 'rgba(122,168,249,0.28)',
     iconBg: 'rgba(74,130,247,0.13)', iconColor: '#7aa8f9',
     iconGlow: 'rgba(74,130,247,0.30)',
   };
+  // Тёмные значения — как были; светлая тема: светлая карточка, aurora-блобы
+  // приглушены, иконка-бейдж остаётся тёмной (акцент читается на белом).
+  const cardBg     = isDark ? '#07080f' : '#FFFFFF';
+  const restBorder = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.09)';
+  const hoverShadow = isDark ? 'inset 0 0 28px rgba(0,0,0,0.4)' : '0 6px 18px rgba(15,23,42,0.10)';
+  const labelColor = isDark ? '#D7D8DA' : '#1A1B1E';
+  const descColor  = hovered
+    ? (isDark ? 'rgba(255,255,255,0.72)' : 'rgba(0,0,0,0.68)')
+    : (isDark ? '#9B9C9E' : '#5B5D63');
+  const blobFactor = isDark ? 1 : 0.7; // на белом блобы делаем воздушнее
 
   useEffect(() => { ensureAuroraStyles(); }, []);
 
@@ -213,11 +225,11 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         flex: '0 0 calc((100% - 20px) / 3)',
         minWidth: 0,
         padding: '14px 14px 16px',
-        background: '#07080f',
+        background: cardBg,
         // rest: very transparent white so aurora gradient bleeds through the border
         // hover: slightly brighter white with a subtle colour tint
-        border: `1px solid ${hovered ? cfg.hoverBorder : 'rgba(255,255,255,0.07)'}`,
-        boxShadow: hovered ? 'inset 0 0 28px rgba(0,0,0,0.4)' : 'none',
+        border: `1px solid ${hovered ? cfg.hoverBorder : restBorder}`,
+        boxShadow: hovered ? hoverShadow : 'none',
         borderRadius: 14,
         cursor: 'pointer',
         display: 'flex',
@@ -234,7 +246,7 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         borderRadius: '50%',
         background: cfg.b1,
         filter: 'blur(32px)',
-        opacity: hovered ? 0.75 : 0.40,
+        opacity: (hovered ? 0.75 : 0.40) * blobFactor,
         bottom: -30, left: '50%', marginLeft: -65,
         animation: `aurora-blob-a ${dur} ease-in-out infinite`,
         transition: 'opacity 0.35s ease',
@@ -248,7 +260,7 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         borderRadius: '50%',
         background: cfg.b2,
         filter: 'blur(28px)',
-        opacity: hovered ? 0.65 : 0.30,
+        opacity: (hovered ? 0.65 : 0.30) * blobFactor,
         bottom: -20, right: -20,
         animation: `aurora-blob-b ${dur} ease-in-out infinite`,
         animationDelay: '-1.5s',
@@ -263,7 +275,7 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         borderRadius: '50%',
         background: cfg.b3,
         filter: 'blur(22px)',
-        opacity: hovered ? 0.55 : 0.20,
+        opacity: (hovered ? 0.55 : 0.20) * blobFactor,
         bottom: -10, left: -15,
         animation: `aurora-blob-c ${dur} ease-in-out infinite`,
         animationDelay: '-3s',
@@ -296,10 +308,10 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
 
       {/* Text */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#D7D8DA', lineHeight: 1.3 }}>{agent.label}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: labelColor, lineHeight: 1.3 }}>{agent.label}</span>
         <span style={{
           fontSize: 12,
-          color: hovered ? 'rgba(255,255,255,0.72)' : '#9B9C9E',
+          color: descColor,
           lineHeight: 1.5,
           transition: 'color 0.35s ease',
         }}>{agent.desc}</span>
