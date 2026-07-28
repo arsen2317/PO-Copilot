@@ -1,0 +1,125 @@
+// Специалисты для оркестратора (вертикальный срез, Сессия 34).
+//
+// Паттерн «агент-как-инструмент»: оркестратор (главный цикл в AIPanelSider) владеет
+// диалогом и интерактивным сбором, а тяжёлое исполнение делегирует специалисту —
+// чистому stateless-исполнителю, вызываемому как инструмент по готовому ТЗ.
+//
+// Промпт специалиста ПЕРЕИСПОЛЬЗУЕТ существующий фокусный промпт агента из
+// AGENT_PROMPTS (без дублирования текста), а набор инструментов сужается до нужного.
+// Ключевые write-инструменты (create_task_draft / create_cjm / update_cjm) отданы
+// ТОЛЬКО специалистам — оркестратор ими не владеет, поэтому правила рендера карточек
+// (task-link / cjm-result) живут у специалиста, а не в лёгком base-промпте.
+
+import { AGENT_PROMPTS } from './agentPrompts';
+import { TOOL_DEFINITIONS } from './tools';
+
+export interface Specialist {
+  /** Ключ агента, чей промпт переиспользуется как system специалиста. */
+  key: string;
+  /** Имя инструмента, которым оркестратор вызывает специалиста. */
+  toolName: string;
+  /** Фокусный system-промпт специалиста. */
+  system: string;
+  /** Имена инструментов, доступных специалисту (подмножество TOOL_DEFINITIONS). */
+  allowedTools: string[];
+}
+
+// Инструменты, которыми владеет ТОЛЬКО специалист (у оркестратора его нет) — так
+// правило рендера карточки task-link живёт у специалиста, а создание черновика
+// гарантированно идёт через него (баг «голого линка» из общего чата закрыт).
+// create_cjm/update_cjm НАМЕРЕННО остаются у оркестратора: интерактивная правка/
+// актуализация/проверка привязанного артефакта CJM (в т.ч. отвязка) выполняется инлайн.
+const SPECIALIST_OWNED_TOOLS = ['create_task_draft'];
+
+// Execution-only промпт постановщика: приходит ГОТОВОЕ ТЗ (сбор/уточнения уже сделал
+// оркестратор — человек-в-цикле держит он), специалист лишь оформляет и создаёт черновик,
+// без вопросов и без просьбы подтвердить.
+const WRITE_TASK_EXECUTOR_PROMPT = `Ты — исполнитель постановки задач для команды дебетовых карт МТС Банка. Тебе приходит ГОТОВОЕ ТЗ на задачу (сбор и уточнения уже выполнены оркестратором). Твоя работа — оформить и СОЗДАТЬ черновик, БЕЗ уточняющих вопросов и БЕЗ просьбы подтвердить.
+
+Структура задачи:
+- title — до 80 символов, конкретный
+- type — Story | Bug | Task | Spike
+- priority — P0 | P1 | P2 | P3
+- storyPoints — 1 / 2 / 3 / 5 / 8 / 13
+- description — «Как [роль], я хочу [действие], чтобы [ценность/результат]»
+- criteria — 5-8 конкретных проверяемых критериев приёмки
+- labels — теги (bug, performance, mobile, compliance, ux, api, analytics, security …)
+- epicId — если известен (EPIC-1, EPIC-2 …)
+- complianceNotes — compliance-требования/риски, если есть
+
+Шаги:
+1. При необходимости вызови get_tasks (проверить дубли/контекст) и get_metrics (если задача влияет на метрику — упомяни её id в description через backtick, напр. \`onboarding_conversion\`). Если ТЗ ссылается на бриф/исследование/заметку — вызови get_knowledge_artifacts и привяжи артефакт через linkedArtifactIds в create_task_draft.
+2. Вызови create_task_draft со всеми полями.
+3. ОБЯЗАТЕЛЬНО выведи кликабельную карточку черновика — блок ровно такого вида (id и title из ответа инструмента):
+\`\`\`task-link
+{"id":"<draftId из ответа>","title":"<title из ответа>"}
+\`\`\`
+Не задавай вопросов и не проси подтверждения — ТЗ финальное. Никаких эмодзи. Никогда не заменяй карточку обычной ссылкой на /tasks. Не добавляй ничего после блока task-link.`;
+
+export const SPECIALISTS: Record<string, Specialist> = {
+  write_task_draft: {
+    key: 'agent-tasks',
+    toolName: 'write_task_draft',
+    system: WRITE_TASK_EXECUTOR_PROMPT,
+    allowedTools: ['get_tasks', 'get_timeline', 'get_team_workload', 'get_metrics', 'get_knowledge_artifacts', 'create_task_draft'],
+  },
+  generate_cjm: {
+    key: 'agent-cjm',
+    toolName: 'generate_cjm',
+    system: AGENT_PROMPTS['agent-cjm'] ?? '',
+    allowedTools: ['get_cjm_list', 'get_cjm', 'get_metrics', 'get_funnel_steps', 'get_knowledge_artifacts', 'create_cjm', 'update_cjm', 'search_web'],
+  },
+};
+
+// Схемы инструментов-специалистов, которые видит оркестратор.
+export const SPECIALIST_TOOL_DEFINITIONS = [
+  {
+    name: 'write_task_draft',
+    description:
+      'Специалист-постановщик задач. Вызови, когда пользователь просит написать / оформить / поставить задачу в бэклог. ' +
+      'В поле request передай ПОЛНОЕ описание задачи и весь релевантный контекст из диалога (проблема, метрика, id связанного артефакта). ' +
+      'Специалист сам оформит черновик, вызовет create_task_draft и покажет пользователю кликабельную карточку черновика. ' +
+      'НЕ вызывай create_task_draft сам — только через этого специалиста.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        request: {
+          type: 'string',
+          description: 'Полное ТЗ на задачу: что нужно сделать, контекст, метрики, id связанных артефактов — всё, что специалист должен учесть.',
+        },
+      },
+      required: ['request'],
+    },
+  },
+  {
+    name: 'generate_cjm',
+    description:
+      'Специалист по созданию CJM (карты пути клиента). Вызови, когда нужно ПОСТРОИТЬ новый CJM — после того как сценарий/персона выбраны пользователем ' +
+      '(интерактивный подбор варианта делай сам, до вызова). В поле request передай выбранный сценарий/персону и цель карты. ' +
+      'Специалист сам соберёт данные, построит карту и покажет карточку. ' +
+      'Правку/актуализацию существующего CJM и проверку привязанного артефакта НЕ делегируй сюда — это интерактивные сценарии, выполняй их сам инлайн через get_cjm/update_cjm.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        request: {
+          type: 'string',
+          description: 'Полное ТЗ на новый CJM: выбранный сценарий/персона, цель карты, ключевые этапы если заданы.',
+        },
+      },
+      required: ['request'],
+    },
+  },
+];
+
+/** Подмножество инструментов для конкретного специалиста. */
+export function toolsForSpecialist(spec: Specialist): object[] {
+  return (TOOL_DEFINITIONS as readonly { name: string }[])
+    .filter((t) => spec.allowedTools.includes(t.name)) as unknown as object[];
+}
+
+/** Инструменты оркестратора: все базовые кроме отданных специалистам + сами инструменты-специалисты. */
+export function getOrchestratorTools(): object[] {
+  const base = (TOOL_DEFINITIONS as readonly { name: string }[])
+    .filter((t) => !SPECIALIST_OWNED_TOOLS.includes(t.name));
+  return [...base, ...SPECIALIST_TOOL_DEFINITIONS] as unknown as object[];
+}

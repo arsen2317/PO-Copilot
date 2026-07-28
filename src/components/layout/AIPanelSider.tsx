@@ -7,9 +7,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useQuery } from '@tanstack/react-query';
 import { streamChat } from '../../lib/claude';
-import { TOOL_DEFINITIONS, executeTool } from '../../lib/tools';
+import { executeTool } from '../../lib/tools';
 import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
-import { getBaseSystemPrompt, AGENT_PROMPTS } from '../../lib/agentPrompts';
+import { getOrchestratorSystemPrompt, AGENT_PROMPTS } from '../../lib/agentPrompts';
+import { SPECIALISTS, getOrchestratorTools, toolsForSpecialist, type Specialist } from '../../lib/specialists';
 import { getMetricDefinitions } from '../../data/api/metric-definitions';
 import { getFunnelAnalytics } from '../../data/api/funnel-analytics';
 import { getTasks } from '../../data/api/tasks';
@@ -1342,6 +1343,70 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     const abort = new AbortController();
     abortControllerRef.current = abort;
 
+    // Системный промпт оркестратора. Ручной выбор агента → МЯГКАЯ ПОДСКАЗКА (акцент),
+    // а не жёсткий режим: инструменты и специалисты остаются доступны. Для непереведённых
+    // на специалистов агентов их фокусный промпт добавляется как guidance.
+    const buildOrchestratorSystem = (agent: string | null): string => {
+      const orch = getOrchestratorSystemPrompt();
+      if (!agent) return orch;
+      const label = AGENT_ITEMS.find((a) => a.key === agent)?.label ?? agent;
+      // Постановка задач полностью покрыта специалистом write_task_draft — старый промпт
+      // agent-tasks не добавляем (иначе продублируются правила карточки и инлайн-создание).
+      if (agent === 'agent-tasks') {
+        return `${orch}\n\n[Акцент пользователя: роль «${label}». Мягкая подсказка, не жёсткий режим — используй все возможности и вызывай специалистов по необходимости.]`;
+      }
+      // Остальные агенты (включая agent-cjm с его правкой/проверкой артефактов) — их фокусный
+      // промпт добавляется как guidance, чтобы интерактивные инлайн-сценарии не деградировали.
+      const p = AGENT_PROMPTS[agent];
+      return p
+        ? `${orch}\n\n[Пользователь сделал акцент на роли «${label}». Ниже — инструкции этой роли; следуй им, но не игнорируй запросы из других областей и вызывай специалистов при необходимости.]\n\n${p}`
+        : orch;
+    };
+
+    // Запуск специалиста как инструмента (агент-как-тул). Вложенный агентный цикл с
+    // фокусным промптом специалиста и его подмножеством инструментов; вывод стримится
+    // в отдельный видимый пузырь (чтобы карточки task-link/cjm-result отрендерились),
+    // а оркестратору возвращается компактный tool_result.
+    const runSpecialist = async (spec: Specialist, input: Record<string, unknown>): Promise<object> => {
+      const request = typeof input.request === 'string' ? input.request : JSON.stringify(input);
+      const specTools = toolsForSpecialist(spec);
+      const specBubbleId = `spec-${Date.now()}-${Math.random()}`;
+      setMessages((prev) => [...prev, { id: specBubbleId, role: 'assistant', content: '', streaming: true }]);
+      let specMessages: { role: 'user' | 'assistant'; content: string | object[] }[] = [{ role: 'user', content: request }];
+      let lastText = '';
+      // Кап на число раундов — защита от зацикливания вложенного tool-loop.
+      for (let round = 0; round < 8; round++) {
+        const res = await streamChat({
+          messages: specMessages as ChatMessage[],
+          system: spec.system,
+          tools: specTools,
+          signal: abort.signal,
+          onTextDelta: (delta) => {
+            setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, content: m.content + delta } : m)));
+          },
+        });
+        lastText = res.blocks
+          .filter((b) => b.type === 'text')
+          .map((b) => (b as { type: 'text'; text: string }).text)
+          .join('');
+        setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, content: lastText, streaming: res.stopReason === 'tool_use' } : m)));
+        if (res.stopReason !== 'tool_use') break;
+        const specToolUse = res.blocks.filter((b): b is ToolUseBlock => b.type === 'tool_use');
+        specMessages = [...specMessages, { role: 'assistant', content: res.blocks }];
+        const specResults = await Promise.all(
+          specToolUse.map(async (tb) => ({
+            type: 'tool_result' as const,
+            tool_use_id: tb.id,
+            content: JSON.stringify(await executeTool(tb.name, tb.input)),
+          })),
+        );
+        specMessages = [...specMessages, { role: 'user', content: specResults }];
+      }
+      setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, streaming: false } : m)));
+      // Тяжёлый контент уже показан пользователю в пузыре — оркестратору хватит короткой сводки.
+      return { ok: true, shown_to_user: true, summary: lastText.slice(0, 300) };
+    };
+
     // Convert a local message to Anthropic API content
     const toApiContent = (m: LocalMessage): string | object[] => {
       const hasImages = m.role === 'user' && m.images && m.images.length > 0;
@@ -1395,10 +1460,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
         const result = await streamChat({
           messages: apiMessages as ChatMessage[],
-          system: selectedAgent && AGENT_PROMPTS[selectedAgent]
-            ? `${getBaseSystemPrompt()}\n\n${AGENT_PROMPTS[selectedAgent]}`
-            : getBaseSystemPrompt(),
-          tools: TOOL_DEFINITIONS as unknown as object[],
+          system: buildOrchestratorSystem(selectedAgent),
+          tools: getOrchestratorTools(),
           signal: abort.signal,
           onTextDelta: (delta) => {
             setMessages((prev) => prev.map((m) =>
@@ -1423,13 +1486,15 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
         apiMessages = [...apiMessages, { role: 'assistant', content: result.blocks }];
 
         setIsThinking(true);
-        const toolResults = await Promise.all(
-          toolUseBlocks.map(async (tb) => ({
-            type: 'tool_result' as const,
-            tool_use_id: tb.id,
-            content: JSON.stringify(await executeTool(tb.name, tb.input)),
-          })),
-        );
+        // Последовательно (не Promise.all): специалист стримит в свой пузырь, параллельный
+        // запуск двух специалистов перемешал бы вывод. Специалист → вложенный агентный цикл,
+        // остальные инструменты → обычное исполнение.
+        const toolResults: { type: 'tool_result'; tool_use_id: string; content: string }[] = [];
+        for (const tb of toolUseBlocks) {
+          const spec = SPECIALISTS[tb.name];
+          const output = spec ? await runSpecialist(spec, tb.input) : await executeTool(tb.name, tb.input);
+          toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: JSON.stringify(output) });
+        }
 
         apiMessages = [...apiMessages, { role: 'user', content: toolResults }];
       }
