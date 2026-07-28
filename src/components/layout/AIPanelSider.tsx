@@ -711,7 +711,7 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                         <div style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{draftTitle}</div>
                         <div style={{ fontSize: 11, color: ACCENT, marginTop: 2 }}>Черновик задачи создан · Нажмите чтобы открыть</div>
                       </div>
-                      <span style={{ fontSize: 12, color: ACCENT, flexShrink: 0 }}>Открыть →</span>
+                      <span style={{ fontSize: 12, color: ACCENT, flexShrink: 0 }}>→</span>
                     </div>
                   );
                 }
@@ -778,7 +778,7 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                         <div style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cjmTitle}</div>
                         <div style={{ fontSize: 11, color: '#2dd4bf', marginTop: 2 }}>CJM создан · Нажмите чтобы открыть</div>
                       </div>
-                      <span style={{ fontSize: 12, color: '#2dd4bf', flexShrink: 0 }}>Открыть →</span>
+                      <span style={{ fontSize: 12, color: '#2dd4bf', flexShrink: 0 }}>→</span>
                     </div>
                   );
                 }
@@ -807,7 +807,7 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                         <div style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{artTitle}</div>
                         <div style={{ fontSize: 11, color: ACCENT, marginTop: 2 }}>Сохранено в Базу знаний · Нажмите чтобы открыть</div>
                       </div>
-                      <span style={{ fontSize: 12, color: ACCENT, flexShrink: 0 }}>Открыть →</span>
+                      <span style={{ fontSize: 12, color: ACCENT, flexShrink: 0 }}>→</span>
                     </div>
                   );
                 }
