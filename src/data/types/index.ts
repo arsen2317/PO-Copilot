@@ -319,5 +319,7 @@ export interface MetricDefinition {
   owner: string;
   updatedAt: string;
   onDashboard: boolean;
+  // Источник данных метрики (BI-система / аналитика / мониторинг).
+  source: string;
   history: MetricPoint[];
 }
