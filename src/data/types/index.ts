@@ -305,6 +305,89 @@ export interface CjmMap {
   edges: CjmFlowEdge[];
 }
 
+// ── «Мой кластер» — сводная доска руководителя кластера ──────────────────────
+// Адаптация BI-доски: статусные KPI-карточки по группам + разрез по продуктам.
+
+/** Оценка KPI-карточки: цвет и триангл-индикатор. */
+export type ClusterKpiStatus = 'good' | 'bad' | 'warn';
+
+export interface ClusterKpi {
+  id: string;
+  /** Короткое имя показателя, напр. «ФинРез Факт». */
+  label: string;
+  /** Период показателя, напр. «Выбранный месяц». */
+  period: string;
+  /** Отформатированное значение, напр. «−512,40 млн». */
+  value: string;
+  status: ClusterKpiStatus;
+  /** Направление треугольника-индикатора относительно прошлого периода. */
+  trend: 'up' | 'down';
+  /** Значение сравнения за прошлый период. */
+  prevValue: string;
+  /** Подпись сравнения, напр. «Прошлый месяц». */
+  prevLabel: string;
+}
+
+export interface ClusterKpiGroup {
+  id: string;
+  title: string;
+  /** Карточки группы. Пусто, если группа-заглушка (см. note). */
+  kpis: ClusterKpi[];
+  /** Текст-заглушка вместо карточек (напр. «на своих вкладках»). */
+  note?: string;
+}
+
+export interface ClusterStreamNode {
+  id: string;
+  name: string;
+  /** Активный (выбранный) стрим подсвечивается. */
+  active?: boolean;
+}
+
+export interface ClusterStructure {
+  clusterName: string;
+  streams: ClusterStreamNode[];
+}
+
+export interface ClusterProductRow {
+  id: string;
+  product: string;
+  code: string;
+  /** ФинРез — факт / бюджет с начала года, в рублях; null = нет данных. */
+  finFact: number | null;
+  finBudget: number | null;
+  /** ФинРез выполнение, % (null = нет данных). */
+  finFulfil: number | null;
+  ctiFact: number | null;
+  ctiBudget: number | null;
+  ctiFulfil: number | null;
+  active: number | null;
+  inflow: number | null;
+  reactive: number | null;
+  churn: number | null;
+  crPct: number | null;
+  abs: number | null;
+  secDebt1H: number | null;
+  secDebt2H: number | null;
+  leadTime: number | null;
+  df: number | null;
+  cfr: number | null;
+  mttr: string;
+  /** Строка «Всего» рендерится жирным и с верхней границей. */
+  isTotal?: boolean;
+}
+
+export interface MyClusterData {
+  clusterName: string;
+  /** Отчётный месяц финансовых/клиентских данных, напр. «2026-06». */
+  financialPeriod: string;
+  /** Отчётный месяц производственных данных, напр. «2026-07». */
+  productionPeriod: string;
+  structure: ClusterStructure;
+  groups: ClusterKpiGroup[];
+  products: ClusterProductRow[];
+}
+
 export interface MetricDefinition {
   id: string;
   name: string;
