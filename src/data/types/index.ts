@@ -305,54 +305,52 @@ export interface CjmMap {
   edges: CjmFlowEdge[];
 }
 
-// ── «Мой кластер» — сводная доска руководителя кластера ──────────────────────
-// Адаптация BI-доски: статусные KPI-карточки по группам + разрез по продуктам.
+// ── «Мой кластер» — сводка кластера в дизайне дашборда ───────────────────────
+// Контент BI-доски, лейаут и компоненты — как на /dashboard: KPI-тайлы сверху
+// (группы Финансы/Клиенты/Производство), разрез по продуктам таблицей внизу.
 
-/** Оценка KPI-карточки: цвет и триангл-индикатор. */
-export type ClusterKpiStatus = 'good' | 'bad' | 'warn';
+/** Статус KPI: задаёт цвет дельты (colorSuccess/Warning/Error). */
+export type ClusterKpiStatus = 'good' | 'warn' | 'bad';
+
+export type ClusterKpiFormat =
+  | 'mln_rub'   // −512,4 млн ₽
+  | 'mln'       // 3,12 млн
+  | 'thousand'  // 412,6 тыс.
+  | 'percent'   // 118,7% (дельта — в п.п.)
+  | 'days'      // 38,2 дн.
+  | 'hours'     // 1,58 ч.
+  | 'count';    // 247
 
 export interface ClusterKpi {
   id: string;
-  /** Короткое имя показателя, напр. «ФинРез Факт». */
+  /** Короткое имя показателя, напр. «ФинРез, факт». */
   label: string;
-  /** Период показателя, напр. «Выбранный месяц». */
-  period: string;
-  /** Отформатированное значение, напр. «−512,40 млн». */
-  value: string;
+  /** Период сравнения: значение против прошлого месяца или квартала. */
+  period: 'month' | 'quarter';
+  value: number;
+  /** Значение за прошлый период — из него считается дельта. */
+  prevValue: number;
+  format: ClusterKpiFormat;
   status: ClusterKpiStatus;
-  /** Направление треугольника-индикатора относительно прошлого периода. */
-  trend: 'up' | 'down';
-  /** Значение сравнения за прошлый период. */
-  prevValue: string;
-  /** Подпись сравнения, напр. «Прошлый месяц». */
-  prevLabel: string;
 }
 
 export interface ClusterKpiGroup {
   id: string;
   title: string;
-  /** Карточки группы. Пусто, если группа-заглушка (см. note). */
   kpis: ClusterKpi[];
-  /** Текст-заглушка вместо карточек (напр. «на своих вкладках»). */
-  note?: string;
 }
 
-export interface ClusterStreamNode {
+export interface ClusterStream {
   id: string;
   name: string;
-  /** Активный (выбранный) стрим подсвечивается. */
-  active?: boolean;
-}
-
-export interface ClusterStructure {
-  clusterName: string;
-  streams: ClusterStreamNode[];
 }
 
 export interface ClusterProductRow {
   id: string;
   product: string;
   code: string;
+  /** Стрим продукта — для фильтра; 'all' у итоговой строки. */
+  streamId: string;
   /** ФинРез — факт / бюджет с начала года, в рублях; null = нет данных. */
   finFact: number | null;
   finBudget: number | null;
@@ -379,12 +377,9 @@ export interface ClusterProductRow {
 
 export interface MyClusterData {
   clusterName: string;
-  /** Отчётный месяц финансовых/клиентских данных, напр. «2026-06». */
-  financialPeriod: string;
-  /** Отчётный месяц производственных данных, напр. «2026-07». */
-  productionPeriod: string;
-  structure: ClusterStructure;
-  groups: ClusterKpiGroup[];
+  streams: ClusterStream[];
+  /** Группы KPI по фильтру стрима: ключ 'all' — весь кластер. */
+  groupsByStream: Record<string, ClusterKpiGroup[]>;
   products: ClusterProductRow[];
 }
 
