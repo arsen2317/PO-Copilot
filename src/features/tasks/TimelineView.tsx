@@ -83,7 +83,8 @@ function timelineColors(isDark: boolean) {
     leftBgGroup:  isDark ? '#212228' : '#F2F3F5',
     rightBg:      isDark ? '#0f1013' : '#FBFBFC',
     rightBgGroup: isDark ? '#181922' : '#F2F3F5',
-    barBg:        isDark ? '#24252b' : '#FFFFFF',
+    // Бар чуть темнее фона шкалы (#FBFBFC) — иначе без обводки сливается.
+    barBg:        isDark ? '#24252b' : '#E4E6EB',
     barText:      isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.82)',
     gridMonth:    isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)',
     gridTick:     isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)',

@@ -19,7 +19,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { TokenCircleIcon } from '../icons';
-import { Switch, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../../store/themeStore';
 import SearchModal from './SearchModal';
@@ -400,15 +400,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
                   >
                     <span style={iconStyle}>{isDark ? <MoonOutlined /> : <BulbOutlined />}</span>
                     {!collapsed && (
-                      <>
-                        <span style={{ ...labelStyle, flex: 1 }}>{isDark ? 'Тёмная тема' : 'Светлая тема'}</span>
-                        <Switch
-                          size="small"
-                          checked={!isDark}
-                          onChange={toggleTheme}
-                          onClick={(_, e) => e.stopPropagation()}
-                        />
-                      </>
+                      <span style={labelStyle}>{isDark ? 'Тёмная тема' : 'Светлая тема'}</span>
                     )}
                   </div>
                 </Tooltip>

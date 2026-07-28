@@ -208,7 +208,11 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
   const descColor  = hovered
     ? (isDark ? 'rgba(255,255,255,0.72)' : 'rgba(0,0,0,0.68)')
     : (isDark ? '#9B9C9E' : '#5B5D63');
-  const blobFactor = isDark ? 1 : 0.7; // на белом блобы делаем воздушнее
+  const blobFactor = isDark ? 1 : 0.42; // на белом градиенты сильно приглушаем (≥50%)
+  // Иконка-бейдж: в светлой теме — светлая подложка + тёмный (насыщенный) цвет иконки.
+  const badgeMid   = isDark ? '#0c0f16' : '#FFFFFF';
+  const badgeInner = isDark ? '#0c0f16' : '#FFFFFF';
+  const iconColor  = isDark ? cfg.iconColor : cfg.b2;
 
   useEffect(() => { ensureAuroraStyles(); }, []);
 
@@ -292,17 +296,17 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         {/* Gradient ring at 50% opacity */}
         <div style={{
           position: 'absolute', inset: 0, borderRadius: 11,
-          background: `linear-gradient(40deg, ${cfg.b1} 0%, #0c0f16 45%, ${cfg.b3} 100%)`,
+          background: `linear-gradient(40deg, ${cfg.b1} 0%, ${badgeMid} 45%, ${cfg.b3} 100%)`,
           boxShadow: `${cfg.iconGlow} 0px 4px 14px 0px`,
-          opacity: 0.5,
+          opacity: isDark ? 0.5 : 0.75,
         }} />
-        {/* Dark inner fills all but 1px edge */}
+        {/* Inner fills all but 1px edge */}
         <div style={{
           position: 'absolute', inset: 1, borderRadius: 10,
-          background: '#0c0f16',
+          background: badgeInner,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <agent.Icon style={{ fontSize: 18, color: cfg.iconColor }} />
+          <agent.Icon style={{ fontSize: 18, color: iconColor }} />
         </div>
       </div>
 
@@ -1258,6 +1262,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const isDark = useThemeStore((s) => s.isDark);
   const isAssistantPage = location.pathname === '/assistant' || location.pathname.startsWith('/assistant/');
   const setFocusedMetric = useUIStore((s) => s.setFocusedMetric);
   const sessions = useUIStore((s) => s.sessions);
@@ -1765,9 +1770,11 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
       {/* Input card */}
       <div style={{
-        background: automateHovered ? '#0B1F5F' : 'var(--ai-surface)',
+        background: automateHovered ? (isDark ? '#0B1F5F' : '#E9EFFF') : 'var(--ai-surface)',
         borderRadius: 18,
-        outline: automateHovered ? '1px #434446 solid' : `1px solid ${BORDER_COLOR}`,
+        outline: automateHovered
+          ? (isDark ? '1px #434446 solid' : '1px rgba(74,130,247,0.45) solid')
+          : `1px solid ${BORDER_COLOR}`,
         overflow: 'hidden',
         transition: 'background 0.18s, outline-color 0.18s',
       }}>
@@ -2170,6 +2177,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 // Animated aurora for the assistant page (large centred layout)
 function GlowBg() {
   useEffect(() => { ensureAuroraStyles(); }, []);
+  const isDark = useThemeStore((s) => s.isDark);
+  const gf = isDark ? 1 : 0.4; // светлая тема — сильно приглушаем градиент (≥50%)
   return (
     <div style={{
       position: 'absolute', left: 0, right: 0, bottom: 0,
@@ -2178,7 +2187,7 @@ function GlowBg() {
       {/* Blob A — large, bottom-center */}
       <div style={{
         position: 'absolute', width: 380, height: 260, borderRadius: '50%',
-        background: '#1a6fff', filter: 'blur(80px)', opacity: 0.38,
+        background: '#1a6fff', filter: 'blur(80px)', opacity: 0.38 * gf,
         bottom: -110, left: '50%', marginLeft: -190,
         animation: 'aurora-blob-a 10s ease-in-out infinite',
         willChange: 'transform',
@@ -2186,7 +2195,7 @@ function GlowBg() {
       {/* Blob B — left-center, overlaps A */}
       <div style={{
         position: 'absolute', width: 300, height: 200, borderRadius: '50%',
-        background: '#0040cc', filter: 'blur(70px)', opacity: 0.28,
+        background: '#0040cc', filter: 'blur(70px)', opacity: 0.28 * gf,
         bottom: -80, left: '32%', marginLeft: -150,
         animation: 'aurora-blob-b 10s ease-in-out infinite',
         animationDelay: '-2s',
@@ -2195,7 +2204,7 @@ function GlowBg() {
       {/* Blob C — right-center, overlaps A */}
       <div style={{
         position: 'absolute', width: 260, height: 180, borderRadius: '50%',
-        background: '#00aaff', filter: 'blur(65px)', opacity: 0.22,
+        background: '#00aaff', filter: 'blur(65px)', opacity: 0.22 * gf,
         bottom: -60, left: '62%', marginLeft: -130,
         animation: 'aurora-blob-c 10s ease-in-out infinite',
         animationDelay: '-5s',
@@ -2208,6 +2217,8 @@ function GlowBg() {
 // Animated aurora for the sidebar panel empty state — same style as AuroraCard blobs
 function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
   useEffect(() => { ensureAuroraStyles(); }, []);
+  const isDark = useThemeStore((s) => s.isDark);
+  const gf = isDark ? 1 : 0.4; // светлая тема — сильно приглушаем градиент (≥50%)
   const dur = hovered ? '3s' : '8s';
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, pointerEvents: 'none', zIndex: 0 }}>
@@ -2218,7 +2229,7 @@ function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
         borderRadius: '50%',
         background: '#4A82F7',
         filter: 'blur(75px)',
-        opacity: hovered ? 0.72 : 0.38,
+        opacity: (hovered ? 0.72 : 0.38) * gf,
         bottom: '18%', left: '50%', marginLeft: -130,
         animation: `aurora-blob-a ${dur} ease-in-out infinite`,
         willChange: 'transform',
@@ -2231,7 +2242,7 @@ function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
         borderRadius: '50%',
         background: '#1a3a8a',
         filter: 'blur(62px)',
-        opacity: hovered ? 0.62 : 0.28,
+        opacity: (hovered ? 0.62 : 0.28) * gf,
         bottom: '16%', right: -40,
         animation: `aurora-blob-b ${dur} ease-in-out infinite`,
         animationDelay: '-1.5s',
@@ -2245,7 +2256,7 @@ function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
         borderRadius: '50%',
         background: '#7aa8f9',
         filter: 'blur(52px)',
-        opacity: hovered ? 0.52 : 0.20,
+        opacity: (hovered ? 0.52 : 0.20) * gf,
         bottom: '17%', left: -30,
         animation: `aurora-blob-c ${dur} ease-in-out infinite`,
         animationDelay: '-3s',
