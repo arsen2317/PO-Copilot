@@ -1,5 +1,6 @@
 import { theme, Typography } from 'antd';
 import { ToolOutlined } from '@ant-design/icons';
+import { appSurfaces, useThemeStore } from '../store/themeStore';
 
 const { useToken } = theme;
 
@@ -12,6 +13,7 @@ interface InDevelopmentPageProps {
 /** Shared empty-state for nav sections not yet implemented (see STATUS.md фаза 1). */
 export default function InDevelopmentPage({ title, icon, description }: InDevelopmentPageProps) {
   const { token } = useToken();
+  const S = appSurfaces(useThemeStore((s) => s.isDark));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -35,13 +37,13 @@ export default function InDevelopmentPage({ title, icon, description }: InDevelo
           gap: 14,
           borderRadius: 12,
           border: `1px dashed ${token.colorBorderSecondary}`,
-          background: '#16171a',
+          background: S.panel,
         }}
       >
         <div
           style={{
             width: 56, height: 56, borderRadius: '50%',
-            background: '#1e1f22', border: `1px solid ${token.colorBorderSecondary}`,
+            background: S.inner, border: `1px solid ${token.colorBorderSecondary}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 22, color: token.colorTextTertiary,
           }}

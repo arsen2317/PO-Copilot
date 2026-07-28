@@ -3,7 +3,6 @@ import {
   Input,
   Select,
   Skeleton,
-  Switch,
   Table,
   theme,
   Typography,
@@ -31,7 +30,6 @@ export default function MetricsPage() {
   const { token } = useToken();
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
-  const [dashboardToggles, setDashboardToggles] = useState<Record<string, boolean>>({});
 
   const { data: metrics, isLoading } = useQuery({
     queryKey: ['metric-definitions'],
@@ -116,22 +114,28 @@ export default function MetricsPage() {
       ),
     },
     {
-      title: <ColTitle>НА ДАШБОРДЕ</ColTitle>,
-      key: 'dashboard',
-      width: 130,
-      align: 'center' as const,
-      sorter: (a: MetricDefinition, b: MetricDefinition) =>
-        Number(dashboardToggles[a.id] ?? a.onDashboard) - Number(dashboardToggles[b.id] ?? b.onDashboard),
-      render: (_: unknown, m: MetricDefinition) => {
-        const checked = dashboardToggles[m.id] ?? m.onDashboard;
-        return (
-          <Switch
-            size="small"
-            checked={checked}
-            onChange={(v) => setDashboardToggles((prev) => ({ ...prev, [m.id]: v }))}
-          />
-        );
-      },
+      title: <ColTitle>ИСТОЧНИК</ColTitle>,
+      key: 'source',
+      width: 180,
+      sorter: (a: MetricDefinition, b: MetricDefinition) => a.source.localeCompare(b.source),
+      render: (_: unknown, m: MetricDefinition) => (
+        <span
+          style={{
+            display: 'inline-block',
+            fontSize: 12,
+            color: token.colorTextSecondary,
+            border: `1px solid ${token.colorBorderSecondary}`,
+            borderRadius: 6,
+            padding: '1px 8px',
+            whiteSpace: 'nowrap',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {m.source}
+        </span>
+      ),
     },
   ];
 

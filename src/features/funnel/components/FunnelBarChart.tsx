@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import type { FunnelAnalyticsStep } from '../../../data/types';
+import { useThemeStore } from '../../../store/themeStore';
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Funnel bar chart — custom SVG: solid blue (converted) + diagonal-stripe (dropped)
@@ -20,6 +21,15 @@ interface HoverZone {
 export function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
   const [hover, setHover] = useState<HoverZone | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const isDark = useThemeStore((s) => s.isDark);
+  // Оси/сетка/обводки: тёмные значения — как были; для светлой темы — тёмные аналоги.
+  const AX = {
+    grid:      isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.09)',
+    yLabel:    isDark ? 'rgba(255,255,255,0.38)' : 'rgba(0,0,0,0.45)',
+    xLabel:    isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.50)',
+    barStroke: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.16)',
+    hatchStripe: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(70,100,220,0.55)',
+  };
 
   const PAD = { top: 36, right: 24, bottom: 72, left: 52 };
   const chartW = size.w - PAD.left - PAD.right;
@@ -35,17 +45,26 @@ export function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
   const yLabels = [0, 25, 50, 75, 100];
   const totalUsers = steps[0]?.users ?? 1;
 
+  // Тёмная тема — прежнее поведение (ховер осветляет). Светлая — инверсия (ховер затемняет).
   const getBlueColor = (i: number): string => {
     if (!hover) return '#4E6AF6';
-    if (hover.zone === 'blue' && hover.barIdx === i) return '#7B93FF';
-    if (hover.zone === 'hatch') return '#2E4099';
+    if (isDark) {
+      if (hover.zone === 'blue' && hover.barIdx === i) return '#7B93FF';
+      if (hover.zone === 'hatch') return '#2E4099';
+      return '#4E6AF6';
+    }
+    if (hover.zone === 'blue' && hover.barIdx === i) return '#3346C9'; // light: ховер → темнее
     return '#4E6AF6';
   };
 
   const getHatchOverlay = (i: number): string | null => {
     if (!hover) return null;
-    if (hover.zone === 'hatch' && hover.barIdx === i) return 'rgba(200,220,255,0.18)';
-    if (hover.zone === 'blue') return 'rgba(0,0,0,0.28)';
+    if (isDark) {
+      if (hover.zone === 'hatch' && hover.barIdx === i) return 'rgba(200,220,255,0.18)';
+      if (hover.zone === 'blue') return 'rgba(0,0,0,0.28)';
+      return null;
+    }
+    if (hover.zone === 'hatch' && hover.barIdx === i) return 'rgba(0,0,0,0.22)'; // light: затемнение
     return null;
   };
 
@@ -61,7 +80,7 @@ export function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
         <defs>
           <pattern id="funnel-hatch" patternUnits="userSpaceOnUse" width="9" height="9" patternTransform="rotate(-45 0 0)">
             <rect width="9" height="9" fill="rgba(100,130,255,0.28)" />
-            <line x1="0" y1="0" x2="0" y2="9" stroke="rgba(255,255,255,0.55)" strokeWidth="3" />
+            <line x1="0" y1="0" x2="0" y2="9" stroke={AX.hatchStripe} strokeWidth="3" />
           </pattern>
         </defs>
 
@@ -71,13 +90,13 @@ export function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
             <g key={pct}>
               <line
                 x1={0} y1={toY(pct)} x2={chartW} y2={toY(pct)}
-                stroke="rgba(255,255,255,0.07)" strokeWidth={1}
+                stroke={AX.grid} strokeWidth={1}
                 strokeDasharray={pct === 0 ? 'none' : '3 3'}
               />
               <text
                 x={-8} y={toY(pct)}
                 textAnchor="end" dominantBaseline="middle"
-                fill="rgba(255,255,255,0.38)" fontSize={11} fontFamily="Inter,sans-serif"
+                fill={AX.yLabel} fontSize={11} fontFamily="Inter,sans-serif"
               >{pct}%</text>
             </g>
           ))}
@@ -109,7 +128,7 @@ export function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
                   <>
                     <rect x={x} y={hatchY} width={barW} height={hatchH}
                       fill="url(#funnel-hatch)"
-                      stroke="rgba(255,255,255,0.22)" strokeWidth={1} rx={3} />
+                      stroke={AX.barStroke} strokeWidth={1} rx={3} />
                     {hatchOverlay && (
                       <rect x={x} y={hatchY} width={barW} height={hatchH}
                         style={{ fill: hatchOverlay, transition: 'fill 0.15s', pointerEvents: 'none' }} rx={3} />
@@ -127,7 +146,7 @@ export function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
                   <>
                     <rect x={x} y={solidY} width={barW} height={solidH}
                       style={{ fill: getBlueColor(i), transition: 'fill 0.15s' }}
-                      stroke="rgba(255,255,255,0.22)" strokeWidth={1} rx={3} />
+                      stroke={AX.barStroke} strokeWidth={1} rx={3} />
                     {/* transparent hit area */}
                     <rect x={x} y={solidY} width={barW} height={solidH}
                       fill="transparent" style={{ cursor: 'pointer' }}
@@ -154,7 +173,7 @@ export function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
                 </g>
 
                 {/* ── X-axis label ── */}
-                <text textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize={10} fontFamily="Inter,sans-serif">
+                <text textAnchor="middle" fill={AX.xLabel} fontSize={10} fontFamily="Inter,sans-serif">
                   <tspan x={x + barW / 2} y={chartH + 18}>Шаг {i + 1}</tspan>
                   <tspan x={x + barW / 2} dy={14}>{shortName}</tspan>
                 </text>

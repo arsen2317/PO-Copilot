@@ -17,6 +17,7 @@ import { getTasks } from '../../data/api/tasks';
 import { useUIStore } from '../../store/uiStore';
 import type { ChatMessage as StoredChatMessage, ChatSession, AttachedFile } from '../../store/uiStore';
 import { useCjmStore } from '../../store/cjmStore';
+import { useThemeStore } from '../../store/themeStore';
 import type { CjmFlowNode, CjmFlowEdge } from '../../data/types';
 import ScrollArea from '../ScrollArea';
 import {
@@ -105,11 +106,13 @@ const SUGGESTIONS = [
   'Составить короткий отчет для QBR',
 ];
 
-const BORDER_COLOR = '#2D2E30';
-const BG = '#121214';
-const TEXT_PRIMARY = '#D7D8DA';
-const TEXT_SECONDARY = '#9B9C9E';
-const TEXT_PLACEHOLDER = '#757575';
+// Цвета панели идут через CSS-переменные (см. global.css): значения в тёмной
+// теме идентичны прежним хардкодам, светлая тема их переопределяет по data-theme.
+const BORDER_COLOR = 'var(--ai-border)';
+const BG = 'var(--ai-bg)';
+const TEXT_PRIMARY = 'var(--ai-text-1)';
+const TEXT_SECONDARY = 'var(--ai-text-2)';
+const TEXT_PLACEHOLDER = 'var(--ai-text-3)';
 const ACCENT = '#4A82F7';
 
 // ── Aurora blob config per agent ─────────────────────────────────────────────
@@ -189,12 +192,29 @@ const AGENTS_DATA: AgentDef[] = [
 // ── Single aurora agent card ─────────────────────────────────────────────────
 function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: string) => void }) {
   const [hovered, setHovered] = useState(false);
+  const isDark = useThemeStore((s) => s.isDark);
   const cfg: AuroraCfg = AURORA_CFG[agent.key] ?? {
     b1: '#4A82F7', b2: '#1a3a8a', b3: '#7aa8f9',
     hoverBorder: 'rgba(122,168,249,0.28)',
     iconBg: 'rgba(74,130,247,0.13)', iconColor: '#7aa8f9',
     iconGlow: 'rgba(74,130,247,0.30)',
   };
+  // Тёмные значения — как были; светлая тема: светлая карточка, aurora-блобы
+  // приглушены, иконка-бейдж остаётся тёмной (акцент читается на белом).
+  const cardBg     = isDark ? '#07080f' : '#FFFFFF';
+  const restBorder = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.09)';
+  const hoverShadow = isDark ? 'inset 0 0 28px rgba(0,0,0,0.4)' : '0 6px 18px rgba(15,23,42,0.10)';
+  const labelColor = isDark ? '#D7D8DA' : '#1A1B1E';
+  const descColor  = hovered
+    ? (isDark ? 'rgba(255,255,255,0.72)' : 'rgba(0,0,0,0.68)')
+    : (isDark ? '#9B9C9E' : '#5B5D63');
+  // В светлой теме градиенты/цвета в карточках убираем полностью — чистые нейтральные карточки.
+  const blobFactor  = isDark ? 1 : 0;
+  const ringOpacity = isDark ? 0.5 : 0;
+  const badgeMid    = isDark ? '#0c0f16' : '#FFFFFF';
+  const badgeInner  = isDark ? '#0c0f16' : '#EFF0F3';
+  const badgeBorder = isDark ? 'none' : '1px solid #E3E3E6';
+  const iconColor   = isDark ? cfg.iconColor : '#5B5D63';
 
   useEffect(() => { ensureAuroraStyles(); }, []);
 
@@ -211,11 +231,11 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         flex: '0 0 calc((100% - 20px) / 3)',
         minWidth: 0,
         padding: '14px 14px 16px',
-        background: '#07080f',
+        background: cardBg,
         // rest: very transparent white so aurora gradient bleeds through the border
         // hover: slightly brighter white with a subtle colour tint
-        border: `1px solid ${hovered ? cfg.hoverBorder : 'rgba(255,255,255,0.07)'}`,
-        boxShadow: hovered ? 'inset 0 0 28px rgba(0,0,0,0.4)' : 'none',
+        border: `1px solid ${hovered ? cfg.hoverBorder : restBorder}`,
+        boxShadow: hovered ? hoverShadow : 'none',
         borderRadius: 14,
         cursor: 'pointer',
         display: 'flex',
@@ -232,7 +252,7 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         borderRadius: '50%',
         background: cfg.b1,
         filter: 'blur(32px)',
-        opacity: hovered ? 0.75 : 0.40,
+        opacity: (hovered ? 0.75 : 0.40) * blobFactor,
         bottom: -30, left: '50%', marginLeft: -65,
         animation: `aurora-blob-a ${dur} ease-in-out infinite`,
         transition: 'opacity 0.35s ease',
@@ -246,7 +266,7 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         borderRadius: '50%',
         background: cfg.b2,
         filter: 'blur(28px)',
-        opacity: hovered ? 0.65 : 0.30,
+        opacity: (hovered ? 0.65 : 0.30) * blobFactor,
         bottom: -20, right: -20,
         animation: `aurora-blob-b ${dur} ease-in-out infinite`,
         animationDelay: '-1.5s',
@@ -261,7 +281,7 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         borderRadius: '50%',
         background: cfg.b3,
         filter: 'blur(22px)',
-        opacity: hovered ? 0.55 : 0.20,
+        opacity: (hovered ? 0.55 : 0.20) * blobFactor,
         bottom: -10, left: -15,
         animation: `aurora-blob-c ${dur} ease-in-out infinite`,
         animationDelay: '-3s',
@@ -275,29 +295,30 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         width: 40, height: 40, borderRadius: 11,
         flexShrink: 0,
       }}>
-        {/* Gradient ring at 50% opacity */}
+        {/* Gradient ring (только тёмная тема) */}
         <div style={{
           position: 'absolute', inset: 0, borderRadius: 11,
-          background: `linear-gradient(40deg, ${cfg.b1} 0%, #0c0f16 45%, ${cfg.b3} 100%)`,
-          boxShadow: `${cfg.iconGlow} 0px 4px 14px 0px`,
-          opacity: 0.5,
+          background: `linear-gradient(40deg, ${cfg.b1} 0%, ${badgeMid} 45%, ${cfg.b3} 100%)`,
+          boxShadow: isDark ? `${cfg.iconGlow} 0px 4px 14px 0px` : 'none',
+          opacity: ringOpacity,
         }} />
-        {/* Dark inner fills all but 1px edge */}
+        {/* Inner fills all but 1px edge */}
         <div style={{
-          position: 'absolute', inset: 1, borderRadius: 10,
-          background: '#0c0f16',
+          position: 'absolute', inset: isDark ? 1 : 0, borderRadius: 11,
+          background: badgeInner,
+          border: badgeBorder,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <agent.Icon style={{ fontSize: 18, color: cfg.iconColor }} />
+          <agent.Icon style={{ fontSize: 18, color: iconColor }} />
         </div>
       </div>
 
       {/* Text */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: TEXT_PRIMARY, lineHeight: 1.3 }}>{agent.label}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: labelColor, lineHeight: 1.3 }}>{agent.label}</span>
         <span style={{
           fontSize: 12,
-          color: hovered ? 'rgba(255,255,255,0.72)' : TEXT_SECONDARY,
+          color: descColor,
           lineHeight: 1.5,
           transition: 'color 0.35s ease',
         }}>{agent.desc}</span>
@@ -341,8 +362,8 @@ function AgentCards({ onSelect }: { onSelect: (key: string) => void }) {
                 style={{
                   width: 24, height: 24, borderRadius: 6, cursor: active ? 'pointer' : 'default',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: active ? TEXT_SECONDARY : '#3A3B3D',
-                  fontSize: 11, lineHeight: 1, transition: 'color 0.15s', background: 'rgba(255,255,255,0.04)',
+                  color: active ? TEXT_SECONDARY : 'var(--ai-border-2)',
+                  fontSize: 11, lineHeight: 1, transition: 'color 0.15s', background: 'var(--ai-hover-4)',
                 }}
               >
                 {dir === 'left' ? <LeftOutlined /> : <RightOutlined />}
@@ -400,7 +421,7 @@ function IconBtn({ icon, tooltip, onClick, active }: {
           borderRadius: 6, cursor: 'pointer',
           color: active ? ACCENT : TEXT_SECONDARY,
           fontSize: 15,
-          background: active ? 'rgba(74,130,247,0.15)' : hovered ? 'rgba(255,255,255,0.06)' : 'transparent',
+          background: active ? 'rgba(74,130,247,0.15)' : hovered ? 'var(--ai-hover-6)' : 'transparent',
           transition: 'background 0.15s, color 0.15s',
         }}
       >
@@ -467,7 +488,7 @@ function MetricSelector({ json, onConfirm }: { json: string; onConfirm: (ids: st
 
   return (
     <div style={{ margin: '8px 0', border: `1px solid ${BORDER_COLOR}`, borderRadius: 10, overflow: 'hidden' }}>
-      <div style={{ padding: '10px 14px', background: '#1C1D1F', borderBottom: `1px solid ${BORDER_COLOR}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ padding: '10px 14px', background: 'var(--ai-surface)', borderBottom: `1px solid ${BORDER_COLOR}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 12, color: TEXT_SECONDARY, fontWeight: 500 }}>Выберите метрики для отчёта</span>
         <span style={{ fontSize: 11, color: TEXT_PLACEHOLDER }}>выбрано: {selected.size}</span>
       </div>
@@ -486,12 +507,12 @@ function MetricSelector({ json, onConfirm }: { json: string; onConfirm: (ids: st
                 borderBottom: `1px solid ${BORDER_COLOR}`,
                 transition: 'background 0.12s',
               }}
-              onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)'; }}
+              onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'var(--ai-hover-3)'; }}
               onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
             >
               <div style={{
                 width: 16, height: 16, borderRadius: 4, flexShrink: 0,
-                border: `1.5px solid ${active ? ACCENT : '#3A3B3D'}`,
+                border: `1.5px solid ${active ? ACCENT : 'var(--ai-border-2)'}`,
                 background: active ? ACCENT : 'transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'all 0.12s',
@@ -508,12 +529,12 @@ function MetricSelector({ json, onConfirm }: { json: string; onConfirm: (ids: st
           );
         })}
       </div>
-      <div style={{ padding: '10px 14px', background: '#1C1D1F', display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ padding: '10px 14px', background: 'var(--ai-surface)', display: 'flex', justifyContent: 'flex-end' }}>
         <div
           onClick={() => selected.size > 0 && onConfirm([...selected])}
           style={{
             padding: '6px 16px', borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: selected.size > 0 ? 'pointer' : 'not-allowed',
-            background: selected.size > 0 ? ACCENT : '#2A2B2D', color: selected.size > 0 ? '#fff' : TEXT_PLACEHOLDER,
+            background: selected.size > 0 ? ACCENT : 'var(--ai-surface-3)', color: selected.size > 0 ? '#fff' : TEXT_PLACEHOLDER,
             transition: 'background 0.15s',
           }}
         >
@@ -603,7 +624,7 @@ function CjmUpdateProposal({ json, onApply }: {
             background: 'transparent', color: TEXT_SECONDARY,
             border: `1px solid ${BORDER_COLOR}`, transition: 'background 0.15s',
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--ai-hover-4)'; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
         >
           Отклонить
@@ -680,8 +701,8 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 4,
-                    background: '#242526',
-                    border: '1px solid #3A3B3D',
+                    background: 'var(--ai-surface-2)',
+                    border: '1px solid var(--ai-border-2)',
                     borderRadius: 5,
                     padding: '0px 6px',
                     fontSize: 12,
@@ -697,8 +718,8 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                     (e.currentTarget as HTMLAnchorElement).style.borderColor = '#4A4B4D';
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLAnchorElement).style.background = '#242526';
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#3A3B3D';
+                    (e.currentTarget as HTMLAnchorElement).style.background = 'var(--ai-surface-2)';
+                    (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--ai-border-2)';
                   }}
                 >
                   {children}
@@ -812,8 +833,8 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                           style={{
                             display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
                             gap: 12, textAlign: 'left', width: '100%', height: '100%',
-                            background: 'rgba(255,255,255,0.035)',
-                            border: '1px solid rgba(255,255,255,0.07)',
+                            background: 'var(--ai-hover-35)',
+                            border: '1px solid var(--ai-hover-7)',
                             borderRadius: 14,
                             padding: '12px 14px',
                             fontSize: 13,
@@ -825,12 +846,12 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                             minWidth: 0,
                           }}
                           onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.07)';
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.12)';
+                            (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-hover-7)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-hover-12)';
                           }}
                           onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.035)';
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.07)';
+                            (e.currentTarget as HTMLButtonElement).style.background = 'var(--ai-hover-35)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--ai-hover-7)';
                           }}
                         >
                           <span style={{ minWidth: 0 }}>{label}</span>
@@ -943,7 +964,7 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                     <div style={{ margin: '10px 0', borderRadius: 10, overflow: 'hidden', border: `1px solid ${BORDER_COLOR}` }}>
                       <div style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '8px 12px', background: '#1C1D1F', borderBottom: `1px solid ${BORDER_COLOR}`,
+                        padding: '8px 12px', background: 'var(--ai-surface)', borderBottom: `1px solid ${BORDER_COLOR}`,
                       }}>
                         <span style={{ fontSize: 12, color: TEXT_SECONDARY, fontWeight: 500 }}>QBR Отчёт</span>
                         <div style={{ display: 'flex', gap: 8 }}>
@@ -973,7 +994,7 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                 }
                 return (
                   <pre style={{
-                    background: '#1C1D1F', border: `1px solid ${BORDER_COLOR}`,
+                    background: 'var(--ai-surface)', border: `1px solid ${BORDER_COLOR}`,
                     borderRadius: 6, padding: '10px 12px', overflowX: 'auto',
                     fontSize: 12, lineHeight: 1.5, margin: '6px 0',
                   }}>
@@ -987,9 +1008,9 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                 const isFunnel = id.startsWith('funnel:');
                 const isTask = /^TASK-\d+$/.test(id);
                 const chipAccent = isFunnel ? '#7C6AF6' : isTask ? '#49aa19' : ACCENT;
-                const bgBase = isFunnel ? 'rgba(124,106,246,0.12)' : isTask ? 'rgba(73,170,25,0.10)' : '#242526';
+                const bgBase = isFunnel ? 'rgba(124,106,246,0.12)' : isTask ? 'rgba(73,170,25,0.10)' : 'var(--ai-surface-2)';
                 const bgHover = isFunnel ? 'rgba(124,106,246,0.22)' : isTask ? 'rgba(73,170,25,0.20)' : '#2D2E30';
-                const borderBase = isFunnel ? 'rgba(124,106,246,0.4)' : isTask ? 'rgba(73,170,25,0.4)' : '#3A3B3D';
+                const borderBase = isFunnel ? 'rgba(124,106,246,0.4)' : isTask ? 'rgba(73,170,25,0.4)' : 'var(--ai-border-2)';
                 const textColor = isFunnel ? '#B5AAFF' : isTask ? '#6BCB3A' : TEXT_PRIMARY;
                 const tooltipText = isFunnel ? 'Открыть в воронке' : isTask ? 'Открыть задачу' : 'Открыть на дашборде';
                 const prefix = isFunnel ? '↳ ' : isTask ? '⊡ ' : '';
@@ -1027,7 +1048,7 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
               }
               return (
                 <code style={{
-                  background: '#2A2B2D', borderRadius: 4, padding: '1px 5px',
+                  background: 'var(--ai-surface-3)', borderRadius: 4, padding: '1px 5px',
                   fontSize: 12, color: '#A8C7FA', fontFamily: 'monospace',
                 }}>{children}</code>
               );
@@ -1047,13 +1068,13 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
               </div>
             ),
             thead: ({ children }) => (
-              <thead style={{ background: '#1C1D1F', borderBottom: `1px solid ${BORDER_COLOR}` }}>
+              <thead style={{ background: 'var(--ai-surface)', borderBottom: `1px solid ${BORDER_COLOR}` }}>
                 {children}
               </thead>
             ),
             tbody: ({ children }) => <tbody>{children}</tbody>,
             tr: ({ children }) => (
-              <tr style={{ borderBottom: `1px solid #232325` }}>{children}</tr>
+              <tr style={{ borderBottom: `1px solid var(--ai-border-3)` }}>{children}</tr>
             ),
             th: ({ children }) => (
               <th style={{
@@ -1110,7 +1131,7 @@ function HistoryPanel({ sessions, activeSessionId, onSelect }: {
               border: `1px solid ${active ? 'rgba(74,130,247,0.25)' : 'transparent'}`,
               transition: 'background 0.12s',
             }}
-            onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
+            onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'var(--ai-hover-4)'; }}
             onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
           >
             <span style={{
@@ -1161,10 +1182,10 @@ function AssistantLeftSidebar({ sessions, activeSessionId, onNewChat, onSelectSe
           border: `1px solid ${active ? 'rgba(74,130,247,0.25)' : 'transparent'}`,
           display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.12s',
         }}
-        onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
+        onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'var(--ai-hover-4)'; }}
         onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
       >
-        <div style={{ width: 6, height: 6, borderRadius: '50%', background: active ? ACCENT : '#3A3B3D', flexShrink: 0 }} />
+        <div style={{ width: 6, height: 6, borderRadius: '50%', background: active ? ACCENT : 'var(--ai-border-2)', flexShrink: 0 }} />
         <span style={{ fontSize: 13, color: active ? TEXT_PRIMARY : TEXT_SECONDARY, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
           {s.title}
         </span>
@@ -1186,7 +1207,7 @@ function AssistantLeftSidebar({ sessions, activeSessionId, onNewChat, onSelectSe
             color: TEXT_PRIMARY, fontSize: 13, fontWeight: 500,
             transition: 'background 0.12s',
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.06)'; }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--ai-hover-6)'; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
         >
           <FormOutlined style={{ fontSize: 15, color: TEXT_SECONDARY }} />
@@ -1201,7 +1222,7 @@ function AssistantLeftSidebar({ sessions, activeSessionId, onNewChat, onSelectSe
         >
           <RobotOutlined style={{ fontSize: 15 }} />
           <span>Мои агенты</span>
-          <span style={{ marginLeft: 'auto', fontSize: 10, color: TEXT_PLACEHOLDER, background: 'rgba(255,255,255,0.06)', borderRadius: 4, padding: '1px 5px' }}>скоро</span>
+          <span style={{ marginLeft: 'auto', fontSize: 10, color: TEXT_PLACEHOLDER, background: 'var(--ai-hover-6)', borderRadius: 4, padding: '1px 5px' }}>скоро</span>
         </div>
       </div>
 
@@ -1244,6 +1265,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const isDark = useThemeStore((s) => s.isDark);
   const isAssistantPage = location.pathname === '/assistant' || location.pathname.startsWith('/assistant/');
   const setFocusedMetric = useUIStore((s) => s.setFocusedMetric);
   const sessions = useUIStore((s) => s.sessions);
@@ -1751,9 +1773,11 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
       {/* Input card */}
       <div style={{
-        background: automateHovered ? '#0B1F5F' : '#1C1D1F',
+        background: automateHovered ? (isDark ? '#0B1F5F' : '#E9EFFF') : 'var(--ai-surface)',
         borderRadius: 18,
-        outline: automateHovered ? '1px #434446 solid' : `1px solid ${BORDER_COLOR}`,
+        outline: automateHovered
+          ? (isDark ? '1px #434446 solid' : '1px rgba(74,130,247,0.45) solid')
+          : `1px solid ${BORDER_COLOR}`,
         overflow: 'hidden',
         transition: 'background 0.18s, outline-color 0.18s',
       }}>
@@ -1790,7 +1814,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               height: 28, padding: '0 8px',
-              background: '#1C1D1F', borderRadius: 8, marginBottom: 8,
+              background: 'var(--ai-surface)', borderRadius: 8, marginBottom: 8,
             }}>
               <TokenCircleIcon style={{ fontSize: 14, color: ACCENT }} />
               <span style={{ fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, whiteSpace: 'nowrap' }}>
@@ -1801,12 +1825,12 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   width: 14, height: 14, borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.1)', cursor: 'pointer',
+                  background: 'var(--ai-hover-10)', cursor: 'pointer',
                   color: TEXT_SECONDARY, fontSize: 9,
                   transition: 'background 0.15s',
                 }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.2)'; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.1)'; }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--ai-hover-20)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--ai-hover-10)'; }}
               >
                 ✕
               </div>
@@ -1828,7 +1852,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                     style={{
                       position: 'absolute', top: -4, right: -4,
                       width: 16, height: 16, borderRadius: '50%',
-                      background: '#3A3B3D', display: 'flex',
+                      background: 'var(--ai-border-2)', display: 'flex',
                       alignItems: 'center', justifyContent: 'center',
                       cursor: 'pointer', fontSize: 9, color: TEXT_SECONDARY,
                     }}
@@ -1847,7 +1871,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                 <div key={i} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 5,
                   height: 26, padding: '0 8px',
-                  background: '#1C1D1F', border: `1px solid ${BORDER_COLOR}`,
+                  background: 'var(--ai-surface)', border: `1px solid ${BORDER_COLOR}`,
                   borderRadius: 6, fontSize: 12, color: TEXT_SECONDARY,
                 }}>
                   <PaperClipOutlined style={{ fontSize: 11 }} />
@@ -1931,7 +1955,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                       width: 24, height: 24,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: 'pointer', color: TEXT_PRIMARY, fontSize: 12,
-                      background: 'rgba(255,255,255,0.12)', borderRadius: 6,
+                      background: 'var(--ai-hover-12)', borderRadius: 6,
                       transition: 'background 0.15s',
                     }}
                   >
@@ -2110,7 +2134,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
                       cursor: 'pointer', color: TEXT_SECONDARY, fontSize: 13,
                       background: 'transparent', transition: 'background 0.15s', whiteSpace: 'nowrap',
                     }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'; }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--ai-hover-4)'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
                   >
                     {s}
@@ -2156,6 +2180,8 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 // Animated aurora for the assistant page (large centred layout)
 function GlowBg() {
   useEffect(() => { ensureAuroraStyles(); }, []);
+  const isDark = useThemeStore((s) => s.isDark);
+  const gf = isDark ? 1 : 0.4; // светлая тема — сильно приглушаем градиент (≥50%)
   return (
     <div style={{
       position: 'absolute', left: 0, right: 0, bottom: 0,
@@ -2164,7 +2190,7 @@ function GlowBg() {
       {/* Blob A — large, bottom-center */}
       <div style={{
         position: 'absolute', width: 380, height: 260, borderRadius: '50%',
-        background: '#1a6fff', filter: 'blur(80px)', opacity: 0.38,
+        background: '#1a6fff', filter: 'blur(80px)', opacity: 0.38 * gf,
         bottom: -110, left: '50%', marginLeft: -190,
         animation: 'aurora-blob-a 10s ease-in-out infinite',
         willChange: 'transform',
@@ -2172,7 +2198,7 @@ function GlowBg() {
       {/* Blob B — left-center, overlaps A */}
       <div style={{
         position: 'absolute', width: 300, height: 200, borderRadius: '50%',
-        background: '#0040cc', filter: 'blur(70px)', opacity: 0.28,
+        background: '#0040cc', filter: 'blur(70px)', opacity: 0.28 * gf,
         bottom: -80, left: '32%', marginLeft: -150,
         animation: 'aurora-blob-b 10s ease-in-out infinite',
         animationDelay: '-2s',
@@ -2181,7 +2207,7 @@ function GlowBg() {
       {/* Blob C — right-center, overlaps A */}
       <div style={{
         position: 'absolute', width: 260, height: 180, borderRadius: '50%',
-        background: '#00aaff', filter: 'blur(65px)', opacity: 0.22,
+        background: '#00aaff', filter: 'blur(65px)', opacity: 0.22 * gf,
         bottom: -60, left: '62%', marginLeft: -130,
         animation: 'aurora-blob-c 10s ease-in-out infinite',
         animationDelay: '-5s',
@@ -2194,6 +2220,8 @@ function GlowBg() {
 // Animated aurora for the sidebar panel empty state — same style as AuroraCard blobs
 function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
   useEffect(() => { ensureAuroraStyles(); }, []);
+  const isDark = useThemeStore((s) => s.isDark);
+  const gf = isDark ? 1 : 0.4; // светлая тема — сильно приглушаем градиент (≥50%)
   const dur = hovered ? '3s' : '8s';
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, pointerEvents: 'none', zIndex: 0 }}>
@@ -2204,8 +2232,8 @@ function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
         borderRadius: '50%',
         background: '#4A82F7',
         filter: 'blur(75px)',
-        opacity: hovered ? 0.72 : 0.38,
-        bottom: '18%', left: '50%', marginLeft: -130,
+        opacity: (hovered ? 0.72 : 0.38) * gf,
+        bottom: '3%', left: '50%', marginLeft: -130,
         animation: `aurora-blob-a ${dur} ease-in-out infinite`,
         willChange: 'transform',
         transition: 'opacity 0.35s ease',
@@ -2217,8 +2245,8 @@ function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
         borderRadius: '50%',
         background: '#1a3a8a',
         filter: 'blur(62px)',
-        opacity: hovered ? 0.62 : 0.28,
-        bottom: '16%', right: -40,
+        opacity: (hovered ? 0.62 : 0.28) * gf,
+        bottom: '1%', right: -40,
         animation: `aurora-blob-b ${dur} ease-in-out infinite`,
         animationDelay: '-1.5s',
         willChange: 'transform',
@@ -2231,8 +2259,8 @@ function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
         borderRadius: '50%',
         background: '#7aa8f9',
         filter: 'blur(52px)',
-        opacity: hovered ? 0.52 : 0.20,
-        bottom: '17%', left: -30,
+        opacity: (hovered ? 0.52 : 0.20) * gf,
+        bottom: '2%', left: -30,
         animation: `aurora-blob-c ${dur} ease-in-out infinite`,
         animationDelay: '-3s',
         willChange: 'transform',

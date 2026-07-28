@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import type { TaskDraft } from '../../data/types';
 import { Badge, Button, Select, theme, Tooltip, Typography } from 'antd';
 import {
   AppstoreOutlined,
@@ -25,6 +26,7 @@ import { KanbanView } from './views/KanbanView';
 import { ListView } from './views/ListView';
 import { BacklogView } from './views/BacklogView';
 import { DraftsView } from './views/DraftsView';
+import DraftFormModal from './DraftFormModal';
 
 const { useToken } = theme;
 
@@ -62,6 +64,11 @@ export default function TasksPage() {
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
   const draftsCount = useUIStore((s) => s.taskDrafts.length);
+  const [draftModalOpen, setDraftModalOpen] = useState(false);
+  const [editingDraft, setEditingDraft] = useState<TaskDraft | null>(null);
+
+  const openCreateDraft = () => { setEditingDraft(null); setDraftModalOpen(true); };
+  const openEditDraft = (draft: TaskDraft) => { setEditingDraft(draft); setDraftModalOpen(true); };
 
   const { data: fetchedTasks = [], isLoading } = useQuery({ queryKey: ['tasks'], queryFn: getTasks });
 
@@ -101,8 +108,8 @@ export default function TasksPage() {
               <LinkOutlined style={{ fontSize: 16 }} />
             </div>
           </Tooltip>
-          <Button icon={<PlusOutlined />} type="primary" size="small" style={{ fontSize: 13, height: 30 }}>
-            Создать задачу
+          <Button icon={<PlusOutlined />} type="primary" size="small" style={{ fontSize: 13, height: 30 }} onClick={openCreateDraft}>
+            Создать драфт
           </Button>
         </div>
       </div>
@@ -170,10 +177,17 @@ export default function TasksPage() {
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {activeTab === 'kanban' && <KanbanView tasks={filtered} isLoading={isLoading} bdr={BDR} />}
         {activeTab === 'list' && <ListView tasks={filtered} isLoading={isLoading} />}
-        {activeTab === 'backlog' && <BacklogView tasks={filtered} isLoading={isLoading} bdr={BDR} />}
+        {activeTab === 'backlog' && <ScrollArea style={{ flex: 1 }}><BacklogView tasks={filtered} isLoading={isLoading} bdr={BDR} /></ScrollArea>}
         {activeTab === 'timeline' && <TimelineView bdr={BDR} />}
-        {activeTab === 'drafts' && <ScrollArea style={{ flex: 1 }}><DraftsView bdr={BDR} {...(highlightDraftId ? { highlightId: highlightDraftId } : {})} /></ScrollArea>}
+        {activeTab === 'drafts' && <ScrollArea style={{ flex: 1 }}><DraftsView bdr={BDR} onEdit={openEditDraft} {...(highlightDraftId ? { highlightId: highlightDraftId } : {})} /></ScrollArea>}
       </div>
+
+      <DraftFormModal
+        open={draftModalOpen}
+        onClose={() => setDraftModalOpen(false)}
+        onSaved={(mode) => { if (mode === 'create') setActiveTab('drafts'); }}
+        editingDraft={editingDraft}
+      />
     </div>
   );
 }

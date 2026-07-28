@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { ConfigProvider, theme } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ruRU from 'antd/locale/ru_RU';
+import { useThemeStore } from '../store/themeStore';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,12 +15,19 @@ interface ProvidersProps {
 }
 
 export default function Providers({ children }: ProvidersProps) {
+  const isDark = useThemeStore((s) => s.isDark);
+  // Помечаем корень для CSS (скроллбары, color-scheme нативных контролов).
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    root.style.colorScheme = isDark ? 'dark' : 'light';
+  }, [isDark]);
   return (
     <QueryClientProvider client={queryClient}>
       <ConfigProvider
         locale={ruRU}
         theme={{
-          algorithm: theme.darkAlgorithm,
+          algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
           token: {
             fontFamily: "'MTS Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
           },

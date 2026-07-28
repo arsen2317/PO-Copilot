@@ -4,6 +4,7 @@ import { Button, Select, Skeleton, Tooltip, theme } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { getEpics, getTasks } from '../../data/api/tasks';
 import type { Epic, Task, TaskStatus } from '../../data/types';
+import { useThemeStore } from '../../store/themeStore';
 
 const { useToken } = theme;
 
@@ -75,10 +76,21 @@ const TODAY = new Date('2026-07-15');
 const ANCHOR_MONDAY = new Date(2026, 0, 5);
 
 // Contrast between the issues panel and the timeline itself.
-const LEFT_BG = '#1a1b20';
-const LEFT_BG_GROUP = '#212228';
-const RIGHT_BG = '#0f1013';
-const RIGHT_BG_GROUP = '#181922';
+// Тёмные значения — ровно как были; светлая тема — отдельная ветка.
+function timelineColors(isDark: boolean) {
+  return {
+    leftBg:       isDark ? '#1a1b20' : '#FFFFFF',
+    leftBgGroup:  isDark ? '#212228' : '#F2F3F5',
+    rightBg:      isDark ? '#0f1013' : '#FBFBFC',
+    rightBgGroup: isDark ? '#181922' : '#F2F3F5',
+    // Бар чуть темнее фона шкалы (#FBFBFC) — иначе без обводки сливается.
+    barBg:        isDark ? '#24252b' : '#E4E6EB',
+    barText:      isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.82)',
+    gridMonth:    isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)',
+    gridTick:     isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)',
+    headerBorder: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)',
+  };
+}
 
 // Infinite horizontal scroll: grow the rendered window as the user nears an edge.
 const EXPAND_CHUNK_DAYS = 90;
@@ -111,14 +123,15 @@ function formatDuration(start: Date, end: Date): string {
 // ─── Small components ─────────────────────────────────────────────────────────
 
 function MiniAvatar({ user, size = 22 }: { user: { id: string; name: string; avatar?: string }; size?: number }) {
+  const ring = timelineColors(useThemeStore((s) => s.isDark)).barBg;
   const initials = user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
   if (user.avatar) {
-    return <img src={user.avatar} alt={user.name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, display: 'block', border: `1.5px solid ${RIGHT_BG}` }} />;
+    return <img src={user.avatar} alt={user.name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, display: 'block', border: `1.5px solid ${ring}` }} />;
   }
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', background: AVATAR_COLORS[user.id] ?? '#555',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${RIGHT_BG}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1.5px solid ${ring}`,
       fontSize: Math.floor(size * 0.38), fontWeight: 700, color: '#fff', flexShrink: 0,
     }}>{initials}</div>
   );
@@ -156,6 +169,7 @@ function TooltipCard({ task }: { task: TimelineTask }) {
 export default function TimelineView({ bdr }: { bdr: string }) {
   const { token } = useToken();
   const navigate = useNavigate();
+  const TC = timelineColors(useThemeStore((s) => s.isDark));
 
   const [scale, setScale] = useState<Scale>('month');
   // The rendered window — grows outward as the user scrolls near either edge;
@@ -326,7 +340,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
         ref={scrollRef}
         onScroll={handleScroll}
         className="content-scroll"
-        style={{ flex: 1, overflow: 'auto', borderRadius: 10, border: bdr, background: RIGHT_BG, minHeight: 0 }}
+        style={{ flex: 1, overflow: 'auto', borderRadius: 10, border: bdr, background: TC.rightBg, minHeight: 0 }}
       >
         <div style={{ width: LEFT_W + totalW, position: 'relative' }}>
 
@@ -334,13 +348,13 @@ export default function TimelineView({ bdr }: { bdr: string }) {
           <div style={{ display: 'flex', position: 'sticky', top: 0, zIndex: 20, height: HEADER_H }}>
             <div style={{
               position: 'sticky', left: 0, zIndex: 21, width: LEFT_W, flexShrink: 0, height: HEADER_H,
-              background: LEFT_BG, borderRight: bdr, borderBottom: bdr,
+              background: TC.leftBg, borderRight: bdr, borderBottom: bdr,
               display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '0 14px 10px',
             }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: token.colorTextTertiary, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Задачи</span>
               <span style={{ fontSize: 11, fontWeight: 600, color: token.colorTextTertiary, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Срок</span>
             </div>
-            <div style={{ width: totalW, position: 'relative', height: HEADER_H, background: RIGHT_BG, borderBottom: bdr }}>
+            <div style={{ width: totalW, position: 'relative', height: HEADER_H, background: TC.rightBg, borderBottom: bdr }}>
               {/* Pinned to the viewport (not a date position) so the year stays legible no matter how far the user has scrolled. */}
               <div style={{
                 position: 'sticky', left: LEFT_W + 8, top: 1, zIndex: 2, width: 'fit-content',
@@ -351,7 +365,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
               {monthBands.map((band, i) => (
                 <div key={i} style={{
                   position: 'absolute', left: band.x, top: YEAR_ROW_H, width: band.width, height: MONTH_ROW_H,
-                  borderRight: '1px solid rgba(255,255,255,0.07)', borderBottom: '1px solid rgba(255,255,255,0.07)',
+                  borderRight: `1px solid ${TC.headerBorder}`, borderBottom: `1px solid ${TC.headerBorder}`,
                   display: 'flex', alignItems: 'center', paddingLeft: 8,
                   fontSize: 11, fontWeight: 600, color: token.colorTextSecondary,
                   overflow: 'hidden', whiteSpace: 'nowrap', textTransform: 'capitalize',
@@ -380,10 +394,10 @@ export default function TimelineView({ bdr }: { bdr: string }) {
           {/* Vertical gridlines spanning all rows: month boundaries + scale ticks + today */}
           <div style={{ position: 'absolute', top: HEADER_H, left: LEFT_W, width: totalW, height: totalRowsH, zIndex: 1, pointerEvents: 'none' }}>
             {monthBands.map((band, i) => (
-              <div key={i} style={{ position: 'absolute', top: 0, left: band.x, width: 1, height: totalRowsH, background: 'rgba(255,255,255,0.05)' }} />
+              <div key={i} style={{ position: 'absolute', top: 0, left: band.x, width: 1, height: totalRowsH, background: TC.gridMonth }} />
             ))}
             {ticks.map((tick, i) => (
-              <div key={i} style={{ position: 'absolute', top: 0, left: tick.x, width: 1, height: totalRowsH, background: 'rgba(255,255,255,0.03)' }} />
+              <div key={i} style={{ position: 'absolute', top: 0, left: tick.x, width: 1, height: totalRowsH, background: TC.gridTick }} />
             ))}
             <div style={{ position: 'absolute', top: 0, left: todayX, width: 1, height: totalRowsH, background: token.colorPrimary, opacity: 0.5 }} />
           </div>
@@ -397,7 +411,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                 <div key={`g-${row.epic.id}`} style={{ display: 'flex', height: rowH }}>
                   <div style={{
                     position: 'sticky', left: 0, zIndex: 5, width: LEFT_W, flexShrink: 0, height: rowH,
-                    background: LEFT_BG_GROUP, borderBottom: bdr,
+                    background: TC.leftBgGroup, borderBottom: bdr,
                     display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px',
                   }}>
                     <span style={{ width: 6, height: 6, borderRadius: 2, background: row.epic.color, flexShrink: 0 }} />
@@ -406,7 +420,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                     </span>
                     <span style={{ fontSize: 11, color: token.colorTextQuaternary, marginLeft: 'auto', flexShrink: 0 }}>{row.taskCount}</span>
                   </div>
-                  <div style={{ width: totalW, height: rowH, background: RIGHT_BG_GROUP, borderBottom: bdr }} />
+                  <div style={{ width: totalW, height: rowH, background: TC.rightBgGroup, borderBottom: bdr }} />
                 </div>
               );
             }
@@ -420,7 +434,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
               <div key={t.id} style={{ display: 'flex', height: rowH }}>
                 <div style={{
                   position: 'sticky', left: 0, zIndex: 5, width: LEFT_W, flexShrink: 0, height: rowH,
-                  background: LEFT_BG, borderBottom: bdr,
+                  background: TC.leftBg, borderBottom: bdr,
                   display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px 0 28px',
                 }}>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: STATUS_COLORS[t.status], flexShrink: 0 }} />
@@ -441,7 +455,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                       onClick={() => navigate(`/tasks/${t.id}`)}
                       style={{
                         position: 'absolute', left: bx, top: (rowH - BAR_H) / 2, width: bw, height: BAR_H,
-                        borderRadius: BAR_R, background: '#24252b',
+                        borderRadius: BAR_R, background: TC.barBg,
                         border: `1px solid ${STATUS_COLORS[t.status]}55`,
                         cursor: 'pointer', zIndex: 4, display: 'flex', alignItems: 'center',
                         padding: '0 4px 0 12px', gap: 6, overflow: 'hidden',
@@ -449,7 +463,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
                       }}
                     >
                       <span style={{
-                        fontSize: 11.5, fontWeight: 500, color: 'rgba(255,255,255,0.85)',
+                        fontSize: 11.5, fontWeight: 500, color: TC.barText,
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0,
                       }}>
                         {displayTitle}

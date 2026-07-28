@@ -1,16 +1,20 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Tag, theme, Tooltip } from 'antd';
-import { BookOutlined, CheckOutlined, DeleteOutlined, RobotOutlined } from '@ant-design/icons';
+import { BookOutlined, DeleteOutlined, EditOutlined, RobotOutlined } from '@ant-design/icons';
+import type { TaskDraft } from '../../../data/types';
 import { useUIStore } from '../../../store/uiStore';
+import { useThemeStore } from '../../../store/themeStore';
+import { taskSurfaces } from '../taskConstants';
 
 const { useToken } = theme;
 
 // ─── Drafts view ──────────────────────────────────────────────────────────────
 
-export function DraftsView({ bdr, highlightId }: { bdr: string; highlightId?: string }) {
+export function DraftsView({ bdr, highlightId, onEdit }: { bdr: string; highlightId?: string; onEdit?: (draft: TaskDraft) => void }) {
   const { token } = useToken();
   const navigate = useNavigate();
+  const S = taskSurfaces(useThemeStore((s) => s.isDark));
   const drafts = useUIStore((s) => s.taskDrafts);
   const removeTaskDraft = useUIStore((s) => s.removeTaskDraft);
   const highlightRef = useRef<HTMLDivElement | null>(null);
@@ -51,7 +55,7 @@ export function DraftsView({ bdr, highlightId }: { bdr: string; highlightId?: st
         <div
           key={draft.id}
           ref={isHighlighted ? highlightRef : null}
-          style={{ background: '#16171a', border: isHighlighted ? '1px solid rgba(74,130,247,0.6)' : bdr, borderRadius: 10, padding: '16px 18px', transition: 'border-color 0.3s', boxShadow: isHighlighted ? '0 0 0 3px rgba(74,130,247,0.15)' : 'none' }}
+          style={{ background: S.card, border: isHighlighted ? '1px solid rgba(74,130,247,0.6)' : bdr, borderRadius: 10, padding: '16px 18px', transition: 'border-color 0.3s', boxShadow: isHighlighted ? '0 0 0 3px rgba(74,130,247,0.15)' : 'none' }}
         >
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
@@ -62,10 +66,10 @@ export function DraftsView({ bdr, highlightId }: { bdr: string; highlightId?: st
                   {draft.type}
                 </span>
                 {draft.storyPoints && (
-                  <span style={{ fontSize: 11, color: token.colorTextTertiary, background: '#2D2E30', borderRadius: 4, padding: '0 6px' }}>{draft.storyPoints} SP</span>
+                  <span style={{ fontSize: 11, color: token.colorTextTertiary, background: S.chip, borderRadius: 4, padding: '0 6px' }}>{draft.storyPoints} SP</span>
                 )}
                 {draft.labels?.map((l) => (
-                  <Tag key={l} style={{ fontSize: 10, padding: '0 5px', margin: 0, border: '1px solid #2D2E30', background: 'transparent', color: token.colorTextSecondary }}>{l}</Tag>
+                  <Tag key={l} style={{ fontSize: 10, padding: '0 5px', margin: 0, border: `1px solid ${S.border}`, background: 'transparent', color: token.colorTextSecondary }}>{l}</Tag>
                 ))}
                 <span style={{ fontSize: 11, color: token.colorTextQuaternary, marginLeft: 'auto' }}>
                   {new Date(draft.createdAt).toLocaleDateString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -74,9 +78,9 @@ export function DraftsView({ bdr, highlightId }: { bdr: string; highlightId?: st
               <div style={{ fontSize: 15, fontWeight: 600, color: token.colorText }}>{draft.title}</div>
             </div>
             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-              <Tooltip title="Принять как задачу">
-                <Button size="small" type="primary" icon={<CheckOutlined />} style={{ fontSize: 12 }}>
-                  Принять
+              <Tooltip title="Редактировать черновик">
+                <Button size="small" type="primary" icon={<EditOutlined />} style={{ fontSize: 12 }} onClick={() => onEdit?.(draft)}>
+                  Редактировать
                 </Button>
               </Tooltip>
               <Tooltip title="Удалить черновик">
@@ -130,7 +134,7 @@ export function DraftsView({ bdr, highlightId }: { bdr: string; highlightId?: st
                       display: 'inline-flex', alignItems: 'center', gap: 6,
                       padding: '4px 10px', border: bdr, borderRadius: 6,
                       fontSize: 12, color: token.colorPrimary, cursor: 'pointer',
-                      background: '#1e1f22',
+                      background: S.inner,
                     }}
                   >
                     <BookOutlined style={{ fontSize: 12 }} />

@@ -15,8 +15,9 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import type { Task, TaskStatus } from '../../../data/types';
 import ScrollArea from '../../../components/ScrollArea';
-import { COLUMNS } from '../taskConstants';
+import { COLUMNS, taskSurfaces } from '../taskConstants';
 import { PriorityChevrons, UserAvatar } from '../TaskWidgets';
+import { useThemeStore } from '../../../store/themeStore';
 
 const { useToken } = theme;
 
@@ -25,12 +26,13 @@ const { useToken } = theme;
 function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }) {
   const { token } = useToken();
   const navigate = useNavigate();
+  const S = taskSurfaces(useThemeStore((s) => s.isDark));
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: task.id, disabled: overlay,
   });
   const riskBorder = task.riskLevel === 'critical' ? `2px solid ${token.colorError}`
     : task.riskLevel === 'warning' ? `2px solid ${token.colorWarning}`
-    : `1px solid #2D2E30`;
+    : `1px solid ${S.border}`;
   const isOverdue = task.deadline && new Date(task.deadline) < new Date() && task.status !== 'done';
 
   return (
@@ -38,7 +40,7 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
       <div
         onClick={(e) => { if ((e.target as HTMLElement).closest('[data-drag]')) return; navigate(`/tasks/${task.id}`); }}
         style={{
-          background: overlay ? '#1e1f22' : '#1a1b1e', border: riskBorder, borderRadius: 8,
+          background: S.raised, border: riskBorder, borderRadius: 8,
           padding: '10px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 8,
           boxShadow: overlay ? '0 8px 24px rgba(0,0,0,0.5)' : undefined,
         }}
@@ -48,7 +50,7 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
           <PriorityChevrons priority={task.priority} />
           <span style={{ fontSize: 11, color: token.colorTextTertiary, fontFamily: 'monospace' }}>{task.id}</span>
           {task.labels?.slice(0, 1).map((l) => (
-            <Tag key={l} style={{ fontSize: 10, padding: '0 5px', margin: 0, lineHeight: '16px', border: '1px solid #2D2E30', background: 'transparent', color: token.colorTextSecondary }}>
+            <Tag key={l} style={{ fontSize: 10, padding: '0 5px', margin: 0, lineHeight: '16px', border: `1px solid ${S.border}`, background: 'transparent', color: token.colorTextSecondary }}>
               {l}
             </Tag>
           ))}
@@ -57,7 +59,7 @@ function KanbanCard({ task, overlay = false }: { task: Task; overlay?: boolean }
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             {task.storyPoints !== undefined && (
-              <span style={{ fontSize: 11, color: token.colorTextTertiary, background: '#2D2E30', borderRadius: 4, padding: '1px 6px' }}>{task.storyPoints} SP</span>
+              <span style={{ fontSize: 11, color: token.colorTextTertiary, background: S.chip, borderRadius: 4, padding: '1px 6px' }}>{task.storyPoints} SP</span>
             )}
             {task.deadline && (
               <span style={{ fontSize: 11, color: isOverdue ? token.colorError : token.colorTextTertiary, display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -85,14 +87,15 @@ const COLUMN_STYLE: Record<TaskStatus, { bg: string; borderColor: string }> = {
 
 function KanbanColumn({ status, label, tasks, bdr }: { status: TaskStatus; label: string; tasks: Task[]; bdr: string }) {
   const { token } = useToken();
-  const { bg, borderColor } = COLUMN_STYLE[status];
+  const S = taskSurfaces(useThemeStore((s) => s.isDark));
+  const { borderColor } = COLUMN_STYLE[status];
   const colBorder = borderColor ? `1px solid ${borderColor}` : bdr;
 
   return (
-    <div style={{ flex: '1 1 218px', minWidth: 218, display: 'flex', flexDirection: 'column', background: bg, borderRadius: 10, border: colBorder, overflow: 'hidden', maxHeight: '100%' }}>
+    <div style={{ flex: '1 1 218px', minWidth: 218, display: 'flex', flexDirection: 'column', background: S.card, borderRadius: 10, border: colBorder, overflow: 'hidden', maxHeight: '100%' }}>
       <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: colBorder, flexShrink: 0 }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: token.colorText }}>{label}</span>
-        <Badge count={tasks.length} style={{ background: '#2D2E30', color: token.colorTextSecondary, boxShadow: 'none', fontSize: 11 }} />
+        <Badge count={tasks.length} style={{ background: S.chip, color: token.colorTextSecondary, boxShadow: 'none', fontSize: 11 }} />
       </div>
       <ScrollArea style={{ flex: 1 }} contentStyle={{ padding: '10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>

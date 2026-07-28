@@ -1,6 +1,7 @@
 import { theme } from 'antd';
 import { Line } from '@ant-design/plots';
 import type { MetricPoint } from '../../../data/types';
+import { useThemeStore } from '../../../store/themeStore';
 
 const { useToken } = theme;
 
@@ -16,6 +17,7 @@ interface StepLineChartProps {
 
 export function StepLineChart({ data, granularity, size }: StepLineChartProps) {
   const { token } = useToken();
+  const isDark = useThemeStore((s) => s.isDark);
   const color = token.colorPrimary;
 
   const fmtXLabel = (val: unknown): string => {
@@ -36,7 +38,7 @@ export function StepLineChart({ data, granularity, size }: StepLineChartProps) {
       yField="value"
       width={size.w}
       height={size.h}
-      theme="classicDark"
+      theme={isDark ? 'classicDark' : 'classic'}
       paddingBottom={40}
       paddingLeft={56}
       paddingTop={12}

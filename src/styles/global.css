@@ -361,6 +361,71 @@ body {
   --os-handle-bg-active: #3d3e40;
 }
 
+/* ── Панель ассистента (AIPanelSider): тема через CSS-переменные ──────
+   Тёмные значения = дефолт в :root (первый кадр до установки data-theme
+   тоже тёмный, как раньше). Светлая тема переопределяет их. */
+:root {
+  --ai-bg: #121214;
+  --ai-border: #2D2E30;
+  --ai-text-1: #D7D8DA;
+  --ai-text-2: #9B9C9E;
+  --ai-text-3: #757575;
+  --ai-surface: #1C1D1F;
+  --ai-surface-2: #242526;
+  --ai-surface-3: #2A2B2D;
+  --ai-border-2: #3A3B3D;
+  --ai-border-3: #232325;
+  --ai-empty: #0c0f16;
+  --ai-hover-3: rgba(255,255,255,0.03);
+  --ai-hover-35: rgba(255,255,255,0.035);
+  --ai-hover-4: rgba(255,255,255,0.04);
+  --ai-hover-6: rgba(255,255,255,0.06);
+  --ai-hover-7: rgba(255,255,255,0.07);
+  --ai-hover-12: rgba(255,255,255,0.12);
+  --ai-text-hover: rgba(255,255,255,0.72);
+  --ai-hover-10: rgba(255,255,255,0.1);
+  --ai-hover-20: rgba(255,255,255,0.2);
+}
+:root[data-theme='light'] {
+  --ai-bg: #FFFFFF;
+  --ai-border: #E3E3E6;
+  --ai-text-1: #1A1B1E;
+  --ai-text-2: #66676B;
+  --ai-text-3: #97979C;
+  --ai-surface: #F4F4F6;
+  --ai-surface-2: #ECECEF;
+  --ai-surface-3: #E6E6E9;
+  --ai-border-2: #D6D7DA;
+  --ai-border-3: #ECECEE;
+  --ai-empty: #EEF1F7;
+  --ai-hover-3: rgba(0,0,0,0.03);
+  --ai-hover-35: rgba(0,0,0,0.035);
+  --ai-hover-4: rgba(0,0,0,0.045);
+  --ai-hover-6: rgba(0,0,0,0.06);
+  --ai-hover-7: rgba(0,0,0,0.07);
+  --ai-hover-12: rgba(0,0,0,0.10);
+  --ai-text-hover: rgba(0,0,0,0.72);
+  --ai-hover-10: rgba(0,0,0,0.08);
+  --ai-hover-20: rgba(0,0,0,0.16);
+}
+
+/* ── Светлая тема: скроллбары ──────────────────────────────────────
+   Тёмная тема выше не тронута; здесь только переопределения для light. */
+:root[data-theme='light'] .content-scroll {
+  scrollbar-color: #C7C8CC transparent;
+}
+:root[data-theme='light'] .content-scroll::-webkit-scrollbar-thumb {
+  background: #C7C8CC;
+}
+:root[data-theme='light'] .content-scroll::-webkit-scrollbar-thumb:hover {
+  background: #B0B1B6;
+}
+:root[data-theme='light'] .os-theme-app {
+  --os-handle-bg: #C7C8CC;
+  --os-handle-bg-hover: #B0B1B6;
+  --os-handle-bg-active: #9C9DA2;
+}
+
 /* ── MTS Wide — заголовки ────────────────────────────────────────── */
 h1, h2, h3, h4,
 .ant-typography h1,

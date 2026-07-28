@@ -4,12 +4,14 @@ import {
   BarChartOutlined,
   BellOutlined,
   BookOutlined,
+  BulbOutlined,
   CheckSquareOutlined,
   DownOutlined,
   LineChartOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MessageOutlined,
+  MoonOutlined,
   QuestionCircleOutlined,
   SearchOutlined,
   SettingOutlined,
@@ -19,6 +21,7 @@ import {
 import { TokenCircleIcon } from '../icons';
 import { Tooltip } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useThemeStore } from '../../store/themeStore';
 import SearchModal from './SearchModal';
 
 interface AppSidebarProps {
@@ -47,7 +50,7 @@ const NAV_ITEMS = [
 ] as const;
 
 const BOTTOM_ITEMS = [
-  { key: '/profile',       icon: UserOutlined,          label: 'Профиль' },
+  { key: '/profile',       icon: UserOutlined,          label: 'Иванов И.И.' },
   { key: '/notifications', icon: BellOutlined,          label: 'Уведомления' },
   { key: '/settings',      icon: SettingOutlined,       label: 'Настройки' },
   { key: '__help__',       icon: QuestionCircleOutlined, label: 'Помощь' },
@@ -56,9 +59,19 @@ const BOTTOM_ITEMS = [
 export default function AppSidebar({ unreadCount }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const isDark = useThemeStore((s) => s.isDark);
+  const toggleTheme = useThemeStore((s) => s.toggle);
   const [searchOpen, setSearchOpen] = useState(false);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+
+  // Тема-зависимые цвета левого меню (антд-алгоритм не покрывает свой каркас).
+  const C = {
+    text: isDark ? '#9B9C9E' : '#4A4C52',
+    textActive: isDark ? '#D7D8DA' : '#1A1B1E',
+    hover: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+    active: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
+  };
 
   const isAnalyticsActive =
     ANALYTICS_KEYS.has(location.pathname as '/dashboard') ||
@@ -101,9 +114,9 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
     cursor: 'pointer',
     background:
       key === selectedKey
-        ? 'rgba(255,255,255,0.07)'
+        ? C.active
         : hoveredKey === key
-          ? 'rgba(255,255,255,0.04)'
+          ? C.hover
           : 'transparent',
     transition: 'background 0.15s',
   });
@@ -118,7 +131,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
     paddingRight: collapsed ? 0 : 8,
     borderRadius: 9.57,
     cursor: key === '__help__' ? 'default' : 'pointer',
-    background: hoveredKey === key ? 'rgba(255,255,255,0.04)' : 'transparent',
+    background: hoveredKey === key ? C.hover : 'transparent',
     transition: 'background 0.15s',
   });
 
@@ -129,12 +142,12 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: 15,
-    color: '#9B9C9E',
+    color: C.text,
     flexShrink: 0,
   };
 
   const labelStyle: React.CSSProperties = {
-    color: '#9B9C9E',
+    color: C.text,
     fontSize: 15.55,
     fontWeight: 500,
     whiteSpace: 'nowrap',
@@ -173,7 +186,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
                 <span style={{ fontSize: 18, color: '#4A82F7', flexShrink: 0, lineHeight: 1 }}>
                   <TokenCircleIcon />
                 </span>
-                <span style={{ color: '#D7D8DA', fontSize: 15.55, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                <span style={{ color: C.textActive, fontSize: 15.55, fontWeight: 600, whiteSpace: 'nowrap' }}>
                   PO Copilot
                 </span>
               </div>
@@ -183,7 +196,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 28, height: 28, borderRadius: 6, cursor: 'pointer',
-                color: '#9B9C9E', fontSize: 14, flexShrink: 0,
+                color: C.text, fontSize: 14, flexShrink: 0,
                 marginLeft: collapsed ? 'auto' : 0,
                 marginRight: collapsed ? 'auto' : 0,
                 transition: 'background 0.15s',
@@ -220,7 +233,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
                 <ASSISTANT_ITEM.icon />
               </span>
               {!collapsed && (
-                <span style={{ ...labelStyle, color: ASSISTANT_ITEM.key === selectedKey ? '#D7D8DA' : '#9B9C9E' }}>
+                <span style={{ ...labelStyle, color: ASSISTANT_ITEM.key === selectedKey ? C.textActive : C.text }}>
                   {ASSISTANT_ITEM.label}
                 </span>
               )}
@@ -240,9 +253,9 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
                 borderRadius: 9.57,
                 cursor: 'pointer',
                 background: isAnalyticsActive && collapsed
-                  ? 'rgba(255,255,255,0.07)'
+                  ? C.active
                   : hoveredKey === '__analytics__'
-                    ? 'rgba(255,255,255,0.04)'
+                    ? C.hover
                     : 'transparent',
                 transition: 'background 0.15s',
               }}
@@ -251,11 +264,11 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
               onMouseLeave={() => setHoveredKey(null)}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 9.57, minWidth: 0 }}>
-                <span style={{ ...iconStyle, color: isAnalyticsActive ? '#D7D8DA' : '#9B9C9E' }}>
+                <span style={{ ...iconStyle, color: isAnalyticsActive ? C.textActive : C.text }}>
                   <BarChartOutlined />
                 </span>
                 {!collapsed && (
-                  <span style={{ ...labelStyle, color: isAnalyticsActive ? '#D7D8DA' : '#9B9C9E' }}>
+                  <span style={{ ...labelStyle, color: isAnalyticsActive ? C.textActive : C.text }}>
                     Аналитика
                   </span>
                 )}
@@ -264,7 +277,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
                 <DownOutlined
                   style={{
                     fontSize: 10,
-                    color: '#9B9C9E',
+                    color: C.text,
                     flexShrink: 0,
                     transform: analyticsOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
                     transition: 'transform 0.18s ease',
@@ -296,9 +309,9 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
                       borderRadius: 9.57,
                       cursor: 'pointer',
                       background: isActive
-                        ? 'rgba(255,255,255,0.07)'
+                        ? C.active
                         : hoveredKey === `sub-${key}`
-                          ? 'rgba(255,255,255,0.04)'
+                          ? C.hover
                           : 'transparent',
                       transition: 'background 0.15s',
                     }}
@@ -307,7 +320,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
                       style={{
                         fontSize: 14,
                         fontWeight: isActive ? 500 : 400,
-                        color: isActive ? '#D7D8DA' : '#9B9C9E',
+                        color: isActive ? C.textActive : C.text,
                         whiteSpace: 'nowrap',
                       }}
                     >
@@ -332,7 +345,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
                   <Icon />
                 </span>
                 {!collapsed && (
-                  <span style={{ ...labelStyle, color: key === selectedKey ? '#D7D8DA' : '#9B9C9E' }}>
+                  <span style={{ ...labelStyle, color: key === selectedKey ? C.textActive : C.text }}>
                     {label}
                   </span>
                 )}
@@ -344,36 +357,55 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
         {/* ── Bottom items ── */}
         <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: 4 }}>
           {BOTTOM_ITEMS.map(({ key, icon: Icon, label }) => (
-            <Tooltip key={key} title={collapsed ? label : ''} placement="right">
-              <div
-                style={bottomItemStyle(key)}
-                onClick={() => handleNavClick(key)}
-                onMouseEnter={() => setHoveredKey(key)}
-                onMouseLeave={() => setHoveredKey(null)}
-              >
-                {key === '/profile' ? (
-                  <div style={{
-                    width: 22, height: 22, borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #4A82F7 0%, #7B5AF7 100%)',
-                    display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#fff',
-                    letterSpacing: '-0.5px',
-                  }}>
-                    АА
-                  </div>
-                ) : key === '/notifications' ? (
-                  <div style={{ position: 'relative', width: 24, height: 24, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon style={{ fontSize: 15, color: '#9B9C9E' }} />
-                    {unreadCount > 0 && (
-                      <div style={{ position: 'absolute', top: 0, right: 0, width: 8, height: 8, background: '#F04438', borderRadius: '50%' }} />
+            <div key={key} style={{ display: 'contents' }}>
+              <Tooltip title={collapsed ? label : ''} placement="right">
+                <div
+                  style={bottomItemStyle(key)}
+                  onClick={() => handleNavClick(key)}
+                  onMouseEnter={() => setHoveredKey(key)}
+                  onMouseLeave={() => setHoveredKey(null)}
+                >
+                  {key === '/profile' ? (
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #4A82F7 0%, #7B5AF7 100%)',
+                      display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#fff',
+                      letterSpacing: '-0.5px',
+                    }}>
+                      ИИ
+                    </div>
+                  ) : key === '/notifications' ? (
+                    <div style={{ position: 'relative', width: 24, height: 24, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon style={{ fontSize: 15, color: C.text }} />
+                      {unreadCount > 0 && (
+                        <div style={{ position: 'absolute', top: 0, right: 0, width: 8, height: 8, background: '#F04438', borderRadius: '50%' }} />
+                      )}
+                    </div>
+                  ) : (
+                    <span style={iconStyle}><Icon /></span>
+                  )}
+                  {!collapsed && <span style={labelStyle}>{label}</span>}
+                </div>
+              </Tooltip>
+
+              {/* ── Theme toggle — под профилем ── */}
+              {key === '/profile' && (
+                <Tooltip title={collapsed ? (isDark ? 'Светлая тема' : 'Тёмная тема') : ''} placement="right">
+                  <div
+                    style={bottomItemStyle('__theme__')}
+                    onClick={toggleTheme}
+                    onMouseEnter={() => setHoveredKey('__theme__')}
+                    onMouseLeave={() => setHoveredKey(null)}
+                  >
+                    <span style={iconStyle}>{isDark ? <MoonOutlined /> : <BulbOutlined />}</span>
+                    {!collapsed && (
+                      <span style={labelStyle}>{isDark ? 'Тёмная тема' : 'Светлая тема'}</span>
                     )}
                   </div>
-                ) : (
-                  <span style={iconStyle}><Icon /></span>
-                )}
-                {!collapsed && <span style={labelStyle}>{label}</span>}
-              </div>
-            </Tooltip>
+                </Tooltip>
+              )}
+            </div>
           ))}
         </div>
       </div>
