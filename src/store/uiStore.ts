@@ -50,6 +50,7 @@ interface UIState {
 
   taskDrafts: TaskDraft[];
   addTaskDraft: (draft: Omit<TaskDraft, 'id' | 'createdAt'>) => string;
+  updateTaskDraft: (id: string, patch: Omit<TaskDraft, 'id' | 'createdAt'>) => void;
   removeTaskDraft: (id: string) => void;
 }
 
@@ -100,6 +101,10 @@ export const useUIStore = create<UIState>((set) => ({
     }));
     return id;
   },
+  updateTaskDraft: (id, patch) =>
+    set((state) => ({
+      taskDrafts: state.taskDrafts.map((d) => (d.id === id ? { ...d, ...patch, id, createdAt: d.createdAt } : d)),
+    })),
   removeTaskDraft: (id) =>
     set((state) => ({ taskDrafts: state.taskDrafts.filter((d) => d.id !== id) })),
 }));

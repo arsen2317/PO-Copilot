@@ -3,20 +3,26 @@ import { Outlet, useLocation } from 'react-router-dom';
 import AppSidebar from './AppSidebar';
 import AIPanelSider, { AIPanelFAB } from './AIPanelSider';
 import type { AIPanelMode } from './AIPanelSider';
+import { useThemeStore } from '../../store/themeStore';
 
 const MOCK_UNREAD_COUNT = 2;
 
 export default function AppShell() {
   const [aiMode, setAiMode] = useState<AIPanelMode>('sidebar');
   const location = useLocation();
+  const isDark = useThemeStore((s) => s.isDark);
   const isAssistantPage = location.pathname === '/assistant' || location.pathname.startsWith('/assistant/');
+
+  const outerBg = isDark ? '#000' : '#EFEFF2';
+  const cardBg = isDark ? '#121214' : '#FFFFFF';
+  const cardBorder = isDark ? '#2D2E30' : '#E3E3E6';
 
   return (
     <div
       style={{
         height: '100vh',
         display: 'flex',
-        background: '#000',
+        background: outerBg,
         padding: '8px 10px',
         overflow: 'hidden',
         boxSizing: 'border-box',
@@ -33,9 +39,9 @@ export default function AppShell() {
           <div
             style={{
               flex: 1,
-              background: '#121214',
+              background: cardBg,
               borderRadius: 12,
-              border: '1px solid #2D2E30',
+              border: `1px solid ${cardBorder}`,
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',

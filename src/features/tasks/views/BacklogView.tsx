@@ -13,8 +13,9 @@ import {
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Task } from '../../../data/types';
-import { calcICE } from '../taskConstants';
+import { calcICE, taskSurfaces } from '../taskConstants';
 import { PriorityChevrons, UserAvatar } from '../TaskWidgets';
+import { useThemeStore } from '../../../store/themeStore';
 
 const { useToken } = theme;
 
@@ -23,6 +24,7 @@ const { useToken } = theme;
 function BacklogRow({ task, rank, isDragging }: { task: Task; rank: number; isDragging?: boolean }) {
   const { token } = useToken();
   const navigate = useNavigate();
+  const S = taskSurfaces(useThemeStore((s) => s.isDark));
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
   const ice = calcICE(task);
   const iceColor = ice >= 60 ? token.colorSuccess : ice >= 30 ? token.colorWarning : token.colorError;
@@ -38,7 +40,7 @@ function BacklogRow({ task, rank, isDragging }: { task: Task; rank: number; isDr
         style={{
           display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
           borderBottom: `1px solid ${token.colorBorderSecondary}`,
-          background: isDragging ? '#1e1f22' : 'transparent',
+          background: isDragging ? S.inner : 'transparent',
           cursor: 'pointer',
         }}
         onClick={(e) => { if ((e.target as HTMLElement).closest('[data-drag]')) return; navigate(`/tasks/${task.id}`); }}
@@ -58,7 +60,7 @@ function BacklogRow({ task, rank, isDragging }: { task: Task; rank: number; isDr
             <PriorityChevrons priority={task.priority} />
             <span style={{ fontSize: 11, color: token.colorTextTertiary, fontFamily: 'monospace' }}>{task.id}</span>
             {task.labels?.slice(0, 2).map((l) => (
-              <Tag key={l} style={{ fontSize: 10, padding: '0 5px', margin: 0, lineHeight: '16px', border: '1px solid #2D2E30', background: 'transparent', color: token.colorTextSecondary }}>{l}</Tag>
+              <Tag key={l} style={{ fontSize: 10, padding: '0 5px', margin: 0, lineHeight: '16px', border: `1px solid ${S.border}`, background: 'transparent', color: token.colorTextSecondary }}>{l}</Tag>
             ))}
           </div>
           <div style={{ fontSize: 13, color: token.colorText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</div>
@@ -74,7 +76,7 @@ function BacklogRow({ task, rank, isDragging }: { task: Task; rank: number; isDr
         {/* Assignee + SP */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {task.storyPoints !== undefined && (
-            <span style={{ fontSize: 11, color: token.colorTextTertiary, background: '#2D2E30', borderRadius: 4, padding: '1px 6px' }}>{task.storyPoints} SP</span>
+            <span style={{ fontSize: 11, color: token.colorTextTertiary, background: S.chip, borderRadius: 4, padding: '1px 6px' }}>{task.storyPoints} SP</span>
           )}
           {task.assignee && <UserAvatar user={task.assignee} size={22} />}
         </div>
@@ -85,6 +87,7 @@ function BacklogRow({ task, rank, isDragging }: { task: Task; rank: number; isDr
 
 export function BacklogView({ tasks, isLoading, bdr }: { tasks: Task[]; isLoading: boolean; bdr: string }) {
   const { token } = useToken();
+  const S = taskSurfaces(useThemeStore((s) => s.isDark));
   const backlogTasks = tasks.filter((t) => t.status === 'backlog' || t.status === 'todo');
   const [ordered, setOrdered] = useState<string[] | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -138,7 +141,7 @@ export function BacklogView({ tasks, isLoading, bdr }: { tasks: Task[]; isLoadin
         <span style={{ fontSize: 11, color: token.colorTextTertiary }}>ИСПОЛНИТЕЛЬ</span>
       </div>
 
-      <div style={{ background: '#16171a', borderRadius: 10, border: bdr, overflow: 'hidden' }}>
+      <div style={{ background: S.card, borderRadius: 10, border: bdr, overflow: 'hidden' }}>
         <DndContext sensors={sensors} onDragStart={(e) => setActiveId(String(e.active.id))} onDragEnd={handleDragEnd}>
           <SortableContext items={ids} strategy={verticalListSortingStrategy}>
             {sorted.map((task, i) => (

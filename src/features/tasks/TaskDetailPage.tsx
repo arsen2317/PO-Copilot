@@ -24,6 +24,9 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { getTaskById } from '../../data/api/tasks';
 import type { TaskPriority, TaskStatus } from '../../data/types';
+import { PriorityChevrons } from './TaskWidgets';
+import { taskSurfaces } from './taskConstants';
+import { useThemeStore } from '../../store/themeStore';
 
 const { useToken } = theme;
 
@@ -43,28 +46,6 @@ const PRIORITY_LABEL: Record<TaskPriority, string> = {
   medium: 'Средний',
   low: 'Низкий',
 };
-
-const PRIORITY_CHEVRON: Record<TaskPriority, { count: number; color: string }> = {
-  critical: { count: 3, color: '#F5633A' },
-  high:     { count: 2, color: '#F5633A' },
-  medium:   { count: 1, color: '#F08040' },
-  low:      { count: 1, color: '#666' },
-};
-
-function PriorityChevrons({ priority }: { priority: TaskPriority }) {
-  const { count, color } = PRIORITY_CHEVRON[priority];
-  return (
-    <Tooltip title={PRIORITY_LABEL[priority]}>
-      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0, lineHeight: 1 }}>
-        {Array.from({ length: count }).map((_, i) => (
-          <svg key={i} width="10" height="6" viewBox="0 0 10 6" fill="none">
-            <path d="M1 5L5 1L9 5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        ))}
-      </span>
-    </Tooltip>
-  );
-}
 
 const TABS = [
   { id: 'description', label: 'Описание', icon: <FileTextOutlined /> },
@@ -107,6 +88,7 @@ function MetaRow({ label, children }: { label: string; children: React.ReactNode
 export default function TaskDetailPage() {
   const { taskId } = useParams<{ taskId: string }>();
   const { token } = useToken();
+  const S = taskSurfaces(useThemeStore((s) => s.isDark));
   const navigate = useNavigate();
   const location = useLocation();
   // Возврат на предыдущий экран (сохраняет вкладку списка задач, с которой пришли:
@@ -178,7 +160,7 @@ export default function TaskDetailPage() {
                   padding: '0 8px',
                   margin: 0,
                   border: `1px solid ${token.colorBorderSecondary}`,
-                  background: '#1e1f22',
+                  background: S.inner,
                   color: token.colorText,
                 }}
               >
@@ -236,7 +218,7 @@ export default function TaskDetailPage() {
                   {tab.id === 'criteria' && totalCriteria > 0 && (
                     <Badge
                       count={`${completedCriteria}/${totalCriteria}`}
-                      style={{ background: completedCriteria === totalCriteria ? token.colorSuccess : '#2D2E30', boxShadow: 'none', fontSize: 10 }}
+                      style={{ background: completedCriteria === totalCriteria ? token.colorSuccess : S.chip, boxShadow: 'none', fontSize: 10 }}
                     />
                   )}
                   {tab.id === 'compliance' && totalCompliance > 0 && (
@@ -287,7 +269,7 @@ export default function TaskDetailPage() {
                           fontSize: 12,
                           color: token.colorText,
                           textDecoration: 'none',
-                          background: '#1e1f22',
+                          background: S.inner,
                           cursor: 'pointer',
                         };
                         return isInternal ? (
@@ -397,7 +379,7 @@ export default function TaskDetailPage() {
                         style={{
                           fontSize: 13,
                           color: token.colorText,
-                          background: '#1e1f22',
+                          background: S.inner,
                           border: BDR,
                           borderRadius: 8,
                           padding: '8px 12px',
@@ -427,7 +409,7 @@ export default function TaskDetailPage() {
           {/* Meta */}
           <div
             style={{
-              background: '#16171a',
+              background: S.card,
               border: BDR,
               borderRadius: 10,
               padding: '16px',
@@ -441,7 +423,7 @@ export default function TaskDetailPage() {
             </div>
 
             <MetaRow label="Статус">
-              <Tag style={{ fontSize: 11, border: BDR, background: '#1e1f22', color: token.colorText, margin: 0 }}>
+              <Tag style={{ fontSize: 11, border: BDR, background: S.inner, color: token.colorText, margin: 0 }}>
                 {STATUS_LABEL[task.status]}
               </Tag>
             </MetaRow>
@@ -487,7 +469,7 @@ export default function TaskDetailPage() {
 
             {task.storyPoints !== undefined && (
               <MetaRow label="Story Points">
-                <span style={{ background: '#2D2E30', borderRadius: 4, padding: '1px 8px', fontSize: 13 }}>
+                <span style={{ background: S.chip, borderRadius: 4, padding: '1px 8px', fontSize: 13 }}>
                   {task.storyPoints} SP
                 </span>
               </MetaRow>
@@ -510,7 +492,7 @@ export default function TaskDetailPage() {
           {totalCriteria > 0 && (
             <div
               style={{
-                background: '#16171a',
+                background: S.card,
                 border: BDR,
                 borderRadius: 10,
                 padding: '16px',
@@ -523,7 +505,7 @@ export default function TaskDetailPage() {
                 <span style={{ color: token.colorTextSecondary }}>Критерии приёмки</span>
                 <span style={{ color: token.colorText }}>{completedCriteria}/{totalCriteria}</span>
               </div>
-              <div style={{ height: 4, background: '#2D2E30', borderRadius: 2 }}>
+              <div style={{ height: 4, background: S.chip, borderRadius: 2 }}>
                 <div
                   style={{
                     height: '100%',
@@ -541,7 +523,7 @@ export default function TaskDetailPage() {
                     <span style={{ color: token.colorTextSecondary }}>Compliance</span>
                     <span style={{ color: token.colorText }}>{passedCompliance}/{totalCompliance}</span>
                   </div>
-                  <div style={{ height: 4, background: '#2D2E30', borderRadius: 2 }}>
+                  <div style={{ height: 4, background: S.chip, borderRadius: 2 }}>
                     <div
                       style={{
                         height: '100%',

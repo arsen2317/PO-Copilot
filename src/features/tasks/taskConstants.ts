@@ -43,6 +43,18 @@ export const PRIORITY_COLOR: Record<TaskPriority, string> = {
 
 export const BAR_HEIGHTS = [4, 7, 10];
 
+// Тема-зависимые поверхности карточек задач (антд-алгоритм не покрывает
+// захардкоженные фоны). Даёт согласованный вид в тёмной и светлой теме.
+export function taskSurfaces(isDark: boolean) {
+  return {
+    card:   isDark ? '#16171a' : '#FAFAFB', // фон колонок / мета-карточек
+    raised: isDark ? '#1a1b1e' : '#FFFFFF', // канбан-карточка / приподнятый слой
+    inner:  isDark ? '#1e1f22' : '#F1F1F4', // чипы, пузырь комментария, ховер drag
+    chip:   isDark ? '#2D2E30' : '#E8E8EC', // фон бейджа SP / счётчика
+    border: isDark ? '#2D2E30' : '#E3E3E6', // захардкоженные рамки
+  };
+}
+
 // ICE score for backlog prioritization
 export function calcICE(task: Task): number {
   const impactMap: Record<TaskPriority, number> = { critical: 10, high: 7, medium: 4, low: 2 };

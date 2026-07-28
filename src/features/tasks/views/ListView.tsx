@@ -52,7 +52,7 @@ export function ListView({ tasks, isLoading }: { tasks: Task[]; isLoading: boole
       key: 'metrics', width: 150,
       render: (_, t) => t.relatedMetricIds?.length
         ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-            {t.relatedMetricIds.slice(0, 2).map((m) => <Tag key={m} style={{ fontSize: 10, padding: '0 5px', margin: 0, border: '1px solid #2D2E30', background: 'transparent', color: token.colorTextSecondary }}>{m}</Tag>)}
+            {t.relatedMetricIds.slice(0, 2).map((m) => <Tag key={m} style={{ fontSize: 10, padding: '0 5px', margin: 0, border: `1px solid ${token.colorBorderSecondary}`, background: 'transparent', color: token.colorTextSecondary }}>{m}</Tag>)}
             {t.relatedMetricIds.length > 2 && <span style={{ fontSize: 11, color: token.colorTextTertiary }}>+{t.relatedMetricIds.length - 2}</span>}
           </div>
         : <span style={{ color: token.colorTextQuaternary, fontSize: 12 }}>—</span>,
