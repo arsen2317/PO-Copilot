@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { streamChat } from '../../lib/claude';
 import { executeTool } from '../../lib/tools';
 import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
-import { getOrchestratorSystemPrompt, AGENT_PROMPTS } from '../../lib/agentPrompts';
+import { getOrchestratorSystemPrompt, getSpecialistPreamble, AGENT_PROMPTS } from '../../lib/agentPrompts';
 import { SPECIALISTS, getOrchestratorTools, toolsForSpecialist, type Specialist } from '../../lib/specialists';
 import { getMetricDefinitions } from '../../data/api/metric-definitions';
 import { getFunnelAnalytics } from '../../data/api/funnel-analytics';
@@ -1386,7 +1386,9 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       for (let round = 0; round < 8; round++) {
         const res = await streamChat({
           messages: specMessages as ChatMessage[],
-          system: spec.system,
+          // Преамбула (стиль/эмодзи/дата/чипы) + фокусный промпт специалиста.
+          // Без преамбулы у специалистов протекали эмодзи и ломались чипы метрик.
+          system: `${getSpecialistPreamble()}\n\n${spec.system}`,
           tools: specTools,
           signal: abort.signal,
           onTextDelta: (delta) => {
