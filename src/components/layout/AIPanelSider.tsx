@@ -722,33 +722,41 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                   try { items = JSON.parse(raw) as string[]; } catch { items = []; }
                   if (!items.length) return null;
                   return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                      gap: 8, marginTop: 12,
+                    }}>
                       {items.map((label, i) => (
                         <button
                           key={i}
                           onClick={() => onSend(label)}
                           style={{
-                            background: 'rgba(74,130,247,0.08)',
-                            border: '1px solid rgba(74,130,247,0.25)',
-                            borderRadius: 20,
-                            padding: '5px 12px',
-                            fontSize: 12,
-                            color: '#9ab4f5',
+                            display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+                            gap: 12, textAlign: 'left', width: '100%', height: '100%',
+                            background: 'rgba(255,255,255,0.035)',
+                            border: '1px solid rgba(255,255,255,0.07)',
+                            borderRadius: 14,
+                            padding: '12px 14px',
+                            fontSize: 13,
+                            color: TEXT_PRIMARY,
                             cursor: 'pointer',
                             fontFamily: 'inherit',
                             transition: 'background 0.15s, border-color 0.15s',
-                            lineHeight: 1.4,
+                            lineHeight: 1.45,
+                            minWidth: 0,
                           }}
                           onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,130,247,0.18)';
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(74,130,247,0.45)';
+                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.07)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.12)';
                           }}
                           onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(74,130,247,0.08)';
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(74,130,247,0.25)';
+                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.035)';
+                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.07)';
                           }}
                         >
-                          {label}
+                          <span style={{ minWidth: 0 }}>{label}</span>
+                          <span style={{ marginTop: 'auto', fontSize: 15, lineHeight: 1, color: TEXT_SECONDARY }}>↪</span>
                         </button>
                       ))}
                     </div>
