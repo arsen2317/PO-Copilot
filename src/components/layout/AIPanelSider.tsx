@@ -28,6 +28,7 @@ import {
   CheckSquareOutlined,
   CloseOutlined,
   FileImageOutlined,
+  ExportOutlined,
   FileTextOutlined,
   FormOutlined,
   HistoryOutlined,
@@ -668,9 +669,40 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                   </span>
                 );
               }
+              // Внешние ссылки — в стиле чипов метрик + иконка внешней ссылки.
               return (
-                <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: ACCENT }}>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={url}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: '#242526',
+                    border: '1px solid #3A3B3D',
+                    borderRadius: 5,
+                    padding: '0px 6px',
+                    fontSize: 12,
+                    color: TEXT_PRIMARY,
+                    lineHeight: '20px',
+                    verticalAlign: 'middle',
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                    transition: 'background 0.15s, border-color 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLAnchorElement).style.background = '#2D2E30';
+                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#4A4B4D';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLAnchorElement).style.background = '#242526';
+                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#3A3B3D';
+                  }}
+                >
                   {children}
+                  <ExportOutlined style={{ fontSize: 11, opacity: 0.7, flexShrink: 0 }} />
                 </a>
               );
             },
@@ -1516,6 +1548,17 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     let apiMessages: { role: 'user' | 'assistant'; content: string | object[] }[] =
       [...prevMessages, newMsg].map((m) => ({ role: m.role, content: toApiContent(m) }));
 
+    // Детерминированная карточка артефакта: id берём из результата save_artifact, а не
+    // полагаемся на то, что модель верно перепишет его в блок artifact-result (иначе
+    // ссылка ведёт в «артефакт не найден»). Захватываем при вызове инструмента.
+    let savedArtifact: { id: string; title: string } | null = null;
+    const withCorrectArtifactCard = (text: string, art: { id: string; title: string }): string => {
+      const block = '```artifact-result\n' + JSON.stringify({ id: art.id, title: art.title }) + '\n```';
+      const re = /```artifact-result[\s\S]*?```/;
+      if (re.test(text)) return text.replace(re, block);
+      return text.trim() ? `${text.trim()}\n\n${block}` : block;
+    };
+
     try {
       while (true) {
         const assistantId = `ast-${Date.now()}-${Math.random()}`;
@@ -1540,11 +1583,16 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           .map((b) => (b as { type: 'text'; text: string }).text)
           .join('');
 
+        const isFinal = result.stopReason !== 'tool_use';
+        // На финальном ходу, если в этом запросе сохраняли артефакт — гарантируем
+        // корректную карточку (правильный id) даже если модель ошиблась/забыла блок.
+        const finalText = isFinal && savedArtifact ? withCorrectArtifactCard(fullText, savedArtifact) : fullText;
+
         setMessages((prev) => prev.map((m) =>
-          m.id === assistantId ? { ...m, content: fullText, streaming: false } : m,
+          m.id === assistantId ? { ...m, content: finalText, streaming: false } : m,
         ));
 
-        if (result.stopReason !== 'tool_use') break;
+        if (isFinal) break;
 
         const toolUseBlocks = result.blocks.filter((b): b is ToolUseBlock => b.type === 'tool_use');
 
@@ -1558,6 +1606,12 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
         for (const tb of toolUseBlocks) {
           const spec = SPECIALISTS[tb.name];
           const output = spec ? await runSpecialist(spec, tb.input) : await executeTool(tb.name, tb.input);
+          if (tb.name === 'save_artifact') {
+            const o = output as { id?: unknown; title?: unknown };
+            if (o && typeof o.id === 'string') {
+              savedArtifact = { id: o.id, title: typeof o.title === 'string' ? o.title : 'Артефакт' };
+            }
+          }
           toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: JSON.stringify(output) });
         }
 
