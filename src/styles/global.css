@@ -326,6 +326,12 @@ body {
   min-height: 0;
 }
 
+/* «Мой кластер» — таблица продуктов: без переносов, скролл по горизонтали */
+.cluster-products-table th.ant-table-cell,
+.cluster-products-table td.ant-table-cell {
+  white-space: nowrap;
+}
+
 /* «Мой кластер» — итоговая строка таблицы продуктов (жирнее фон + верхняя граница) */
 .cluster-total-row > td.ant-table-cell {
   background: rgba(255, 255, 255, 0.05) !important;

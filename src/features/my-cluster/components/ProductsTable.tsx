@@ -44,12 +44,12 @@ export default function ProductsTable({ rows }: { rows: ClusterProductRow[] }) {
     { title: 'Код', dataIndex: 'code', width: 92, render: (v: string) => <span style={muted}>{v}</span> },
 
     { title: 'ФинРез, факт ₽', dataIndex: 'finFact', align: 'right', width: 150, render: num },
-    { title: 'ФинРез, бюджет ₽', dataIndex: 'finBudget', align: 'right', width: 150, render: num },
-    { title: 'ФинРез вып., %', dataIndex: 'finFulfil', align: 'right', width: 120, render: fulfilCell },
+    { title: 'ФинРез, бюджет ₽', dataIndex: 'finBudget', align: 'right', width: 160, render: num },
+    { title: 'ФинРез вып., %', dataIndex: 'finFulfil', align: 'right', width: 140, render: fulfilCell },
 
-    { title: 'CTI, факт %', dataIndex: 'ctiFact', align: 'right', width: 110, render: pct },
-    { title: 'CTI, бюджет %', dataIndex: 'ctiBudget', align: 'right', width: 118, render: pct },
-    { title: 'CTI вып., %', dataIndex: 'ctiFulfil', align: 'right', width: 108, render: fulfilCell },
+    { title: 'CTI, факт %', dataIndex: 'ctiFact', align: 'right', width: 118, render: pct },
+    { title: 'CTI, бюджет %', dataIndex: 'ctiBudget', align: 'right', width: 132, render: pct },
+    { title: 'CTI вып., %', dataIndex: 'ctiFulfil', align: 'right', width: 118, render: fulfilCell },
 
     { title: 'Активные', dataIndex: 'active', align: 'right', width: 108, render: num },
     { title: 'Приток', dataIndex: 'inflow', align: 'right', width: 96, render: num },
@@ -69,6 +69,7 @@ export default function ProductsTable({ rows }: { rows: ClusterProductRow[] }) {
 
   return (
     <Table<ClusterProductRow>
+      className="cluster-products-table"
       size="small"
       pagination={false}
       dataSource={rows}
