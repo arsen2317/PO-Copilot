@@ -1411,8 +1411,14 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
         specMessages = [...specMessages, { role: 'user', content: specResults }];
       }
       setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, streaming: false } : m)));
-      // Тяжёлый контент уже показан пользователю в пузыре — оркестратору хватит короткой сводки.
-      return { ok: true, shown_to_user: true, summary: lastText.slice(0, 300) };
+      // Текст исполнителя НЕ возвращаем оркестратору — иначе он его пересказывает.
+      // Результат уже показан пользователю карточкой. Инструкцию кладём прямо в tool_result
+      // (последнее перед финальной генерацией — надёжнее правила в system-промпте).
+      return {
+        ok: true,
+        shown_to_user: true,
+        instruction: 'Результат уже показан пользователю карточкой. НЕ пиши подтверждающий текст и НЕ пересказывай сделанное. Ответь пользователю РОВНО одним блоком ```suggestions``` со следующими действиями — без какого-либо текста до или после него. Никогда не упоминай слова «специалист», «агент», «инструмент», «делегирую».',
+      };
     };
 
     // Convert a local message to Anthropic API content
