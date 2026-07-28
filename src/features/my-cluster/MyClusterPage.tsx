@@ -12,6 +12,8 @@ const { useToken } = theme;
 export default function MyClusterPage() {
   const { token } = useToken();
   const [streamId, setStreamId] = useState<string>('all');
+  const [productId, setProductId] = useState<string>('all');
+  const [productCode, setProductCode] = useState<string>('all');
 
   const { data, isLoading } = useQuery({
     queryKey: ['my-cluster'],
@@ -20,11 +22,13 @@ export default function MyClusterPage() {
 
   const BDR = `1px solid ${token.colorBorderSecondary}`;
 
-  const streamName =
-    streamId === 'all'
-      ? 'Все стримы'
-      : data?.streams.find((s) => s.id === streamId)?.name ?? 'Все стримы';
+  const realProducts = (data?.products ?? []).filter((r) => !r.isTotal);
 
+  // ── Фильтры (кластер один; стрим/продукт/код режут таблицу) ──
+  const clusterMenu: MenuProps = { items: [{ key: 'daily', label: 'Дэйли Бэнкинг' }] };
+
+  const streamName =
+    streamId === 'all' ? 'Все стримы' : data?.streams.find((s) => s.id === streamId)?.name ?? 'Все стримы';
   const streamMenu: MenuProps = {
     items: [
       { key: 'all', label: 'Все стримы' },
@@ -33,11 +37,34 @@ export default function MyClusterPage() {
     onClick: ({ key }) => setStreamId(key),
   };
 
-  const groups = data?.groupsByStream[streamId] ?? data?.groupsByStream['all'] ?? [];
-  // Итоговая строка честна только для всего кластера — при фильтре по стриму скрываем.
-  const productRows = (data?.products ?? []).filter((r) =>
-    streamId === 'all' ? true : r.streamId === streamId,
-  );
+  const productName =
+    productId === 'all' ? 'Все продукты' : realProducts.find((p) => p.id === productId)?.product ?? 'Все продукты';
+  const productMenu: MenuProps = {
+    items: [
+      { key: 'all', label: 'Все продукты' },
+      ...realProducts.map((p) => ({ key: p.id, label: p.product })),
+    ],
+    onClick: ({ key }) => setProductId(key),
+  };
+
+  const codeLabel = productCode === 'all' ? 'Код продукта' : productCode;
+  const codeMenu: MenuProps = {
+    items: [
+      { key: 'all', label: 'Все коды' },
+      ...realProducts.map((p) => ({ key: p.code, label: p.code })),
+    ],
+    onClick: ({ key }) => setProductCode(key),
+  };
+
+  const hasFilter = streamId !== 'all' || productId !== 'all' || productCode !== 'all';
+  // Итоговая строка честна только без фильтров.
+  const productRows = (data?.products ?? []).filter((r) => {
+    if (r.isTotal) return !hasFilter;
+    if (streamId !== 'all' && r.streamId !== streamId) return false;
+    if (productId !== 'all' && r.id !== productId) return false;
+    if (productCode !== 'all' && r.code !== productCode) return false;
+    return true;
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -52,11 +79,18 @@ export default function MyClusterPage() {
       </div>
 
       {/* ── Filter bar ── */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12, flexShrink: 0 }}>
+        <Dropdown menu={clusterMenu} trigger={['click']}>
+          <Button icon={<DownOutlined />} iconPosition="end">Дэйли Бэнкинг</Button>
+        </Dropdown>
         <Dropdown menu={streamMenu} trigger={['click']}>
-          <Button icon={<DownOutlined />} iconPosition="end">
-            {streamName}
-          </Button>
+          <Button icon={<DownOutlined />} iconPosition="end">{streamName}</Button>
+        </Dropdown>
+        <Dropdown menu={productMenu} trigger={['click']}>
+          <Button icon={<DownOutlined />} iconPosition="end">{productName}</Button>
+        </Dropdown>
+        <Dropdown menu={codeMenu} trigger={['click']}>
+          <Button icon={<DownOutlined />} iconPosition="end">{codeLabel}</Button>
         </Dropdown>
       </div>
 
@@ -83,7 +117,7 @@ export default function MyClusterPage() {
             flexShrink: 0,
           }}
         >
-          {groups.map((g) => (
+          {data.groups.map((g) => (
             <div
               key={g.id}
               style={{

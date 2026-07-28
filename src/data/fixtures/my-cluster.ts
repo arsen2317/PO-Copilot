@@ -16,55 +16,39 @@ const streams: ClusterStream[] = [
   { id: 'stream-proc', name: 'Платёжные технологии и процессинг' },
 ];
 
-// KPI всего кластера. period: month — против прошлого месяца, quarter — квартала.
-const baseGroups: ClusterKpiGroup[] = [
+// KPI кластера — значения отформатированы, сравнение с прошлым периодом.
+const groups: ClusterKpiGroup[] = [
   {
     id: 'financial',
     title: 'Финансовые метрики',
     kpis: [
-      { id: 'fin-fact',   label: 'ФинРез, факт',      period: 'month',   value: -512.4,  prevValue: -468.1,  format: 'mln_rub', status: 'bad' },
-      { id: 'fin-fulfil', label: 'ФинРез, % плана',   period: 'quarter', value: 81.6,    prevValue: 88.9,    format: 'percent', status: 'bad' },
-      { id: 'cti-fact',   label: 'CTI, факт',         period: 'quarter', value: 241.2,   prevValue: 218.6,   format: 'percent', status: 'good' },
-      { id: 'cti-fulfil', label: 'CTI, % плана',      period: 'quarter', value: 118.7,   prevValue: 104.9,   format: 'percent', status: 'good' },
+      { id: 'fin-fact',   label: 'ФинРез, факт',    period: 'за месяц',   value: '−512,4 млн ₽', status: 'bad',  trend: 'down', prevValue: '−468,1 млн ₽', prevLabel: 'прошлый месяц' },
+      { id: 'fin-fulfil', label: 'ФинРез, % плана', period: 'за квартал', value: '81,6%',        status: 'bad',  trend: 'down', prevValue: '88,9%',        prevLabel: 'прошлый квартал' },
+      { id: 'cti-fact',   label: 'CTI, факт',       period: 'за квартал', value: '241,2%',       status: 'good', trend: 'up',   prevValue: '218,6%',       prevLabel: 'прошлый квартал' },
+      { id: 'cti-fulfil', label: 'CTI, % плана',    period: 'за квартал', value: '118,7%',       status: 'good', trend: 'up',   prevValue: '104,9%',       prevLabel: 'прошлый квартал' },
     ],
   },
   {
     id: 'client',
     title: 'Клиентские метрики',
     kpis: [
-      { id: 'active',   label: 'Активные клиенты', period: 'month', value: 3.12,   prevValue: 2.98,   format: 'mln',      status: 'good' },
-      { id: 'inflow',   label: 'Приток',           period: 'month', value: 412.6,  prevValue: 389.2,  format: 'thousand', status: 'good' },
-      { id: 'reactive', label: 'Реактивация',      period: 'month', value: 184.6,  prevValue: 203.9,  format: 'thousand', status: 'warn' },
-      { id: 'churn',    label: 'Отток',            period: 'month', value: 455.1,  prevValue: 441.7,  format: 'thousand', status: 'bad' },
+      { id: 'active',   label: 'Активные клиенты', period: 'за месяц', value: '3,12 млн',    status: 'good', trend: 'up',   prevValue: '2,98 млн',    prevLabel: 'прошлый месяц' },
+      { id: 'inflow',   label: 'Приток',           period: 'за месяц', value: '412,6 тыс.',  status: 'good', trend: 'up',   prevValue: '389,2 тыс.',  prevLabel: 'прошлый месяц' },
+      { id: 'reactive', label: 'Реактивация',      period: 'за месяц', value: '184,6 тыс.',  status: 'warn', trend: 'down', prevValue: '203,9 тыс.',  prevLabel: 'прошлый месяц' },
+      { id: 'churn',    label: 'Отток',            period: 'за месяц', value: '455,1 тыс.',  status: 'bad',  trend: 'up',   prevValue: '441,7 тыс.',  prevLabel: 'прошлый месяц' },
     ],
   },
   {
     id: 'production',
     title: 'Производственные метрики',
     kpis: [
-      { id: 'lt',   label: 'Lead Time',            period: 'quarter', value: 38.2,  prevValue: 31.5,  format: 'days',    status: 'bad' },
-      { id: 'df',   label: 'Релизы (DF)',          period: 'quarter', value: 247,   prevValue: 178,   format: 'count',   status: 'good' },
-      { id: 'cfr',  label: 'Сбойные релизы (CFR)', period: 'quarter', value: 2.8,   prevValue: 5.9,   format: 'percent', status: 'good' },
-      { id: 'mttr', label: 'MTTR',                 period: 'quarter', value: 1.58,  prevValue: 1.49,  format: 'hours',   status: 'warn' },
+      { id: 'lt',   label: 'Lead Time',            period: 'за квартал', value: '38,2 дн.', status: 'bad',  trend: 'up',   prevValue: '31,5 дн.', prevLabel: 'прошлый квартал' },
+      { id: 'df',   label: 'Релизы (DF)',          period: 'за квартал', value: '247',      status: 'good', trend: 'up',   prevValue: '178',      prevLabel: 'прошлый квартал' },
+      { id: 'cfr',  label: 'Сбойные релизы (CFR)', period: 'за квартал', value: '2,8%',     status: 'good', trend: 'down', prevValue: '5,9%',     prevLabel: 'прошлый квартал' },
+      { id: 'mttr', label: 'MTTR',                 period: 'за квартал', value: '1,58 ч.',  status: 'warn', trend: 'up',   prevValue: '1,49 ч.',  prevLabel: 'прошлый квартал' },
     ],
   },
 ];
-
-// Выбор стрима масштабирует объёмные KPI (деньги/клиенты/релизы);
-// относительные (%, дни, часы) остаются на уровне стрима ≈ кластера.
-const VOLUME_FORMATS = new Set(['mln_rub', 'mln', 'thousand', 'count']);
-
-function scaleGroups(factor: number): ClusterKpiGroup[] {
-  return baseGroups.map((g) => ({
-    ...g,
-    kpis: g.kpis.map((k) => {
-      if (!VOLUME_FORMATS.has(k.format)) return { ...k };
-      const scale = (n: number) =>
-        k.format === 'count' ? Math.round(n * factor) : Math.round(n * factor * 10) / 10;
-      return { ...k, value: scale(k.value), prevValue: scale(k.prevValue) };
-    }),
-  }));
-}
 
 const products: ClusterProductRow[] = [
   {
@@ -289,11 +273,6 @@ const products: ClusterProductRow[] = [
 export const myClusterData: MyClusterData = {
   clusterName: 'Дэйли Бэнкинг',
   streams,
-  groupsByStream: {
-    all: baseGroups,
-    'stream-debit': scaleGroups(0.54),
-    'stream-pay': scaleGroups(0.33),
-    'stream-proc': scaleGroups(0.13),
-  },
+  groups,
   products,
 };

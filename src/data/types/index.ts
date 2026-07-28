@@ -309,29 +309,24 @@ export interface CjmMap {
 // Контент BI-доски, лейаут и компоненты — как на /dashboard: KPI-тайлы сверху
 // (группы Финансы/Клиенты/Производство), разрез по продуктам таблицей внизу.
 
-/** Статус KPI: задаёт цвет дельты (colorSuccess/Warning/Error). */
+/** Статус KPI: задаёт цвет индикатора (colorSuccess/Warning/Error). */
 export type ClusterKpiStatus = 'good' | 'warn' | 'bad';
-
-export type ClusterKpiFormat =
-  | 'mln_rub'   // −512,4 млн ₽
-  | 'mln'       // 3,12 млн
-  | 'thousand'  // 412,6 тыс.
-  | 'percent'   // 118,7% (дельта — в п.п.)
-  | 'days'      // 38,2 дн.
-  | 'hours'     // 1,58 ч.
-  | 'count';    // 247
 
 export interface ClusterKpi {
   id: string;
   /** Короткое имя показателя, напр. «ФинРез, факт». */
   label: string;
-  /** Период сравнения: значение против прошлого месяца или квартала. */
-  period: 'month' | 'quarter';
-  value: number;
-  /** Значение за прошлый период — из него считается дельта. */
-  prevValue: number;
-  format: ClusterKpiFormat;
+  /** Подпись периода, напр. «за месяц». */
+  period: string;
+  /** Отформатированное значение, напр. «−512,4 млн ₽». */
+  value: string;
   status: ClusterKpiStatus;
+  /** Направление изменения к прошлому периоду. */
+  trend: 'up' | 'down';
+  /** Значение за прошлый период, напр. «−468,1 млн ₽». */
+  prevValue: string;
+  /** Подпись сравнения, напр. «прошлый месяц». */
+  prevLabel: string;
 }
 
 export interface ClusterKpiGroup {
@@ -378,8 +373,7 @@ export interface ClusterProductRow {
 export interface MyClusterData {
   clusterName: string;
   streams: ClusterStream[];
-  /** Группы KPI по фильтру стрима: ключ 'all' — весь кластер. */
-  groupsByStream: Record<string, ClusterKpiGroup[]>;
+  groups: ClusterKpiGroup[];
   products: ClusterProductRow[];
 }
 
