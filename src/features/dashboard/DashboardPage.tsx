@@ -24,6 +24,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getMetricDefinitions, getMetricGroupDefs } from '../../data/api/metric-definitions';
 import type { MetricDefinition, MetricPoint } from '../../data/types';
 import { useUIStore } from '../../store/uiStore';
+import { useThemeStore } from '../../store/themeStore';
 
 const { useToken } = theme;
 
@@ -41,6 +42,7 @@ interface MetricLineChartProps {
 
 function MetricLineChart({ data, color, granularity, label, forecastRatio = 0.88 }: MetricLineChartProps) {
   const { token } = useToken();
+  const isDark = useThemeStore((s) => s.isDark);
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
 
@@ -90,7 +92,7 @@ function MetricLineChart({ data, color, granularity, label, forecastRatio = 0.88
           yField="value"
           width={size.w}
           height={size.h}
-          theme="classicDark"
+          theme={isDark ? 'classicDark' : 'classic'}
           paddingBottom={40}
           paddingLeft={56}
           paddingTop={12}
@@ -153,6 +155,7 @@ interface KpiTileProps {
 
 function KpiTile({ label, sublabel, value, change, statusColor, loading, selected, onClick }: KpiTileProps) {
   const { token } = useToken();
+  const isDark = useThemeStore((s) => s.isDark);
   const [hovered, setHovered] = useState(false);
   const isPositive = (change ?? 0) >= 0;
   const changeColor = statusColor ?? (isPositive ? token.colorSuccess : token.colorError);
@@ -166,7 +169,7 @@ function KpiTile({ label, sublabel, value, change, statusColor, loading, selecte
         background: selected
           ? 'rgba(74,130,247,0.12)'
           : hovered && onClick
-            ? 'rgba(255,255,255,0.03)'
+            ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)')
             : 'transparent',
         border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
         borderRadius: token.borderRadius,

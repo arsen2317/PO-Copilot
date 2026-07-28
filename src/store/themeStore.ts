@@ -17,6 +17,26 @@ interface ThemeState {
   toggle: () => void;
 }
 
+/**
+ * Общие тема-зависимые поверхности приложения (вне antd-токенов).
+ * ВАЖНО: тёмные значения оставлены ровно как были — тёмная тема не меняется
+ * визуально; добавлена только светлая ветка.
+ */
+export function appSurfaces(isDark: boolean) {
+  return {
+    outer:  isDark ? '#000'     : '#EFEFF2', // внешний фон приложения
+    card:   isDark ? '#121214'  : '#FFFFFF', // основная карточка контента
+    panel:  isDark ? '#16171a'  : '#F7F7F9', // вторичная панель/карточка
+    inner:  isDark ? '#1e1f22'  : '#EEEEF1', // вложенная поверхность/чип
+    raised: isDark ? '#1a1b1e'  : '#FFFFFF', // приподнятый слой
+    border: isDark ? '#2D2E30'  : '#E3E3E6', // захардкоженные рамки
+    // Оси/сетка кастомных SVG-графиков.
+    axisText: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)',
+    axisTextDim: isDark ? 'rgba(255,255,255,0.38)' : 'rgba(0,0,0,0.40)',
+    grid: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.10)',
+  };
+}
+
 export const useThemeStore = create<ThemeState>((set, get) => {
   const initial = readInitial();
   const persist = (mode: ThemeMode) => {
