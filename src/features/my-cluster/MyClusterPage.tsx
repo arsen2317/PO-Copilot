@@ -83,7 +83,7 @@ export default function MyClusterPage() {
           level={3}
           style={{ margin: 0, fontSize: 24, color: token.colorText, fontFamily: "'MTS Wide', 'MTS Text', sans-serif" }}
         >
-          Кластер: Дэйли Бэнкинг
+          Кластер
         </Typography.Title>
       </div>
 

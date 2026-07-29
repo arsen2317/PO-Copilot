@@ -41,7 +41,7 @@ const ANALYTICS_SUBITEMS = [
 const ANALYTICS_KEYS = new Set(ANALYTICS_SUBITEMS.map((i) => i.key));
 
 const ASSISTANT_ITEM = { key: '/assistant', icon: MessageOutlined, label: 'Ассистент' } as const;
-const MY_CLUSTER_ITEM = { key: '/my-cluster', icon: ApartmentOutlined, label: 'Мой кластер' } as const;
+const MY_CLUSTER_ITEM = { key: '/my-cluster', icon: ApartmentOutlined, label: 'Кластер' } as const;
 
 const NAV_ITEMS = [
   { key: '/metrics',    icon: LineChartOutlined,     label: 'Метрики' },
