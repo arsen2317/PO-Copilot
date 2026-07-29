@@ -35,20 +35,22 @@ nginx → SPA (`dist/`) + проксирует `/api/` → PM2 `po-copilot-api` 
 CI/CD: push → `main` → GitHub Actions → SCP dist/ → SSH restart PM2.
 Секреты: GitHub Secrets → `.env.local` на сервере. Никогда не коммить `.env.local`.
 
-**Cloudflare Worker** (`anthropic-proxy.arackelian.workers.dev`, репо `arsen2317/anthropic-proxy`) — прокси для Anthropic API и Brave Search (обход блокировки РФ). Защищён `x-proxy-secret`.
-- `ANTHROPIC_PROXY_URL = https://anthropic-proxy.arackelian.workers.dev/anthropic` → Worker стрипает `/anthropic`, форвардит на `api.anthropic.com`
+**Модель** — OpenAI-совместимый API (vLLM + Qwen), адрес в `AI_BASE_URL`.
+Весь код провайдера — в `scripts/lib/ai-protocol.ts`, больше нигде формат не знают.
+Требования к запуску vLLM (вызов инструментов, reasoning-parser) — в README.
+
+**Cloudflare Worker** (`anthropic-proxy.arackelian.workers.dev`, репо `arsen2317/anthropic-proxy`) — прокси для Brave Search (обход блокировки РФ). Защищён `x-proxy-secret`.
 - `BRAVE_PROXY_URL = https://anthropic-proxy.arackelian.workers.dev/brave` → Worker стрипает `/brave`, форвардит на `api.search.brave.com`
-- Секреты Worker: `PROXY_SECRET`, `ANTHROPIC_API_KEY`, `BRAVE_SEARCH_API_KEY` — настраиваются в Cloudflare Dashboard.
+- Секреты Worker: `PROXY_SECRET`, `BRAVE_SEARCH_API_KEY` — настраиваются в Cloudflare Dashboard.
 - **Не менять маршруты и суффиксы URL** — они захардкожены в GitHub Secrets и переменных среды сервера.
 
-Диагностика прокси (запуск на VPS):
+Диагностика доступа к модели (запуск на сервере приложения):
 ```bash
-PROXY_SECRET=$(grep ^PROXY_SECRET /var/www/po-copilot/.env.local | cut -d= -f2)
-PROXY_URL=$(grep ^ANTHROPIC_PROXY_URL /var/www/po-copilot/.env.local | cut -d= -f2)
-curl -s -w "\nHTTP: %{http_code}\n" "${PROXY_URL}/v1/messages" \
-  -H "x-proxy-secret: ${PROXY_SECRET}" -H "content-type: application/json" \
-  -H "anthropic-version: 2023-06-01" \
-  -d '{"model":"claude-haiku-4-5-20251001","max_tokens":10,"messages":[{"role":"user","content":"test"}]}'
+AI_BASE_URL=$(grep ^AI_BASE_URL /var/www/po-copilot/.env.local | cut -d= -f2)
+AI_MODEL=$(grep ^AI_MODEL /var/www/po-copilot/.env.local | cut -d= -f2)
+curl -s -w "\nHTTP: %{http_code}\n" "${AI_BASE_URL}/chat/completions" \
+  -H "content-type: application/json" \
+  -d "{\"model\":\"${AI_MODEL}\",\"max_tokens\":10,\"messages\":[{\"role\":\"user\",\"content\":\"test\"}]}"
 ```
 
 ## Нельзя без подтверждения

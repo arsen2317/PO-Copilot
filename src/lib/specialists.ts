@@ -191,7 +191,7 @@ export const SPECIALIST_TOOL_DEFINITIONS = [
       'В поле request передай ПОЛНОЕ описание задачи и весь релевантный контекст из диалога (проблема, метрика, id связанного артефакта). ' +
       'Специалист сам оформит черновик, вызовет create_task_draft и покажет пользователю кликабельную карточку черновика. ' +
       'НЕ вызывай create_task_draft сам — только через этого специалиста.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         request: {
@@ -209,7 +209,7 @@ export const SPECIALIST_TOOL_DEFINITIONS = [
       '(интерактивный подбор варианта делай сам, до вызова). В поле request передай выбранный сценарий/персону и цель карты. ' +
       'Специалист сам соберёт данные, построит карту и покажет карточку. ' +
       'Правку/актуализацию существующего CJM и проверку привязанного артефакта НЕ делегируй сюда — это интерактивные сценарии, выполняй их сам инлайн через get_cjm/update_cjm.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         request: {
@@ -223,7 +223,7 @@ export const SPECIALIST_TOOL_DEFINITIONS = [
   {
     name: 'analyze_metrics',
     description: 'Продуктовый аналитик метрик. Вызови, когда пользователь просит проанализировать метрики / найти проблемные зоны / разобрать дашборд. В request передай фокус запроса (или «общий анализ»). Специалист сам загрузит метрики и выдаст диагностику.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: { request: { type: 'string', description: 'Что анализировать: конкретная зона/метрика или общий анализ + контекст из диалога.' } },
       required: ['request'],
@@ -232,7 +232,7 @@ export const SPECIALIST_TOOL_DEFINITIONS = [
   {
     name: 'analyze_risks',
     description: 'Эксперт по рискам (регуляторные/комплаенс, технические, продуктовые). Вызови, когда просят оценить риски фичи/решения/документа. В request передай, что анализировать, и весь контекст (описание фичи, ограничения).',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: { request: { type: 'string', description: 'Что оценивать на риски + весь релевантный контекст из диалога.' } },
       required: ['request'],
@@ -241,7 +241,7 @@ export const SPECIALIST_TOOL_DEFINITIONS = [
   {
     name: 'generate_hypotheses',
     description: 'Генератор продуктовых гипотез с ICE-скорингом и планом проверки. Вызови, когда просят гипотезы / идеи экспериментов. В request передай проблему/цель и контекст.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: { request: { type: 'string', description: 'Проблема/цель для гипотез + контекст из диалога.' } },
       required: ['request'],
@@ -250,7 +250,7 @@ export const SPECIALIST_TOOL_DEFINITIONS = [
   {
     name: 'watch_trends',
     description: 'Трендвотчер: мониторинг конкурентов (Т-Банк, Сбер, ВТБ, Альфа …) и трендов через веб-поиск. Вызови, когда просят разбор трендов/конкурентов/новинок рынка. В request передай тему/конкурента/период.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: { request: { type: 'string', description: 'Тема / конкурент / период мониторинга (или «общий обзор»).' } },
       required: ['request'],
@@ -259,7 +259,7 @@ export const SPECIALIST_TOOL_DEFINITIONS = [
   {
     name: 'make_briefing',
     description: 'Ситуационный брифинг ПМ: главное за 3 дня, отклонения метрик, задачи требующие внимания, что решить сегодня. Вызови на запрос брифинга/сводки/«что важного». В request передай акцент, если есть.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: { request: { type: 'string', description: 'Акцент брифинга или «общий брифинг».' } },
       required: ['request'],
@@ -268,7 +268,7 @@ export const SPECIALIST_TOOL_DEFINITIONS = [
   {
     name: 'generate_qbr_report',
     description: 'Генератор HTML-презентации QBR. Вызывай ТОЛЬКО после того, как пользователь выбрал метрики в metric-selector и пришло сообщение «QBR: выбраны метрики: …». В request передай этот список выбранных метрик. Специалист сам соберёт значения и отрендерит презентацию.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: { request: { type: 'string', description: 'Список выбранных метрик в формате «выбраны метрики: id1, id2, …» + квартал/год если известны.' } },
       required: ['request'],
@@ -277,7 +277,7 @@ export const SPECIALIST_TOOL_DEFINITIONS = [
   {
     name: 'write_research_brief',
     description: 'CustDev-исполнитель: подбор метода исследования с обоснованием + бриф + гайд/анкета. Вызывай ПОСЛЕ того, как уточнил исследовательский вопрос и ограничения. В request передай research question, гипотезы, ограничения по времени/ресурсам.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: { request: { type: 'string', description: 'Исследовательский вопрос + гипотезы + ограничения (время/ресурсы) + что уже известно.' } },
       required: ['request'],

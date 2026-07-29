@@ -5,14 +5,30 @@
  *   dev  — `npm run dev` (concurrently с Vite, порт 3001)
  *   prod — PM2 через `scripts/start-api.sh` (порт 3001, nginx проксирует /api/)
  *
- * Эндпоинты: /api/auth (логин), /api/chat (SSE-стриминг ИИ), /api/search (Brave).
+ * Эндпоинты: /api/auth (логин), /api/chat (стриминг ответа модели), /api/search (Brave).
  * Переменные окружения — см. `.env.example` и раздел README «Переменные окружения».
+ *
+ * Модель вызывается через OpenAI-совместимый API (`{AI_BASE_URL}/chat/completions`).
+ * Вся конвертация форматов — в `scripts/lib/ai-protocol.ts`, это единственное место,
+ * знающее формат провайдера.
  */
 import express from 'express';
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
-import { signToken, verifyToken } from '../api/_lib/token';
+import { pathToFileURL } from 'node:url';
+import { signToken, verifyToken } from './lib/token';
+import {
+  MAX_TOKENS,
+  ToolCallAccumulator,
+  ThinkTagFilter,
+  describeModelError,
+  toOpenAiMessages,
+  toOpenAiTools,
+  type AiMessage,
+  type AiToolDefinition,
+  type ToolCallDelta,
+} from './lib/ai-protocol';
 
 // Load .env.local manually
 const envPath = path.resolve(process.cwd(), '.env.local');
@@ -24,187 +40,268 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-const app = express();
-app.use(express.json({ limit: '10mb' }));
+/** Значение переменной окружения как флаг. */
+function envFlag(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  return raw === '1' || raw.toLowerCase() === 'true';
+}
 
-app.use((_req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  next();
-});
+/** Событие нашего SSE-протокола (браузер разбирает его в `src/lib/ai.ts`). */
+type StreamEvent =
+  | { type: 'text'; text: string }
+  | { type: 'done'; finishReason: string; toolCalls: Array<{ id: string; name: string; input: Record<string, unknown> }> }
+  | { type: 'error'; error: string };
 
-app.options(/.*/, (_req, res) => res.sendStatus(204));
+export function createApp() {
+  const app = express();
+  app.use(express.json({ limit: '10mb' }));
 
-// ── Auth endpoint ────────────────────────────────────────────────────────────
-app.post('/api/auth', async (req, res) => {
-  const { username, password } = req.body as { username?: string; password?: string };
-  const validLogin = process.env.APP_LOGIN;
-  const validPassword = process.env.APP_PASSWORD;
-  const secret = process.env.APP_SESSION_SECRET;
-
-  if (!validLogin || !validPassword || !secret) {
-    res.status(500).json({ error: 'Server not configured' });
-    return;
-  }
-
-  if (username !== validLogin || password !== validPassword) {
-    await new Promise((r) => setTimeout(r, 300));
-    res.status(401).json({ error: 'Invalid credentials' });
-    return;
-  }
-
-  const token = await signToken(username, secret);
-  res.json({ token });
-});
-
-// ── Chat endpoint ────────────────────────────────────────────────────────────
-app.post('/api/chat', async (req, res) => {
-  const secret = process.env.APP_SESSION_SECRET;
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-  if (!secret || !token || !(await verifyToken(token, secret))) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    res.status(500).json({ error: 'ANTHROPIC_API_KEY not set in .env.local' });
-    return;
-  }
-
-  const ALLOWED_MODELS = ['claude-haiku-4-5-20251001'];
-  const { messages, system, tools, model: reqModel } = req.body as {
-    messages: Anthropic.MessageParam[];
-    system?: string;
-    tools?: Anthropic.Tool[];
-    model?: string;
-  };
-
-  const model = ALLOWED_MODELS.includes(reqModel ?? '') ? reqModel! : 'claude-haiku-4-5-20251001';
-
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('X-Accel-Buffering', 'no');
-
-  const proxySecret = process.env.PROXY_SECRET;
-  const proxyFetch = proxySecret
-    ? (url: RequestInfo | URL, init?: RequestInit) => {
-        const headers = new Headers(init?.headers);
-        headers.set('x-proxy-secret', proxySecret);
-        return fetch(url, { ...init, headers });
-      }
-    : undefined;
-
-  const client = new Anthropic({
-    apiKey,
-    // Прод ходит в Anthropic через Cloudflare Worker из РФ. Anthropic под конкурентной
-    // нагрузкой утром отдаёт транзиентные 429 (rate_limit) / 529 (overloaded) — SDK
-    // сам ретраит их (и 408/409/5xx, и сетевые обрывы) с экспоненциальным бэкоффом,
-    // уважая заголовок retry-after. Поднимаем число попыток с дефолтных 2 до 4,
-    // чтобы «рандомные» отказы под нагрузкой переживались повтором, а не падали к юзеру.
-    // Ретраи срабатывают до старта стрима (на установке соединения), дублей вывода нет.
-    maxRetries: 4,
-    ...(process.env.ANTHROPIC_PROXY_URL ? { baseURL: process.env.ANTHROPIC_PROXY_URL } : {}),
-    ...(proxyFetch ? { fetch: proxyFetch } : {}),
+  app.use((_req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    next();
   });
 
-  // Prompt caching: пометить стабильный system-промпт + определения инструментов как кэшируемые,
-  // чтобы они не пересчитывались на каждом раунде tool-loop и на каждом ходе.
-  // Если префикс короче минимальной длины кэша модели — API молча игнорирует cache_control (не ошибка).
-  const cachedSystem = system
-    ? [{ type: 'text' as const, text: system, cache_control: { type: 'ephemeral' as const } }]
-    : undefined;
-  const cachedTools = tools && tools.length > 0
-    ? tools.map((t, i) => (i === tools.length - 1 ? { ...t, cache_control: { type: 'ephemeral' as const } } : t))
-    : tools;
+  app.options(/.*/, (_req, res) => res.sendStatus(204));
 
-  try {
-    const stream = await client.messages.stream({
-      model,
-      max_tokens: 4096,
-      ...(cachedSystem ? { system: cachedSystem } : {}),
-      messages,
-      ...(cachedTools ? { tools: cachedTools } : {}),
-    });
-    for await (const event of stream) {
-      res.write(`data: ${JSON.stringify(event)}\n\n`);
+  // ── Auth endpoint ──────────────────────────────────────────────────────────
+  app.post('/api/auth', async (req, res) => {
+    const { username, password } = req.body as { username?: string; password?: string };
+    const validLogin = process.env.APP_LOGIN;
+    const validPassword = process.env.APP_PASSWORD;
+    const secret = process.env.APP_SESSION_SECRET;
+
+    if (!validLogin || !validPassword || !secret) {
+      res.status(500).json({ error: 'Server not configured' });
+      return;
     }
-    res.write('data: [DONE]\n\n');
-  } catch (err) {
-    // Разбор ошибки: у APIError есть статус/тип тела/request-id — логируем их на сервере
-    // (видно в `pm2 logs po-copilot-api`), чтобы «рандомные» отказы прода были диагностируемы,
-    // и отдаём юзеру внятное сообщение вместо сырого текста SDK.
-    let clientMsg = err instanceof Error ? err.message : 'Stream error';
-    if (err instanceof Anthropic.APIError) {
-      const status = err.status;
-      const type = (err.error as { error?: { type?: string } } | undefined)?.error?.type;
-      const requestId = err.request_id ?? null;
-      console.error('[api/chat] Anthropic error', { status, type, requestId, message: err.message });
-      if (status === 429 || type === 'rate_limit_error') {
-        clientMsg = 'Модель перегружена запросами (лимит). Повторите через несколько секунд.';
-      } else if (status === 529 || type === 'overloaded_error') {
-        clientMsg = 'Сервис Anthropic временно перегружен. Повторите запрос.';
-      } else if (status === 401 || status === 403) {
-        clientMsg = `Ошибка авторизации у прокси/API (${status}). Проверьте PROXY_SECRET и ANTHROPIC_API_KEY.`;
-      } else {
-        clientMsg = `Ошибка API${status ? ` (${status})` : ''}${type ? ` [${type}]` : ''}: ${err.message}`;
-      }
-    } else {
-      console.error('[api/chat] stream error', err);
+
+    if (username !== validLogin || password !== validPassword) {
+      await new Promise((r) => setTimeout(r, 300));
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
-    res.write(`data: ${JSON.stringify({ type: 'error', error: clientMsg })}\n\n`);
-  } finally {
-    res.end();
-  }
-});
 
-// ── Web search endpoint ──────────────────────────────────────────────────────
-app.post('/api/search', async (req, res) => {
-  const secret = process.env.APP_SESSION_SECRET;
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const token = await signToken(username, secret);
+    res.json({ token });
+  });
 
-  if (!secret || !token || !(await verifyToken(token, secret))) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
+  // ── Chat endpoint ──────────────────────────────────────────────────────────
+  app.post('/api/chat', async (req, res) => {
+    const secret = process.env.APP_SESSION_SECRET;
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-  const apiKey = process.env.BRAVE_SEARCH_API_KEY;
-  const { query } = req.body as { query?: string };
+    if (!secret || !token || !(await verifyToken(token, secret))) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
 
-  if (!apiKey) {
-    res.json({ error: 'BRAVE_SEARCH_API_KEY not configured — add it to .env.local', results: [] });
-    return;
-  }
-  if (!query?.trim()) {
-    res.json({ results: [] });
-    return;
-  }
+    // Конфигурацию проверяем ДО перехода в режим стрима — иначе ошибку придётся
+    // отдавать событием, и в интерфейсе она выглядит как сбой модели, а не как
+    // незаполненный .env.local.
+    const baseURL = process.env.AI_BASE_URL;
+    const model = process.env.AI_MODEL;
+    if (!baseURL) {
+      res.status(500).json({ error: 'AI_BASE_URL не задан в .env.local (адрес OpenAI-совместимого API, оканчивается на /v1)' });
+      return;
+    }
+    if (!model) {
+      res.status(500).json({ error: 'AI_MODEL не задан в .env.local (имя модели на сервере инференса)' });
+      return;
+    }
 
-  try {
-    const braveBase = process.env.BRAVE_PROXY_URL ?? 'https://api.search.brave.com';
-    const url = `${braveBase}/res/v1/web/search?q=${encodeURIComponent(query)}&count=8&search_lang=ru&country=ru&text_decorations=false`;
-    const resp = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-        'X-Subscription-Token': apiKey,
-        ...(process.env.PROXY_SECRET ? { 'x-proxy-secret': process.env.PROXY_SECRET } : {}),
-      },
-    });
-    const data = await resp.json() as {
-      web?: { results?: Array<{ title: string; url: string; description: string }> };
+    const { messages, system, tools } = req.body as {
+      messages: AiMessage[];
+      system?: string;
+      tools?: AiToolDefinition[];
     };
-    const results = (data.web?.results ?? []).map((r) => ({ title: r.title, url: r.url, snippet: r.description }));
-    res.json({ results });
-  } catch (err) {
-    res.json({ error: String(err), results: [] });
-  }
-});
 
-const PORT = parseInt(process.env.PORT ?? '3001', 10);
-app.listen(PORT, () => {
-  console.log(`[api] listening on http://localhost:${PORT}`);
-});
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    const send = (event: StreamEvent) => {
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+    };
+
+    // Отмена запроса к модели, если пользователь нажал «стоп» или закрыл вкладку:
+    // иначе на локальном сервере инференса зря держится слот генерации.
+    const controller = new AbortController();
+    let finished = false;
+    res.on('close', () => {
+      if (!finished) controller.abort();
+    });
+
+    const client = new OpenAI({
+      // Локальный vLLM часто поднимают без авторизации — пустой ключ там нормален,
+      // но SDK требует непустую строку.
+      apiKey: process.env.AI_API_KEY || 'not-needed',
+      baseURL,
+      // Транзиентные 429/5xx и обрывы сети SDK ретраит сам, с экспоненциальным
+      // бэкоффом и учётом retry-after. Ретраи происходят до старта стрима.
+      maxRetries: 4,
+    });
+
+    const vision = envFlag('AI_VISION', false);
+    const useStream = envFlag('AI_STREAM', true);
+    const enableThinking = envFlag('AI_ENABLE_THINKING', false);
+
+    const converted = toOpenAiMessages(system, messages ?? [], { vision });
+    for (const w of converted.warnings) console.warn('[api/chat] история починена:', w);
+
+    const openAiTools = toOpenAiTools(tools);
+    const body = {
+      model,
+      messages: converted.messages,
+      max_tokens: MAX_TOKENS,
+      ...(openAiTools ? { tools: openAiTools } : {}),
+      // Расширение vLLM: включает режим размышлений у Qwen. По умолчанию выключено —
+      // размышления кратно увеличивают время ответа и занимают слоты инференса.
+      ...(enableThinking ? { chat_template_kwargs: { enable_thinking: true } } : {}),
+    };
+
+    const think = new ThinkTagFilter();
+    const acc = new ToolCallAccumulator();
+    const warnings: string[] = [];
+    let finishReason = 'stop';
+
+    try {
+      if (useStream) {
+        const stream = await client.chat.completions.create(
+          { ...body, stream: true } as Parameters<typeof client.chat.completions.create>[0],
+          { signal: controller.signal },
+        );
+        for await (const chunk of stream as AsyncIterable<{
+          choices?: Array<{
+            delta?: { content?: string | null; tool_calls?: ToolCallDelta[] };
+            finish_reason?: string | null;
+          }>;
+        }>) {
+          const choice = chunk.choices?.[0];
+          if (!choice) continue;
+          // Поле delta.reasoning_content (размышления Qwen) намеренно игнорируется —
+          // в чат попадает только видимый ответ.
+          const content = choice.delta?.content;
+          if (content) {
+            const visible = think.feed(content);
+            if (visible) send({ type: 'text', text: visible });
+          }
+          if (choice.delta?.tool_calls) acc.add(choice.delta.tool_calls);
+          if (choice.finish_reason) finishReason = choice.finish_reason;
+        }
+      } else {
+        const completion = (await client.chat.completions.create(
+          { ...body, stream: false } as Parameters<typeof client.chat.completions.create>[0],
+          { signal: controller.signal },
+        )) as {
+          choices?: Array<{
+            message?: { content?: string | null; tool_calls?: Array<{ id?: string; type?: string; function?: { name?: string; arguments?: string } }> };
+            finish_reason?: string | null;
+          }>;
+        };
+        const choice = completion.choices?.[0];
+        const content = choice?.message?.content;
+        if (content) {
+          const visible = think.feed(content);
+          if (visible) send({ type: 'text', text: visible });
+        }
+        const calls = choice?.message?.tool_calls ?? [];
+        acc.add(
+          calls
+            .filter((c) => c.type === undefined || c.type === 'function')
+            .map((c, i) => ({
+              index: i,
+              ...(c.id ? { id: c.id } : {}),
+              ...(c.function ? { function: c.function } : {}),
+            })),
+        );
+        if (choice?.finish_reason) finishReason = choice.finish_reason;
+      }
+
+      const tail = think.flush();
+      if (tail) send({ type: 'text', text: tail });
+
+      const toolCalls = acc.collect(warnings);
+      for (const w of warnings) console.warn('[api/chat] разбор вызовов:', w);
+
+      // КРИТИЧНО: часть tool-парсеров vLLM отдаёт finish_reason='stop' даже когда
+      // вызовы инструментов есть. Признак раунда с инструментами — сам факт вызовов,
+      // иначе агентный цикл молча оборвётся и ассистент ответит без данных.
+      if (toolCalls.length > 0) finishReason = 'tool_calls';
+
+      send({
+        type: 'done',
+        finishReason,
+        toolCalls: toolCalls.map((c) => ({ id: c.id, name: c.name, input: c.input })),
+      });
+      res.write('data: [DONE]\n\n');
+    } catch (err) {
+      // Пользователь закрыл вкладку или нажал «стоп» — это не ошибка, и писать уже некуда.
+      if (!controller.signal.aborted) {
+        const { userMessage, log } = describeModelError(err);
+        console.error('[api/chat] ошибка обращения к модели', log);
+        send({ type: 'error', error: userMessage });
+      }
+    } finally {
+      finished = true;
+      res.end();
+    }
+  });
+
+  // ── Web search endpoint ────────────────────────────────────────────────────
+  app.post('/api/search', async (req, res) => {
+    const secret = process.env.APP_SESSION_SECRET;
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+    if (!secret || !token || !(await verifyToken(token, secret))) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const apiKey = process.env.BRAVE_SEARCH_API_KEY;
+    const { query } = req.body as { query?: string };
+
+    if (!apiKey) {
+      res.json({ error: 'BRAVE_SEARCH_API_KEY not configured — add it to .env.local', results: [] });
+      return;
+    }
+    if (!query?.trim()) {
+      res.json({ results: [] });
+      return;
+    }
+
+    try {
+      const braveBase = process.env.BRAVE_PROXY_URL ?? 'https://api.search.brave.com';
+      const url = `${braveBase}/res/v1/web/search?q=${encodeURIComponent(query)}&count=8&search_lang=ru&country=ru&text_decorations=false`;
+      const resp = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'X-Subscription-Token': apiKey,
+          ...(process.env.PROXY_SECRET ? { 'x-proxy-secret': process.env.PROXY_SECRET } : {}),
+        },
+      });
+      const data = await resp.json() as {
+        web?: { results?: Array<{ title: string; url: string; description: string }> };
+      };
+      const results = (data.web?.results ?? []).map((r) => ({ title: r.title, url: r.url, snippet: r.description }));
+      res.json({ results });
+    } catch (err) {
+      res.json({ error: String(err), results: [] });
+    }
+  });
+
+  return app;
+}
+
+// Запуск только при прямом вызове файла — импорт из тестов сервер не поднимает.
+const entry = process.argv[1] ? pathToFileURL(process.argv[1]).href : '';
+if (import.meta.url === entry) {
+  const PORT = parseInt(process.env.PORT ?? '3001', 10);
+  createApp().listen(PORT, () => {
+    console.log(`[api] listening on http://localhost:${PORT}`);
+  });
+}

@@ -6,9 +6,9 @@ import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useQuery } from '@tanstack/react-query';
-import { streamChat } from '../../lib/claude';
+import { streamChat } from '../../lib/ai';
 import { executeTool } from '../../lib/tools';
-import type { ChatMessage, ToolUseBlock } from '../../lib/claude';
+import type { ChatMessage, MessagePart, ToolCallBlock, ToolResultPart } from '../../lib/ai';
 import { getOrchestratorSystemPrompt, getSpecialistPreamble, AGENT_PROMPTS } from '../../lib/agentPrompts';
 import { SPECIALISTS, getOrchestratorTools, toolsForSpecialist, type Specialist } from '../../lib/specialists';
 import { getMetricDefinitions } from '../../data/api/metric-definitions';
@@ -1480,14 +1480,14 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       const specTools = toolsForSpecialist(spec);
       const specBubbleId = `spec-${Date.now()}-${Math.random()}`;
       setMessages((prev) => [...prev, { id: specBubbleId, role: 'assistant', content: '', streaming: true }]);
-      let specMessages: { role: 'user' | 'assistant'; content: string | object[] }[] = [{ role: 'user', content: request }];
+      let specMessages: ChatMessage[] = [{ role: 'user', content: request }];
       // Накапливаем текст ПО ВСЕМ раундам (рассуждения до вызова инструмента + финальный
       // вывод), а не заменяем — иначе «размышления» специалиста стирались карточкой.
       let accumulated = '';
       // Кап на число раундов — защита от зацикливания вложенного tool-loop.
       for (let round = 0; round < 8; round++) {
         const res = await streamChat({
-          messages: specMessages as ChatMessage[],
+          messages: specMessages,
           // Преамбула (стиль/эмодзи/дата/чипы) + фокусный промпт специалиста.
           // Без преамбулы у специалистов протекали эмодзи и ломались чипы метрик.
           system: `${getSpecialistPreamble()}\n\n${spec.system}`,
@@ -1502,14 +1502,17 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           .map((b) => (b as { type: 'text'; text: string }).text)
           .join('');
         accumulated = accumulated ? (iterText ? `${accumulated}\n\n${iterText}` : accumulated) : iterText;
-        setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, content: accumulated, streaming: res.stopReason === 'tool_use' } : m)));
-        if (res.stopReason !== 'tool_use') break;
-        const specToolUse = res.blocks.filter((b): b is ToolUseBlock => b.type === 'tool_use');
+        // Ход считается инструментальным по САМОМУ НАЛИЧИЮ вызовов, а не по причине
+        // завершения: часть tool-парсеров vLLM отдаёт finish_reason='stop' даже когда
+        // вызовы есть, и проверка причины оборвала бы цикл на первом же инструменте.
+        const specToolUse = res.toolCalls;
+        setMessages((prev) => prev.map((m) => (m.id === specBubbleId ? { ...m, content: accumulated, streaming: specToolUse.length > 0 } : m)));
+        if (specToolUse.length === 0) break;
         specMessages = [...specMessages, { role: 'assistant', content: res.blocks }];
         const specResults = await Promise.all(
-          specToolUse.map(async (tb) => ({
-            type: 'tool_result' as const,
-            tool_use_id: tb.id,
+          specToolUse.map(async (tb): Promise<ToolResultPart> => ({
+            type: 'tool_result',
+            tool_call_id: tb.id,
             content: JSON.stringify(await executeTool(tb.name, tb.input)),
           })),
         );
@@ -1526,38 +1529,38 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       };
     };
 
-    // Convert a local message to Anthropic API content
-    const toApiContent = (m: LocalMessage): string | object[] => {
+    // Локальное сообщение → части в нейтральном формате приложения.
+    const toApiContent = (m: LocalMessage): string | MessagePart[] => {
       const hasImages = m.role === 'user' && m.images && m.images.length > 0;
       const hasFiles = m.role === 'user' && m.files && m.files.length > 0;
       if (hasImages || hasFiles) {
-        const parts: object[] = [];
-        // Attached documents (PDF, text, Office, etc.)
+        const parts: MessagePart[] = [];
+        // Вложенные файлы
         if (m.files) {
           for (const f of m.files) {
-            const isOffice =
-              f.type === 'application/msword' ||
-              f.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-              f.type === 'application/vnd.ms-excel' ||
-              f.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-
-            if (f.type === 'application/pdf' || isOffice) {
-              parts.push({ type: 'document', source: { type: 'base64', media_type: f.type, data: f.data }, title: f.name });
-            } else if (f.type.startsWith('text/') || f.type === 'application/json') {
+            const isPlainText = f.type.startsWith('text/') || f.type === 'application/json';
+            if (isPlainText) {
               try {
                 const decoded = atob(f.data);
                 parts.push({ type: 'text', text: `[Файл: ${f.name}]\n${decoded}` });
               } catch {
                 parts.push({ type: 'text', text: `[Файл: ${f.name} — не удалось прочитать]` });
               }
+            } else {
+              // PDF / Word / Excel и прочие бинарные форматы: извлечение содержимого
+              // не подключено, сервер подставит честную пометку для модели.
+              // Как подключить — см. TODO у FilePart в scripts/lib/ai-protocol.ts.
+              parts.push({ type: 'file', name: f.name, mediaType: f.type, data: f.data });
             }
           }
         }
-        // Images
+        // Картинки
         if (m.images) {
           for (const img of m.images) {
             const match = img.match(/^data:([^;]+);base64,(.+)$/);
-            if (match) parts.push({ type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } });
+            const mediaType = match?.[1];
+            const data = match?.[2];
+            if (mediaType && data) parts.push({ type: 'image', mediaType, data });
           }
         }
         if (m.content) parts.push({ type: 'text', text: m.content });
@@ -1567,7 +1570,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     };
 
     // Build initial API messages from all local messages + the new one
-    let apiMessages: { role: 'user' | 'assistant'; content: string | object[] }[] =
+    let apiMessages: ChatMessage[] =
       [...prevMessages, newMsg].map((m) => ({ role: m.role, content: toApiContent(m) }));
 
     // Детерминированная карточка артефакта: id берём из результата save_artifact, а не
@@ -1589,7 +1592,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
         setIsThinking(false);
 
         const result = await streamChat({
-          messages: apiMessages as ChatMessage[],
+          messages: apiMessages,
           system: buildOrchestratorSystem(selectedAgent),
           tools: getOrchestratorTools(),
           signal: abort.signal,
@@ -1605,7 +1608,10 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
           .map((b) => (b as { type: 'text'; text: string }).text)
           .join('');
 
-        const isFinal = result.stopReason !== 'tool_use';
+        // Финал хода определяется ОТСУТСТВИЕМ вызовов инструментов, а не причиной
+        // завершения: часть tool-парсеров vLLM отдаёт finish_reason='stop' при наличии
+        // вызовов, и опора на причину молча оборвала бы агентный цикл.
+        const isFinal = result.toolCalls.length === 0;
         // На финальном ходу, если в этом запросе сохраняли артефакт — гарантируем
         // корректную карточку (правильный id) даже если модель ошиблась/забыла блок.
         const finalText = isFinal && savedArtifact ? withCorrectArtifactCard(fullText, savedArtifact) : fullText;
@@ -1616,7 +1622,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
         if (isFinal) break;
 
-        const toolUseBlocks = result.blocks.filter((b): b is ToolUseBlock => b.type === 'tool_use');
+        const toolUseBlocks: ToolCallBlock[] = result.toolCalls;
 
         apiMessages = [...apiMessages, { role: 'assistant', content: result.blocks }];
 
@@ -1624,7 +1630,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
         // Последовательно (не Promise.all): специалист стримит в свой пузырь, параллельный
         // запуск двух специалистов перемешал бы вывод. Специалист → вложенный агентный цикл,
         // остальные инструменты → обычное исполнение.
-        const toolResults: { type: 'tool_result'; tool_use_id: string; content: string }[] = [];
+        const toolResults: ToolResultPart[] = [];
         for (const tb of toolUseBlocks) {
           const spec = SPECIALISTS[tb.name];
           const output = spec ? await runSpecialist(spec, tb.input) : await executeTool(tb.name, tb.input);
@@ -1634,7 +1640,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
               savedArtifact = { id: o.id, title: typeof o.title === 'string' ? o.title : 'Артефакт' };
             }
           }
-          toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: JSON.stringify(output) });
+          toolResults.push({ type: 'tool_result', tool_call_id: tb.id, content: JSON.stringify(output) });
         }
 
         apiMessages = [...apiMessages, { role: 'user', content: toolResults }];

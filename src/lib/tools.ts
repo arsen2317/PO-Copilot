@@ -15,12 +15,12 @@ export const TOOL_DEFINITIONS = [
   {
     name: 'get_metric_groups',
     description: 'Возвращает список всех групп метрик с их ID, названиями и цветами.',
-    input_schema: { type: 'object' as const, properties: {}, required: [] },
+    parameters: { type: 'object' as const, properties: {}, required: [] },
   },
   {
     name: 'get_metrics',
     description: 'Возвращает метрики продукта: текущее значение, план, % выполнения, тренд. Можно фильтровать по группе.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         groupId: { type: 'string', description: 'ID группы метрик (необязательно). Если не указан — возвращает все метрики.' },
@@ -31,12 +31,12 @@ export const TOOL_DEFINITIONS = [
   {
     name: 'get_funnel_steps',
     description: 'Возвращает шаги воронки конверсии: название, техническое имя события, количество пользователей, конверсию от первого шага. Используй для анализа узких мест воронки.',
-    input_schema: { type: 'object' as const, properties: {}, required: [] },
+    parameters: { type: 'object' as const, properties: {}, required: [] },
   },
   {
     name: 'get_tasks',
     description: 'Возвращает список задач из бэклога: название, статус, приоритет, исполнитель, эпик, зависимости, даты.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         epicId: { type: 'string', description: 'Фильтр по ID эпика (необязательно). Например: EPIC-1, EPIC-2.' },
@@ -47,7 +47,7 @@ export const TOOL_DEFINITIONS = [
   {
     name: 'get_timeline',
     description: 'Возвращает данные таймлайна: эпики, задачи с датами начала/конца, зависимости между задачами, информацию о командах. Используй для анализа критического пути, блокировок, влияния задержек на релиз.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         epicId: { type: 'string', description: 'Фильтр по ID эпика (необязательно). Если не указан — возвращает все эпики.' },
@@ -58,12 +58,12 @@ export const TOOL_DEFINITIONS = [
   {
     name: 'get_agents',
     description: 'Возвращает список доступных ИИ-агентов: название, описание, статус.',
-    input_schema: { type: 'object' as const, properties: {}, required: [] },
+    parameters: { type: 'object' as const, properties: {}, required: [] },
   },
   {
     name: 'create_task_draft',
     description: 'Создаёт черновик задачи в разделе «Задачи → Черновики». Используй после того как согласовал структуру задачи с пользователем. Черновик появится на вкладке «Черновики» и пользователь сможет его принять или отредактировать.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         title: { type: 'string', description: 'Заголовок задачи (до 80 символов)' },
@@ -89,7 +89,7 @@ export const TOOL_DEFINITIONS = [
   {
     name: 'search_web',
     description: 'Выполняет поиск в интернете по заданному запросу. Используй для поиска актуальных новостей о конкурентах, банковских трендах, новых фичах российских банков. Возвращает список результатов с заголовком, URL и кратким описанием.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         query: { type: 'string', description: 'Поисковый запрос на русском или английском языке.' },
@@ -100,12 +100,12 @@ export const TOOL_DEFINITIONS = [
   {
     name: 'get_cjm_list',
     description: 'Возвращает список всех CJM-карт (карт пути клиента): id, заголовок, персона, статус, описание.',
-    input_schema: { type: 'object' as const, properties: {}, required: [] },
+    parameters: { type: 'object' as const, properties: {}, required: [] },
   },
   {
     name: 'get_cjm',
     description: 'Возвращает полный CJM по id, включая все ноды (этапы, touchpoint, эмоции, боли, возможности) и рёбра.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         id: { type: 'string', description: 'ID CJM-карты' },
@@ -116,7 +116,7 @@ export const TOOL_DEFINITIONS = [
   {
     name: 'get_knowledge_artifacts',
     description: 'Возвращает артефакты из базы знаний: опросы пользователей, UX-исследования, анализы оттока, NPS-отчёты, а также сохранённые заметки — с полными данными и инсайтами. Используй для обогащения CJM реальными болями и данными.',
-    input_schema: { type: 'object' as const, properties: {}, required: [] },
+    parameters: { type: 'object' as const, properties: {}, required: [] },
   },
   {
     name: 'save_artifact',
@@ -124,7 +124,7 @@ export const TOOL_DEFINITIONS = [
       'Сохраняет артефакт в раздел «База знаний»: заметку с саммари обсуждения, бриф на исследование, ключевые выводы, отчёт. ' +
       'Используй, когда пользователь просит сохранить обсуждённое «в заметку»/«в базу знаний», сохранить созданный бриф или выводы. ' +
       'Перед сохранением коротко покажи, что именно сохранишь. После успешного вызова ОБЯЗАТЕЛЬНО выведи блок artifact-result со ссылкой на артефакт.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         title: { type: 'string', description: 'Короткий заголовок артефакта (до 80 символов)' },
@@ -147,7 +147,7 @@ export const TOOL_DEFINITIONS = [
       'Создаёт новый CJM и сохраняет его в текущей сессии. Возвращает id и title. ' +
       'Позиции нод, ID и рёбра между этапами вычисляются автоматически из массива stages — ' +
       'тебе нужно передать только содержание каждого этапа, а не координаты или технические ID.',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         title: { type: 'string', description: 'Название CJM (конкретное, описывает сценарий)' },
@@ -220,7 +220,7 @@ export const TOOL_DEFINITIONS = [
       '1) метаданные (title/persona/description/status);\n' +
       '2) stages — полная пересборка нод/рёбер из шаблона (как в create_cjm): используй при добавлении/удалении этапов или полной реактуализации;\n' +
       '3) nodeUpdates — точечное обновление конкретных нод по id, без пересборки всей карты: самый дешёвый способ поправить 1-2 ноды (например текст и/или linkedArtifactId).',
-    input_schema: {
+    parameters: {
       type: 'object' as const,
       properties: {
         id: { type: 'string', description: 'ID CJM-карты для обновления' },
@@ -266,14 +266,14 @@ export const TOOL_DEFINITIONS = [
       'Возвращает карту разделов приложения (маршруты, что где находится) и подсказки «как сделать» (создать CJM, добавить задачу и т.п.). ' +
       'Вызывай, когда пользователь спрашивает где что находится, как куда попасть или как что-то создать. ' +
       'В ответе давай кликабельную ссылку на раздел в формате Markdown на внутренний путь, например [Задачи](/tasks).',
-    input_schema: { type: 'object' as const, properties: {}, required: [] },
+    parameters: { type: 'object' as const, properties: {}, required: [] },
   },
   {
     name: 'get_team_workload',
     description:
       'Возвращает загрузку сотрудников команды: сколько у каждого задач всего/активных/в работе/просроченных, сумму story points и флаг простоя (isIdle). ' +
       'Используй для поиска бутылочных горлышек, перегруженных и простаивающих сотрудников и рекомендаций по перераспределению задач.',
-    input_schema: { type: 'object' as const, properties: {}, required: [] },
+    parameters: { type: 'object' as const, properties: {}, required: [] },
   },
 ] as const;
 

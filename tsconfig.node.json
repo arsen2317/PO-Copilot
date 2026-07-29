@@ -7,6 +7,11 @@
     "types": ["node", "vitest/globals"],
     "skipLibCheck": true,
 
+    /* Strict — как в tsconfig.app.json. Серверный код в scripts/ раньше не
+       проверялся вовсе (в include был только vite.config.ts). */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -20,5 +25,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "scripts"]
 }

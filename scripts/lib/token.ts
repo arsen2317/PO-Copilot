@@ -1,7 +1,8 @@
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
-function b64url(buf: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+function b64url(buf: ArrayBuffer | Uint8Array): string {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  return btoa(String.fromCharCode(...bytes))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
@@ -11,7 +12,10 @@ function b64urlDecode(str: string): Uint8Array {
   return new Uint8Array([...bin].map((c) => c.charCodeAt(0)));
 }
 
-async function getKey(secret: string): Promise<CryptoKey> {
+/** Тип ключа берём из самого Web Crypto — глобального `CryptoKey` в типах Node нет. */
+type HmacKey = Awaited<ReturnType<typeof crypto.subtle.importKey>>;
+
+async function getKey(secret: string): Promise<HmacKey> {
   return crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(secret),
