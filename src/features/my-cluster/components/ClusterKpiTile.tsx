@@ -11,16 +11,20 @@ const { useToken } = theme;
  */
 export default function ClusterKpiTile({ kpi }: { kpi: ClusterKpi }) {
   const { token } = useToken();
-  const statusColor = {
-    good: token.colorSuccess,
-    warn: token.colorWarning,
-    bad: token.colorError,
+  // Лёгкая статусная подсветка тайла — те же пары токенов, что у antd Tag
+  // outlined (green/gold/red): *Bg — фон, *Border — обводка.
+  const palette = {
+    good: { fg: token.colorSuccess, bg: token.colorSuccessBg, bd: token.colorSuccessBorder },
+    warn: { fg: token.colorWarning, bg: token.colorWarningBg, bd: token.colorWarningBorder },
+    bad:  { fg: token.colorError,   bg: token.colorErrorBg,   bd: token.colorErrorBorder },
   }[kpi.status];
+  const statusColor = palette.fg;
 
   return (
     <div
       style={{
-        border: `1px solid ${token.colorBorderSecondary}`,
+        background: palette.bg,
+        border: `1px solid ${palette.bd}`,
         borderRadius: token.borderRadius,
         padding: '14px 16px 12px',
         minWidth: 0,
