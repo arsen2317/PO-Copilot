@@ -55,7 +55,7 @@ export function taskSurfaces(isDark: boolean) {
   };
 }
 
-// ICE score for backlog prioritization
+// ICE-скоринг для приоритизации бэклога
 export function calcICE(task: Task): number {
   const impactMap: Record<TaskPriority, number> = { critical: 10, high: 7, medium: 4, low: 2 };
   const impact = impactMap[task.priority];

@@ -351,7 +351,7 @@ export async function executeTool(
       const epicIds = new Set(relevantEpics.map((e) => e.id));
       const relevantTasks = tasks.filter((t) => !epicId || epicIds.has(t.epicId ?? ''));
 
-      // Build dependency map
+      // Строим карту зависимостей
       const depMap: Record<string, string[]> = {};
       relevantTasks.forEach((t) => {
         if (t.dependencies?.length) {
@@ -362,7 +362,7 @@ export async function executeTool(
         }
       });
 
-      // Find tasks on critical path (chains of dependencies)
+      // Ищем задачи на критическом пути (цепочки зависимостей)
       const allDeps: { from: string; to: string }[] = [];
       relevantTasks.forEach((t) => {
         (t.dependencies ?? []).forEach((fromId) => {
@@ -626,7 +626,7 @@ export async function executeTool(
         store.updateMap(mapId, metaUpdates);
       }
 
-      // 2) Full rebuild from a simplified stages template (restructure / re-actualize)
+      // 2) Полная пересборка из упрощённого шаблона этапов (реструктуризация / актуализация)
       if (Array.isArray(input.stages)) {
         const rawStages = input.stages as Record<string, unknown>[];
         const stages = rawStages.map(sanitizeStageInput);

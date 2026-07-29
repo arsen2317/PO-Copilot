@@ -31,20 +31,20 @@ function PaybackChart({ data, size }: PaybackChartProps) {
   const values = data.map((d) => d.value);
   const dataMin = Math.min(...values);
   const dataMax = Math.max(...values);
-  const cac = -data[0]!.value; // data[0] is always {month:0, value:-CAC}
+  const cac = -data[0]!.value; // data[0] всегда равен {month:0, value:-CAC}
   const curveSpan = dataMax - dataMin;
 
-  // Y domain (B+): the curve should fill most of the plot AND still react to input changes
-  // AND show break-even (0) when it's reasonably in view.
-  // - bottom = the curve's start (-CAC for profitable cards, lower for loss-making ones);
-  // - top aims at 0 (break-even), but the empty space above the curve is capped at
+  // Домен оси Y (правило B+): кривая должна заполнять большую часть поля И реагировать на ввод
+  // И показывал точку окупаемости (0), когда она разумно попадает в поле зрения.
+  // - низ — начало кривой (-CAC для прибыльных карт, ниже для убыточных);
+  // - верх целится в 0 (точку окупаемости), но пустое место над кривой ограничено
   //   HEADROOM×(curve span) so a weak-margin curve never collapses into a thin sliver.
-  // When 0 ends up above the domain (curve far below break-even), the top y-axis label is
-  // negative, which itself signals "not yet paid back".
+  // Когда 0 оказывается выше домена (кривая далеко от окупаемости), верхняя подпись оси Y
+  // отрицательная — это само по себе сигнал «ещё не окупилось».
   let minV: number;
   let maxV: number;
   if (curveSpan < 1) {
-    // ~flat curve (CM ≈ 0): show a CAC-scaled window around it instead of a bare line.
+    // почти плоская кривая (CM ≈ 0): показываем окно в масштабе CAC вокруг неё, а не голую линию.
     const half = (Math.abs(cac) || 1) * 0.6;
     minV = dataMin - half;
     maxV = dataMin + half;
@@ -65,7 +65,7 @@ function PaybackChart({ data, size }: PaybackChartProps) {
   const zeroInRange = minV < 0 && maxV > 0;
 
   // Payback crossing — interpolate the exact month where the cumulative flow hits zero,
-  // instead of snapping to the first data point that is already positive.
+  // а не прыгаем к первой точке данных, которая уже положительна.
   const paybackIdx = data.findIndex((d) => d.value >= 0);
   const crossMonth =
     paybackIdx > 0
@@ -78,15 +78,15 @@ function PaybackChart({ data, size }: PaybackChartProps) {
         })()
       : null;
 
-  // Build polyline points
+  // Собираем точки ломаной
   const pts = data.map((d) => `${toX(d.month)},${toY(d.value)}`).join(' ');
 
   const firstX = toX(data[0]!.month);
   const lastX = toX(data[data.length - 1]!.month);
 
   // Positive area (blue) — between the curve and the zero line, only where value > 0.
-  // Bottom edge is always the zero line, so an all-negative curve yields an empty area
-  // (previously it filled down to the chart bottom and flooded the whole plot).
+  // Нижняя граница заливки — всегда нулевая линия, поэтому целиком отрицательная кривая даёт пустую область
+  // (раньше заливка уходила до низа графика и затапливала всё поле).
   const posArea =
     data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(d.month)} ${toY(Math.max(d.value, 0))}`).join(' ') +
     ` L ${lastX} ${zeroY} L ${firstX} ${zeroY} Z`;
@@ -96,11 +96,11 @@ function PaybackChart({ data, size }: PaybackChartProps) {
     data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${toX(d.month)} ${toY(Math.min(d.value, 0))}`).join(' ') +
     ` L ${lastX} ${zeroY} L ${firstX} ${zeroY} Z`;
 
-  // Y-axis labels: pick ~5 nice values
+  // Подписи оси Y: выбираем ~5 круглых значений
   const yStep = range / 4;
   const yLabels = [0, 1, 2, 3, 4].map((i) => minV + yStep * i);
 
-  // X-axis labels
+  // Подписи оси X
   const maxLabels = 7;
   const xStep = Math.max(1, Math.ceil(data.length / maxLabels));
   const xLabels = data.filter((_, i) => i % xStep === 0 || i === data.length - 1);
@@ -230,7 +230,7 @@ function PaybackChart({ data, size }: PaybackChartProps) {
   );
 }
 
-// ─── Payback Chart container with ResizeObserver ──────────────────────────────
+// ─── Payback Контейнер графика с ResizeObserver ──────────────────────────────
 
 export function PaybackChartContainer({ data }: { data: Array<{ month: number; value: number }> }) {
   const containerRef = useRef<HTMLDivElement>(null);

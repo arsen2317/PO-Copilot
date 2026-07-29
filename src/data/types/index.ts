@@ -129,7 +129,7 @@ export interface TaskDraft {
   labels?: string[];
   criteria: string[];
   complianceNotes?: string;
-  // Knowledge-base artifacts linked to this draft (e.g. the research brief it came from)
+  // Артефакты Базы знаний, привязанные к черновику (например, бриф исследования, из которого он вырос)
   linkedArtifacts?: { id: string; title: string }[];
   createdAt: number;
 }

@@ -115,7 +115,7 @@ export function FunnelBarChart({ steps, size }: FunnelBarChartProps) {
             const shortName = step.name.length > 18 ? step.name.slice(0, 17) + '…' : step.name;
             const hatchOverlay = getHatchOverlay(i);
 
-            // Chip: centered on the hatch/blue boundary
+            // Чип: по центру границы штриховки и синей зоны
             const chipW = 68;
             const chipH = 38;
             const chipX = x + barW / 2 - chipW / 2;

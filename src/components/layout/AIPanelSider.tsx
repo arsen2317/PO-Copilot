@@ -120,11 +120,11 @@ interface AuroraCfg {
   b1: string;
   b2: string;
   b3: string;
-  // hoverBorder: subtle tint, still semi-transparent (not a solid colour)
+  // hoverBorder: лёгкий оттенок, по-прежнему полупрозрачный (не сплошной цвет)
   hoverBorder: string;
   iconBg: string;
   iconColor: string;
-  // glow for the icon badge box-shadow (rgba from b1 at ~0.30 opacity)
+  // свечение для тени иконки-бейджа (rgba из b1 с прозрачностью ~0.30)
   iconGlow: string;
 }
 const AURORA_CFG: Record<string, AuroraCfg> = {
@@ -232,8 +232,8 @@ function AuroraCard({ agent, onSelect }: { agent: AgentDef; onSelect: (key: stri
         minWidth: 0,
         padding: '14px 14px 16px',
         background: cardBg,
-        // rest: very transparent white so aurora gradient bleeds through the border
-        // hover: slightly brighter white with a subtle colour tint
+        // покой: очень прозрачный белый, чтобы градиент свечения просвечивал сквозь рамку
+        // ховер: чуть более яркий белый с лёгким цветовым оттенком
         border: `1px solid ${hovered ? cfg.hoverBorder : restBorder}`,
         boxShadow: hovered ? hoverShadow : 'none',
         borderRadius: 14,
@@ -636,7 +636,7 @@ function CjmUpdateProposal({ json, onApply }: {
 
 function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
   msg: LocalMessage;
-  chipMap: Map<string, string>; // combined: metrics + funnel steps + tasks
+  chipMap: Map<string, string>; // объединённая: метрики, шаги воронки и задачи
   onMetricClick: (id: string) => void;
   onSend: (text: string) => void;
   onApplyCjm: (cjmId: string, nodes: CjmFlowNode[], edges: CjmFlowEdge[]) => void;
@@ -739,7 +739,7 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                     />
                   );
                 }
-                // Clickable task draft link
+                // Кликабельная ссылка на черновик задачи
                 if (className === 'language-task-link') {
                   let parsed: { id: string; title: string } | null = null;
                   try { parsed = JSON.parse(String(children).trim()) as { id: string; title: string }; } catch { /* ignore */ }
@@ -768,7 +768,7 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                   );
                 }
                 // Choice cards — answers to a question the assistant just asked.
-                // Deterministic render (click = the answer); distinct from next-step suggestions.
+                // Детерминированный рендер (клик = ответ); в отличие от подсказок следующих шагов.
                 if (className === 'language-choices') {
                   const raw = String(children).trim();
                   let items: string[];
@@ -1318,7 +1318,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const taskChipMap = new Map(
     (allTasks ?? []).map((t) => [t.id, t.title]),
   );
-  // Combined map: metrics + funnel steps + tasks
+  // Общая карта: метрики, шаги воронки и задачи
   const chipMap = new Map([...metricMap, ...funnelStepMap, ...taskChipMap]);
 
   const setFocusedFunnelStep = useUIStore((s) => s.setFocusedFunnelStep);
@@ -1327,7 +1327,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
   const pendingTriggerText = useUIStore((s) => s.pendingTriggerText);
   const setPendingTriggerText = useUIStore((s) => s.setPendingTrigger);
 
-  // Activate agent from external request and optionally auto-fire a trigger message
+  // Активация агента по внешнему запросу и, при необходимости, автозапуск сообщения-триггера
   useEffect(() => {
     if (!pendingAgentKey) return;
     const triggerText = pendingTriggerText;
@@ -1410,10 +1410,10 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
     }
   };
 
-  // Fire pending trigger after selectedAgent is committed to state
+  // Запускаем отложенный триггер после того, как выбранный агент попал в состояние
   useEffect(() => {
     if (!pendingTrigger) return;
-    // Use a local snapshot of the trigger to avoid stale closure
+    // Берём локальный снимок триггера, чтобы не попасть на устаревшее замыкание
     const { text } = pendingTrigger;
     setPendingTrigger(null);
     void handleSendWith(text);
@@ -1434,12 +1434,12 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       ...(attachedFiles.length > 0 && { files: [...attachedFiles] }),
     };
 
-    // Auto-title the session from the first user message
+    // Автозаголовок сессии по первому сообщению пользователя
     if (messages.length === 0 && text) {
       setSessionTitle(activeSessionId, text.length > 42 ? text.slice(0, 42) + '…' : text);
     }
 
-    // Snapshot current messages before state update (closure capture)
+    // Снимок текущих сообщений до обновления состояния (захват замыкания)
     const prevMessages = messages;
     shouldAutoScrollRef.current = true;
     setMessages((prev) => [...prev, newMsg]);
@@ -1569,7 +1569,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       return m.content;
     };
 
-    // Build initial API messages from all local messages + the new one
+    // Собираем исходные сообщения для API из всех локальных плюс нового
     let apiMessages: ChatMessage[] =
       [...prevMessages, newMsg].map((m) => ({ role: m.role, content: toApiContent(m) }));
 
@@ -1689,7 +1689,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
       reader.onload = (ev) => {
         const dataUrl = ev.target?.result;
         if (typeof dataUrl !== 'string') return;
-        // Strip the data URL prefix to get raw base64
+        // Срезаем префикс data URL, оставляя чистый base64
         const base64 = dataUrl.split(',')[1] ?? '';
         setAttachedFiles((prev) => [...prev, { name: file.name, type: file.type, data: base64 }]);
       };
@@ -2183,7 +2183,7 @@ function PanelContent({ onChangeMode, mode, onDragBarMouseDown, hideWindowContro
 
 // ── Background glow elements ─────────────────────────────────────────────────
 
-// Animated aurora for the assistant page (large centred layout)
+// Анимированное свечение для страницы ассистента (крупная центрированная раскладка)
 function GlowBg() {
   useEffect(() => { ensureAuroraStyles(); }, []);
   const isDark = useThemeStore((s) => s.isDark);
@@ -2276,7 +2276,7 @@ function SidebarAuroraGlow({ hovered = false }: { hovered?: boolean }) {
   );
 }
 
-// Used inside PanelContent where hasMessages is known
+// Используется внутри PanelContent, где известно значение hasMessages
 
 // ── Shell wrappers (sidebar / floating) ─────────────────────────────────────
 export default function AIPanelSider({ mode, onChangeMode, expanded, hideWindowControls }: AIPanelSiderProps) {

@@ -84,7 +84,7 @@ export default function ArtifactDetailPage() {
   const setPendingAgent = useUIStore((s) => s.setPendingAgent);
   const setPendingTrigger = useUIStore((s) => s.setPendingTrigger);
 
-  // Session-saved artifacts live in the store; fixtures are fetched. Store wins.
+  // Артефакты сессии живут в сторе, фикстуры подгружаются. Приоритет у стора.
   const generated = useKnowledgeStore((s) => s.generatedArtifacts.find((a) => a.id === artifactId));
   const { data: fixtureArtifact, isLoading } = useQuery({
     queryKey: ['artifact', artifactId],

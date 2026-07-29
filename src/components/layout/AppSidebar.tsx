@@ -99,7 +99,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
       void navigate('/dashboard');
       return;
     }
-    // If not on an analytics route, navigate to dashboard; always toggle open
+    // Если мы не на аналитическом маршруте — переходим на дашборд; раскрытие переключаем всегда
     if (!isAnalyticsActive) void navigate('/dashboard');
     setAnalyticsOpen((v) => !v);
   };

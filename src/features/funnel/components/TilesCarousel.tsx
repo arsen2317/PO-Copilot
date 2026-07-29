@@ -8,7 +8,7 @@ import { FunnelTile } from './FunnelTile';
 const { useToken } = theme;
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Tiles carousel
+// Карусель плиток
 // ────────────────────────────────────────────────────────────────────────────────
 
 function CarouselNavBtn({ dir, bdr, onClick }: { dir: 1 | -1; bdr: string; onClick: () => void }) {

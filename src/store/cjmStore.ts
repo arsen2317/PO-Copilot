@@ -2,13 +2,13 @@ import { create } from 'zustand';
 import type { CjmMap, CjmFlowNode, CjmFlowEdge } from '../data/types';
 
 interface CjmState {
-  // AI-generated maps (full maps, session-only)
+  // Карты, сгенерированные ассистентом (целиком, только на время сессии)
   generatedMaps: CjmMap[];
   addGeneratedMap: (map: CjmMap) => void;
   updateMap: (id: string, updates: Partial<CjmMap>) => void;
   removeMap: (id: string) => void;
 
-  // Per-map node/edge overrides (for edits to fixture maps and generated maps)
+  // Правки нод и связей по каждой карте (для фикстурных и сгенерированных карт)
   nodesState: Record<string, CjmFlowNode[]>;
   edgesState: Record<string, CjmFlowEdge[]>;
   setMapNodes: (mapId: string, nodes: CjmFlowNode[]) => void;

@@ -1,6 +1,6 @@
 import type { MetricPoint } from '../../data/types';
 
-// Bucket daily points into weekly/monthly averages for the step line chart.
+// Сворачивает дневные точки в недельные и месячные средние для линейного графика шага.
 export function aggregateByGranularity(points: MetricPoint[], granularity: string): MetricPoint[] {
   if (granularity === 'daily' || points.length === 0) return points;
   const bucketSize = granularity === 'weekly' ? 7 : 30;

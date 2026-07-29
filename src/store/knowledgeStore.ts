@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import type { KnowledgeArtifact } from '../data/types';
 
-// AI-generated / user-saved knowledge artifacts (session-only, overlaid on fixtures).
-// Mirrors the generated-maps pattern in cjmStore.
+// Артефакты, созданные ассистентом или сохранённые пользователем (живут только в сессии, поверх фикстур).
+// Повторяет схему сгенерированных карт из cjmStore.
 interface KnowledgeState {
   generatedArtifacts: KnowledgeArtifact[];
   addArtifact: (artifact: KnowledgeArtifact) => void;

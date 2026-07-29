@@ -3,8 +3,8 @@ import type { TaskDraft } from '../data/types';
 
 export interface AttachedFile {
   name: string;
-  type: string;  // MIME type
-  data: string;  // base64 data
+  type: string;  // MIME-тип
+  data: string;  // данные в base64
 }
 
 export interface ChatMessage {

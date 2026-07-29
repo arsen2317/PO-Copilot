@@ -40,7 +40,7 @@ export default function KnowledgeBasePage() {
     queryFn: getArtifacts,
   });
 
-  // Session-saved artifacts (created by the assistant) shown alongside fixtures.
+  // Артефакты, сохранённые за сессию (созданные ассистентом), показываются вместе с фикстурами.
   const generated = useKnowledgeStore((s) => s.generatedArtifacts);
   const allArtifacts = [...generated, ...artifacts];
 

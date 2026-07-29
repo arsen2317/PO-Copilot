@@ -21,7 +21,7 @@ export default function FunnelPage() {
     queryFn: getFunnelAnalytics,
   });
 
-  // AI panel navigation: respond to focusedFunnelStepId from the store
+  // Навигация из панели ассистента: реагируем на focusedFunnelStepId из стора
   const focusedFunnelStepId = useUIStore((s) => s.focusedFunnelStepId);
   const clearFocusedFunnelStep = useUIStore((s) => s.setFocusedFunnelStep);
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function FunnelPage() {
     if (focusedFunnelStepId === `funnel:${OVERALL_ID}` || focusedFunnelStepId === OVERALL_ID) {
       setSelectedId(OVERALL_ID);
     } else {
-      // ID format from AI: "funnel:step1"
+      // Формат id от ассистента: «funnel:step1»
       const raw = focusedFunnelStepId.startsWith('funnel:')
         ? focusedFunnelStepId.slice('funnel:'.length)
         : focusedFunnelStepId;

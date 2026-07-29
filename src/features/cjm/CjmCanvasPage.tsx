@@ -13,6 +13,7 @@ import {
   type Node,
   type Edge,
   type NodeMouseHandler,
+  type NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { theme, Typography, Badge, Button, Breadcrumb, Spin } from 'antd';
@@ -32,8 +33,9 @@ import type { CjmStatus, CjmFlowNode, CjmFlowEdge, CjmNodeData, CjmNodeType } fr
 
 const { Title, Text } = Typography;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const nodeTypes: Record<string, React.ComponentType<any>> = {
+// Типы нод для React Flow. NodeTypes — штатный тип библиотеки, поэтому
+// приведение к any здесь не нужно.
+const nodeTypes: NodeTypes = {
   stage:       StageNode,
   touchpoint:  TouchpointNode,
   emotion:     EmotionNode,
@@ -62,8 +64,8 @@ const ROW_ORDER: { type: CjmNodeType; label: string }[] = [
 ];
 
 // ── Row labels overlay — each label sits ABOVE its row, left-aligned to the leftmost card.
-//    Anchored to live node positions (not a fixed ROW_Y constant), so labels stay aligned
-//    for both fixture maps and AI-generated maps regardless of their row spacing, and track pan/zoom.
+//    Привязаны к реальным позициям нод (а не к фиксированной константе ROW_Y), поэтому подписи
+//    не съезжают ни на фикстурных, ни на сгенерированных картах с любым шагом рядов, и следуют за панорамой и зумом.
 function RowLabelsOverlay({ color }: { color: string }) {
   const viewport = useViewport();
   const nodes = useNodes();
@@ -148,7 +150,7 @@ export default function CjmCanvasPage() {
   const [selectedNode, setSelectedNode] = useState<CjmFlowNode | null>(null);
   const [addStageOpen, setAddStageOpen] = useState(false);
 
-  // Initialise React Flow state from store overrides or fixture
+  // Инициализация состояния React Flow из правок в сторе или из фикстуры
   useEffect(() => {
     if (!map || !id) return;
     const cjmNodes = nodesState[id] ?? map.nodes;
@@ -167,18 +169,18 @@ export default function CjmCanvasPage() {
 
   const handleSave = (nodeId: string, data: Partial<CjmNodeData>) => {
     if (!id || !map) return;
-    // Ensure store has base nodes first
+    // Сначала убеждаемся, что в сторе есть базовые ноды
     if (!nodesState[id]) setMapNodes(id, map.nodes);
     updateNodeData(id, nodeId, data);
-    // Update React Flow visual state immediately
+    // Сразу обновляем визуальное состояние React Flow
     setNodes((prev) =>
       prev.map((n) =>
         n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n,
       ),
     );
 
-    // If the user just linked (or changed) an artifact, ask the CJM agent to review it:
-    // check the artifact is actually relevant/fresh, then either update the node text or
+    // Если пользователь только что привязал или сменил артефакт — просим CJM-агента его проверить:
+    // убедиться, что артефакт действительно релевантен и свеж, и затем либо обновить текст ноды, либо
     // recommend unlinking — rather than blindly trusting the manual link.
     const prevArtifactId = selectedNode?.data.linkedArtifactId;
     const nextArtifactId = data.linkedArtifactId;
@@ -221,7 +223,7 @@ export default function CjmCanvasPage() {
     setMapNodes(id, newCjmNodes);
     setMapEdges(id, newCjmEdges);
 
-    // Update React Flow state
+    // Обновляем состояние React Flow
     setNodes((prev) => [...prev, ...toFlowNodes(allNewNodes)]);
     if (newEdge) {
       setEdges((prev) => [...prev, ...toFlowEdges([newEdge], token.colorBorderSecondary)]);

@@ -2,7 +2,7 @@ import type { CjmFlowNode, CjmFlowEdge, CjmNodeData, CjmNodeType } from '../../d
 
 // ────────────────────────────────────────────────────────────────────────────────
 // Shared CJM canvas layout — single source of truth for column/row geometry.
-// Used by CjmCanvasPage (rendering + "add stage") and tools.ts (AI-driven creation).
+// Используется CjmCanvasPage (отрисовка и «добавить этап») и tools.ts (создание ассистентом).
 // ────────────────────────────────────────────────────────────────────────────────
 
 export const COL = 280;
@@ -15,15 +15,15 @@ export const ROW_Y: Record<CjmNodeType, number> = {
   opportunity: 860,
 };
 
-// Row labels are rendered in CjmCanvasPage (RowLabelsOverlay), anchored to live node
+// Подписи рядов рисует CjmCanvasPage (RowLabelsOverlay), привязываясь к реальным
 // positions rather than a fixed constant — so they stay aligned regardless of row spacing.
 
 // Max rendered node height: rows are 200px apart at the tightest gap (stage → touchpoint),
-// keep every node under this so long AI-generated text never overlaps the next row.
+// держим все ноды ниже этого предела, чтобы длинный сгенерированный текст не налезал на следующий ряд.
 export const NODE_MAX_HEIGHT = 176;
 
 // ── Simplified per-stage template consumed by the CJM AI agent ─────────────────
-// The agent only supplies content per row; ids/positions/edges are computed here.
+// Агент задаёт только содержание по рядам; id, позиции и связи вычисляются здесь.
 
 export interface CjmStageInput {
   label: string;

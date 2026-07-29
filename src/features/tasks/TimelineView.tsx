@@ -11,7 +11,7 @@ const { useToken } = theme;
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 // Scale = column unit, not a fixed date window — the timeline itself scrolls
-// infinitely (in both directions) at whatever zoom the user picks.
+// бесконечно в обе стороны на любом выбранном пользователем масштабе.
 type Scale = 'week' | 'sprint' | 'month';
 
 interface TimelineTask extends Task {
@@ -31,7 +31,7 @@ const SCALE_OPTIONS: { value: Scale; label: string }[] = [
   { value: 'month', label: 'Месяц' },
 ];
 
-// px per calendar day at each zoom level (drives both bar width and column grid).
+// пикселей на календарный день для каждого масштаба (задаёт и ширину баров, и сетку колонок).
 const SCALE_PX_PER_DAY: Record<Scale, number> = {
   week: 18,
   sprint: 10,
@@ -71,11 +71,11 @@ const HEADER_H = YEAR_ROW_H + MONTH_ROW_H + TICK_ROW_H;
 const BAR_R = 15;
 const TODAY = new Date('2026-07-15');
 
-// A fixed Monday anchor so sprint/week grid boundaries stay stable no matter
-// how far the timeline gets scrolled/expanded in either direction.
+// Фиксированный якорь на понедельник: границы недель и спринтов остаются стабильными,
+// как бы далеко ни прокрутили и ни расширили шкалу в любую сторону.
 const ANCHOR_MONDAY = new Date(2026, 0, 5);
 
-// Contrast between the issues panel and the timeline itself.
+// Контраст между панелью задач и самой шкалой времени.
 // Тёмные значения — ровно как были; светлая тема — отдельная ветка.
 function timelineColors(isDark: boolean) {
   return {
@@ -92,7 +92,7 @@ function timelineColors(isDark: boolean) {
   };
 }
 
-// Infinite horizontal scroll: grow the rendered window as the user nears an edge.
+// Бесконечный горизонтальный скролл: расширяем отрисованное окно при приближении к краю.
 const EXPAND_CHUNK_DAYS = 90;
 const EXPAND_THRESHOLD_PX = 400;
 const MAX_SPAN_DAYS = 365 * 20;
@@ -137,8 +137,8 @@ function MiniAvatar({ user, size = 22 }: { user: { id: string; name: string; ava
   );
 }
 
-// Same "task summary" pattern used on the task detail page (status/priority/assignee/dates),
-// reused here as the Gantt bar tooltip instead of building a separate card.
+// Тот же блок «сводка по задаче», что на детальной странице (статус, приоритет, исполнитель, даты),
+// переиспользован здесь как тултип бара Ганта вместо отдельной карточки.
 function TooltipCard({ task }: { task: TimelineTask }) {
   return (
     <div style={{ fontSize: 12, lineHeight: 1.6, minWidth: 200, maxWidth: 280 }}>
@@ -173,7 +173,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
 
   const [scale, setScale] = useState<Scale>('month');
   // The rendered window — grows outward as the user scrolls near either edge;
-  // it is not a "filter", just how much of the infinite calendar is materialized.
+  // это не «фильтр», а лишь то, какая часть бесконечного календаря сейчас отрисована.
   const [rangeStart, setRangeStart] = useState<Date>(() => addCal(TODAY, -90));
   const [rangeEnd, setRangeEnd] = useState<Date>(() => addCal(TODAY, 270));
 
@@ -277,7 +277,7 @@ export default function TimelineView({ bdr }: { bdr: string }) {
     }
   }, [rangeStart, rangeEnd, pxPerDay]);
 
-  // Compensate scrollLeft after a leftward expansion so the visible dates don't jump.
+  // Компенсируем scrollLeft после расширения влево, чтобы видимые даты не прыгали.
   useLayoutEffect(() => {
     if (pendingLeftExpandPx.current > 0 && scrollRef.current) {
       scrollRef.current.scrollLeft += pendingLeftExpandPx.current;
@@ -286,8 +286,8 @@ export default function TimelineView({ bdr }: { bdr: string }) {
   }, [rangeStart]);
 
   // Initial scroll position: centered on today. Depends on rows.length too —
-  // the Gantt (and its ref) only mounts once loading finishes, so `xOf` alone
-  // wouldn't retrigger this (its identity is unchanged across that transition).
+  // Гант (и его ref) монтируется только после загрузки, поэтому одного `xOf`
+  // недостаточно для повторного запуска (его идентичность при этом переходе не меняется).
   useEffect(() => {
     if (didInitScroll.current || !scrollRef.current) return;
     scrollRef.current.scrollLeft = Math.max(0, xOf(TODAY) - 220);
@@ -299,11 +299,11 @@ export default function TimelineView({ bdr }: { bdr: string }) {
     setVisibleYear(TODAY.getFullYear());
   };
 
-  // Changing scale keeps the same rangeStart/rangeEnd window but a very different
-  // pxPerDay, which would otherwise leave the scroll position pointing at an
+  // Смена масштаба сохраняет то же окно rangeStart/rangeEnd, но сильно меняет
+  // pxPerDay, из-за чего позиция скролла иначе указывала бы на
   // unrelated date — recenter on today. Done here (not in an effect keyed on
-  // `scale`) so it runs once, from the event that actually changed the scale,
-  // after the re-render with the new pxPerDay has committed.
+  // `scale`), поэтому он срабатывает один раз — от события, реально сменившего масштаб,
+  // уже после перерисовки с новым pxPerDay.
   const handleScaleChange = (v: string) => {
     const next = v as Scale;
     setScale(next);

@@ -222,11 +222,11 @@ function KpiTile({ label, sublabel, value, change, statusColor, loading, selecte
 }
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Dashboard Page
+// Страница дашборда
 // ────────────────────────────────────────────────────────────────────────────────
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Tiles scroll carousel with left/right nav buttons
+// Карусель плиток со стрелками прокрутки влево и вправо
 // ────────────────────────────────────────────────────────────────────────────────
 
 function CarouselNavBtn({ dir, bdr, onClick }: { dir: 1 | -1; bdr: string; onClick: () => void }) {
@@ -392,7 +392,7 @@ export default function DashboardPage() {
     queryFn: getMetricDefinitions,
   });
 
-  // Respond to metric focus from AI panel
+  // Реагируем на фокус метрики из панели ассистента
   const focusedMetricId = useUIStore((s) => s.focusedMetricId);
   const clearFocusedMetric = useUIStore((s) => s.setFocusedMetric);
   useEffect(() => {

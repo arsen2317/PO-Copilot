@@ -5,7 +5,7 @@ import { ArrowDownOutlined, ArrowUpOutlined } from '@ant-design/icons';
 const { useToken } = theme;
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Funnel step tile
+// Плитка шага воронки
 // ────────────────────────────────────────────────────────────────────────────────
 
 interface FunnelTileProps {

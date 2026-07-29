@@ -1,2 +1,2 @@
-// Sentinel id for the "overall funnel" view (bar chart of all steps).
+// Специальный id для режима «воронка целиком» (столбчатая диаграмма всех шагов).
 export const OVERALL_ID = '__overall__';

@@ -2,7 +2,7 @@ import { Tooltip } from 'antd';
 import type { TaskPriority } from '../../data/types';
 import { AVATAR_COLORS, BAR_HEIGHTS, PRIORITY_COLOR, PRIORITY_LABEL, PRIORITY_LEVEL } from './taskConstants';
 
-// Shared task UI widgets (avatar, priority indicator).
+// Общие элементы интерфейса задач (аватар, индикатор приоритета).
 
 export function UserAvatar({ user, size = 22 }: { user: { id: string; name: string; avatar?: string }; size?: number }) {
   const initials = user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();

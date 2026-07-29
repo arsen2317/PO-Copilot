@@ -106,7 +106,7 @@ export function BacklogView({ tasks, isLoading, bdr }: { tasks: Task[]; isLoadin
     const newIdx = ids.indexOf(String(over.id));
     const newIds = arrayMove(ids, oldIdx, newIdx);
 
-    // Compliance warning: moving a task with unresolved compliance higher
+    // Предупреждение комплаенса: подъём задачи с нерешёнными комплаенс-вопросами выше
     const moved = backlogTasks.find((t) => t.id === active.id);
     const failedCompliance = (moved?.compliance ?? []).filter((c) => !c.passed).length;
     if (failedCompliance > 0 && newIdx < oldIdx) {

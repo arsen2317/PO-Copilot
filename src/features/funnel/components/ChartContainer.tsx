@@ -7,7 +7,7 @@ import { FunnelBarChart } from './FunnelBarChart';
 import { StepLineChart } from './StepLineChart';
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Chart container with ResizeObserver
+// Контейнер графика с ResizeObserver
 // ────────────────────────────────────────────────────────────────────────────────
 
 interface ChartContainerProps {

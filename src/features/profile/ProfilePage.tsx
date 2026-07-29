@@ -4,8 +4,9 @@ import InDevelopmentPage from '../../components/InDevelopmentPage';
 
 const { useToken } = theme;
 
-// TODO: подставить реальное фото профиля, когда файл будет доступен в репозитории.
-const PROFILE = { name: 'Аракелян А.А.', role: 'Product Owner · Дебетовые карты' };
+// Демонстрационный пользователь. Должен совпадать с подписью в сайдбаре
+// (AppSidebar, пункт /profile) — иначе интерфейс показывает два разных имени.
+const PROFILE = { name: 'Иванов И.И.', role: 'Product Owner · Дебетовые карты' };
 
 export default function ProfilePage() {
   const { token } = useToken();
