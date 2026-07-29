@@ -332,14 +332,16 @@ body {
   white-space: nowrap;
 }
 
-/* «Мой кластер» — итоговая строка таблицы продуктов (жирнее фон + верхняя граница) */
+/* «Мой кластер» — итоговая строка таблицы продуктов (жирнее фон + верхняя граница).
+   Фон обязан быть НЕПРОЗРАЧНЫМ: у fixed-колонки полупрозрачный фон просвечивает
+   проезжающие под ней при горизонтальном скролле ячейки. */
 .cluster-total-row > td.ant-table-cell {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: #202021 !important;
   border-top: 2px solid rgba(255, 255, 255, 0.14);
   font-weight: 600;
 }
 :root[data-theme='light'] .cluster-total-row > td.ant-table-cell {
-  background: rgba(0, 0, 0, 0.035) !important;
+  background: #F2F2F5 !important;
   border-top: 2px solid rgba(0, 0, 0, 0.12);
 }
 
