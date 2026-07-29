@@ -340,6 +340,12 @@ export interface ClusterStream {
   name: string;
 }
 
+/** Месяц фильтра периода, напр. { id: '2026-06', name: 'Июнь' }. */
+export interface ClusterMonth {
+  id: string;
+  name: string;
+}
+
 export interface ClusterProductRow {
   id: string;
   product: string;
@@ -373,7 +379,14 @@ export interface ClusterProductRow {
 export interface MyClusterData {
   clusterName: string;
   streams: ClusterStream[];
-  groups: ClusterKpiGroup[];
+  /** Месяцы фильтра «Месяц» (в пределах текущего года). */
+  months: ClusterMonth[];
+  /**
+   * Группы KPI по выбранному месяцу (ключ — id месяца). Квартальные метрики
+   * показывают квартал выбранного месяца (прошлый период — предыдущий квартал),
+   * месячные — сам месяц; метки периода уже включены в label/prevLabel.
+   */
+  groupsByMonth: Record<string, ClusterKpiGroup[]>;
   products: ClusterProductRow[];
 }
 

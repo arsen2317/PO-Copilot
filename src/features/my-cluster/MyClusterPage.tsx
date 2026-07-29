@@ -14,6 +14,7 @@ export default function MyClusterPage() {
   const [streamId, setStreamId] = useState<string>('all');
   const [productId, setProductId] = useState<string>('all');
   const [productCode, setProductCode] = useState<string>('all');
+  const [monthId, setMonthId] = useState<string>('2026-06');
 
   const { data, isLoading } = useQuery({
     queryKey: ['my-cluster'],
@@ -56,6 +57,14 @@ export default function MyClusterPage() {
     onClick: ({ key }) => setProductCode(key),
   };
 
+  const monthName = data?.months.find((m) => m.id === monthId)?.name ?? 'Июнь';
+  const monthMenu: MenuProps = {
+    items: (data?.months ?? []).map((m) => ({ key: m.id, label: m.name })),
+    onClick: ({ key }) => setMonthId(key),
+  };
+
+  const groups = data?.groupsByMonth[monthId] ?? [];
+
   const hasFilter = streamId !== 'all' || productId !== 'all' || productCode !== 'all';
   // Итоговая строка честна только без фильтров.
   const productRows = (data?.products ?? []).filter((r) => {
@@ -79,7 +88,7 @@ export default function MyClusterPage() {
       </div>
 
       {/* ── Filter bar ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 20, flexShrink: 0 }}>
         <Dropdown menu={clusterMenu} trigger={['click']}>
           <Button icon={<DownOutlined />} iconPosition="end">Дэйли Бэнкинг</Button>
         </Dropdown>
@@ -91,6 +100,9 @@ export default function MyClusterPage() {
         </Dropdown>
         <Dropdown menu={codeMenu} trigger={['click']}>
           <Button icon={<DownOutlined />} iconPosition="end">{codeLabel}</Button>
+        </Dropdown>
+        <Dropdown menu={monthMenu} trigger={['click']}>
+          <Button icon={<DownOutlined />} iconPosition="end">Месяц: {monthName}</Button>
         </Dropdown>
       </div>
 
@@ -112,7 +124,7 @@ export default function MyClusterPage() {
       ) : (
         <div className="cluster-groups-wrap" style={{ marginBottom: 16, flexShrink: 0 }}>
           <div className="cluster-groups">
-            {data.groups.map((g) => (
+            {groups.map((g) => (
               <div key={g.id} className={`cluster-group--${g.id}`} style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: token.colorText, marginBottom: 8 }}>
                   {g.title}
