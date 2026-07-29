@@ -112,24 +112,14 @@ export default function MyClusterPage() {
           style={{
             display: 'flex',
             flexWrap: 'wrap',
-            gap: 12,
-            marginBottom: 12,
+            gap: 16,
+            marginBottom: 16,
             flexShrink: 0,
           }}
         >
           {data.groups.map((g) => (
-            <div
-              key={g.id}
-              style={{
-                flex: '1 1 330px',
-                background: token.colorBgContainer,
-                border: BDR,
-                borderRadius: token.borderRadiusLG,
-                padding: '12px 16px 16px',
-                minWidth: 0,
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 600, color: token.colorText, marginBottom: 10 }}>
+            <div key={g.id} style={{ flex: '1 1 330px', minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: token.colorText, marginBottom: 8 }}>
                 {g.title}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>

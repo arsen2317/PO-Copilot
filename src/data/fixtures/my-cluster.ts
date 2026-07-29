@@ -16,36 +16,37 @@ const streams: ClusterStream[] = [
   { id: 'stream-proc', name: 'Платёжные технологии и процессинг' },
 ];
 
-// KPI кластера — значения отформатированы, сравнение с прошлым периодом.
+// KPI кластера — значения отформатированы; большое число = текущий период,
+// строкой ниже прошлый период («Q2: …» / «Май: …»).
 const groups: ClusterKpiGroup[] = [
   {
     id: 'financial',
     title: 'Финансовые метрики',
     kpis: [
-      { id: 'fin-fact',   label: 'ФинРез, факт',    period: 'за месяц',   value: '−512,4 млн ₽', status: 'bad',  trend: 'down', prevValue: '−468,1 млн ₽', prevLabel: 'прошлый месяц' },
-      { id: 'fin-fulfil', label: 'ФинРез, % плана', period: 'за квартал', value: '81,6%',        status: 'bad',  trend: 'down', prevValue: '88,9%',        prevLabel: 'прошлый квартал' },
-      { id: 'cti-fact',   label: 'CTI, факт',       period: 'за квартал', value: '241,2%',       status: 'good', trend: 'up',   prevValue: '218,6%',       prevLabel: 'прошлый квартал' },
-      { id: 'cti-fulfil', label: 'CTI, % плана',    period: 'за квартал', value: '118,7%',       status: 'good', trend: 'up',   prevValue: '104,9%',       prevLabel: 'прошлый квартал' },
+      // ФинРез одной карточкой: значение + стрелка с % выполнения плана.
+      { id: 'fin',        label: 'ФинРез',       value: '−512,4 млн', status: 'bad',  trend: 'down', pct: '81,6%',  prevValue: '−468,1 млн', prevLabel: 'Q2' },
+      { id: 'cti-fact',   label: 'CTI',          value: '241,2%',     status: 'good', trend: 'up',                  prevValue: '218,6%',     prevLabel: 'Q2' },
+      { id: 'cti-fulfil', label: 'CTI, % плана', value: '118,7%',     status: 'good', trend: 'up',                  prevValue: '104,9%',     prevLabel: 'Q2' },
     ],
   },
   {
     id: 'client',
     title: 'Клиентские метрики',
     kpis: [
-      { id: 'active',   label: 'Активные клиенты', period: 'за месяц', value: '3,12 млн',    status: 'good', trend: 'up',   prevValue: '2,98 млн',    prevLabel: 'прошлый месяц' },
-      { id: 'inflow',   label: 'Приток',           period: 'за месяц', value: '412,6 тыс.',  status: 'good', trend: 'up',   prevValue: '389,2 тыс.',  prevLabel: 'прошлый месяц' },
-      { id: 'reactive', label: 'Реактивация',      period: 'за месяц', value: '184,6 тыс.',  status: 'warn', trend: 'down', prevValue: '203,9 тыс.',  prevLabel: 'прошлый месяц' },
-      { id: 'churn',    label: 'Отток',            period: 'за месяц', value: '455,1 тыс.',  status: 'bad',  trend: 'up',   prevValue: '441,7 тыс.',  prevLabel: 'прошлый месяц' },
+      { id: 'active',   label: 'Активные клиенты', value: '3,12 млн',   status: 'good', trend: 'up',   prevValue: '2,98 млн',   prevLabel: 'Май' },
+      { id: 'inflow',   label: 'Приток',           value: '412,6 тыс.', status: 'good', trend: 'up',   prevValue: '389,2 тыс.', prevLabel: 'Май' },
+      { id: 'reactive', label: 'Реактивация',      value: '184,6 тыс.', status: 'warn', trend: 'down', prevValue: '203,9 тыс.', prevLabel: 'Май' },
+      { id: 'churn',    label: 'Отток',            value: '455,1 тыс.', status: 'bad',  trend: 'up',   prevValue: '441,7 тыс.', prevLabel: 'Май' },
     ],
   },
   {
     id: 'production',
     title: 'Производственные метрики',
     kpis: [
-      { id: 'lt',   label: 'Lead Time',            period: 'за квартал', value: '38,2 дн.', status: 'bad',  trend: 'up',   prevValue: '31,5 дн.', prevLabel: 'прошлый квартал' },
-      { id: 'df',   label: 'Релизы (DF)',          period: 'за квартал', value: '247',      status: 'good', trend: 'up',   prevValue: '178',      prevLabel: 'прошлый квартал' },
-      { id: 'cfr',  label: 'Сбойные релизы (CFR)', period: 'за квартал', value: '2,8%',     status: 'good', trend: 'down', prevValue: '5,9%',     prevLabel: 'прошлый квартал' },
-      { id: 'mttr', label: 'MTTR',                 period: 'за квартал', value: '1,58 ч.',  status: 'warn', trend: 'up',   prevValue: '1,49 ч.',  prevLabel: 'прошлый квартал' },
+      { id: 'lt',   label: 'Lead Time',            value: '38,2 дн.', status: 'bad',  trend: 'up',   prevValue: '31,5 дн.', prevLabel: 'Q2' },
+      { id: 'df',   label: 'Релизы (DF)',          value: '247',      status: 'good', trend: 'up',   prevValue: '178',      prevLabel: 'Q2' },
+      { id: 'cfr',  label: 'Сбойные релизы (CFR)', value: '2,8%',     status: 'good', trend: 'down', prevValue: '5,9%',     prevLabel: 'Q2' },
+      { id: 'mttr', label: 'MTTR',                 value: '1,58 ч.',  status: 'warn', trend: 'up',   prevValue: '1,49 ч.',  prevLabel: 'Q2' },
     ],
   },
 ];
