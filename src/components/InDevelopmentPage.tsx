@@ -10,7 +10,7 @@ interface InDevelopmentPageProps {
   description?: string | undefined;
 }
 
-/** Shared empty-state for nav sections not yet implemented (see STATUS.md фаза 1). */
+/** Общая заглушка для разделов навигации, которые ещё не реализованы. */
 export default function InDevelopmentPage({ title, icon, description }: InDevelopmentPageProps) {
   const { token } = useToken();
   const S = appSurfaces(useThemeStore((s) => s.isDark));

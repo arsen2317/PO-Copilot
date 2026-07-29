@@ -13,5 +13,5 @@ dist
 .vscode
 *.log
 coverage
-STATUS.md
-agent-architecture-notes.txt
+CHANGELOG.md
+docs
