@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { streamChat } from '../../lib/ai';
 import { executeTool } from '../../lib/tools';
 import type { ChatMessage, MessagePart, ToolCallBlock, ToolResultPart } from '../../lib/ai';
-import { getOrchestratorSystemPrompt, getSpecialistPreamble, AGENT_PROMPTS } from '../../lib/agentPrompts';
+import { getOrchestratorSystemPrompt, getSpecialistPreamble, AGENT_PROMPTS } from '../../skills';
 import { SPECIALISTS, getOrchestratorTools, toolsForSpecialist, type Specialist } from '../../lib/specialists';
 import { getMetricDefinitions } from '../../data/api/metric-definitions';
 import { getFunnelAnalytics } from '../../data/api/funnel-analytics';
