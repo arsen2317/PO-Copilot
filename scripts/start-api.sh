@@ -1,2 +1,2 @@
 #!/bin/bash
-exec /usr/bin/tsx /var/www/po-copilot/scripts/dev-api-server.ts
+exec /usr/bin/tsx /var/www/po-copilot/scripts/api-server.ts

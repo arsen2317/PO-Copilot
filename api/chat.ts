@@ -62,7 +62,7 @@ export default async function handler(req: Request): Promise<Response> {
     ? body.model!
     : 'claude-haiku-4-5-20251001';
 
-  // Prompt caching: пометить стабильный system-промпт + инструменты как кэшируемые (зеркало dev-api-server).
+  // Prompt caching: пометить стабильный system-промпт + инструменты как кэшируемые (зеркало api-server).
   // Ниже минимальной длины кэша модели API молча игнорирует это — не ошибка.
   const cachedSystem = body.system
     ? [{ type: 'text', text: body.system, cache_control: { type: 'ephemeral' } }]
@@ -77,7 +77,7 @@ export default async function handler(req: Request): Promise<Response> {
       : undefined;
 
   // Call Anthropic API with streaming, pipe response directly to client.
-  // Зеркало устойчивости dev-api-server: транзиентные 429 (rate_limit) / 529 (overloaded)
+  // Зеркало устойчивости api-server: транзиентные 429 (rate_limit) / 529 (overloaded)
   // и 5xx переживаем повтором с экспоненциальным бэкоффом (уважая retry-after), до начала
   // стрима — иначе под нагрузкой запрос «рандомно» падает к юзеру. SDK здесь нет (raw fetch),
   // поэтому ретраим вручную.

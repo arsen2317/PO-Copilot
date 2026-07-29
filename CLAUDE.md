@@ -31,7 +31,7 @@ npm run build      # сборка
 ## Инфраструктура
 
 **VPS** — Timeweb Ubuntu 24.04, IP `72.56.34.107`, домен `copilot.mts-fintech.ru`.
-nginx → SPA (`dist/`) + проксирует `/api/` → PM2 `po-copilot-api` на порту 3001 (`scripts/dev-api-server.ts`).
+nginx → SPA (`dist/`) + проксирует `/api/` → PM2 `po-copilot-api` на порту 3001 (`scripts/api-server.ts`).
 CI/CD: push → `main` → GitHub Actions → SCP dist/ → SSH restart PM2.
 Секреты: GitHub Secrets → `.env.local` на сервере. Никогда не коммить `.env.local`.
 

@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n api,vite -c blue,green \"tsx scripts/dev-api-server.ts\" \"vite\"",
+    "dev": "concurrently -n api,vite -c blue,green \"tsx scripts/api-server.ts\" \"vite\"",
     "dev:vite": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --noEmit",
@@ -12,7 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "start": "PORT=3002 tsx scripts/dev-api-server.ts"
+    "start": "PORT=3002 tsx scripts/api-server.ts"
   },
   "dependencies": {
     "@ant-design/icons": "^5.6.1",

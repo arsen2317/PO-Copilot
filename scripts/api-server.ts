@@ -1,3 +1,13 @@
+/**
+ * API-сервер «Барометр» — единый бэкенд для dev и production.
+ *
+ * Запуск:
+ *   dev  — `npm run dev` (concurrently с Vite, порт 3001)
+ *   prod — PM2 через `scripts/start-api.sh` (порт 3001, nginx проксирует /api/)
+ *
+ * Эндпоинты: /api/auth (логин), /api/chat (SSE-стриминг ИИ), /api/search (Brave).
+ * Переменные окружения — см. `.env.example` и раздел README «Переменные окружения».
+ */
 import express from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import fs from 'fs';

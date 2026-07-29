@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'po-copilot-api',
       script: 'tsx',
-      args: 'scripts/dev-api-server.ts',
+      args: 'scripts/api-server.ts',
       cwd: '/var/www/po-copilot',
       env: {
         NODE_ENV: 'production',
