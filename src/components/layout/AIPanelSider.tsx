@@ -136,7 +136,7 @@ const AURORA_CFG: Record<string, AuroraCfg> = {
   'agent-hypotheses': { b1: '#eab308', b2: '#d97706', b3: '#fde047', hoverBorder: 'rgba(253,224,71,0.28)',  iconBg: 'rgba(234,179,8,0.13)',   iconColor: '#fde047', iconGlow: 'rgba(234,179,8,0.30)' },
   'agent-custdev':    { b1: '#06b6d4', b2: '#0891b2', b3: '#818cf8', hoverBorder: 'rgba(34,211,238,0.28)',  iconBg: 'rgba(6,182,212,0.13)',   iconColor: '#22d3ee', iconGlow: 'rgba(6,182,212,0.30)' },
   'agent-trends':     { b1: '#8b5cf6', b2: '#6d28d9', b3: '#ec4899', hoverBorder: 'rgba(167,139,250,0.28)', iconBg: 'rgba(139,92,246,0.13)', iconColor: '#a78bfa', iconGlow: 'rgba(139,92,246,0.30)' },
-  'agent-cjm':        { b1: '#0d9488', b2: '#0f766e', b3: '#34d399', hoverBorder: 'rgba(52,211,153,0.28)',  iconBg: 'rgba(13,148,136,0.13)',  iconColor: '#2dd4bf', iconGlow: 'rgba(13,148,136,0.30)' },
+  'agent-cjm':        { b1: '#0d9488', b2: '#0f766e', b3: '#34d399', hoverBorder: 'rgba(52,211,153,0.28)',  iconBg: 'rgba(13,148,136,0.13)',  iconColor: 'var(--ai-teal)', iconGlow: 'rgba(13,148,136,0.30)' },
 };
 
 // Blob-based wavy aurora CSS — blobs translate (never scale beyond card bounds)
@@ -450,8 +450,8 @@ function UserBubble({ msg }: { msg: LocalMessage }) {
       {msg.content && (
         <div style={{
           maxWidth: '85%',
-          background: '#1E3A5F',
-          border: `1px solid #2A4A75`,
+          background: 'var(--ai-user-bubble-bg)',
+          border: '1px solid var(--ai-user-bubble-bd)',
           borderRadius: '12px 12px 3px 12px',
           padding: '8px 12px',
           fontSize: 13,
@@ -563,7 +563,7 @@ function CjmUpdateProposal({ json, onApply }: {
   if (!data) return null;
   const { cjmId, title, summary } = data;
 
-  const teal = '#2dd4bf';
+  const teal = 'var(--ai-teal)';
   const tealBg = 'rgba(13,148,136,0.08)';
   const tealBorder = 'rgba(13,148,136,0.30)';
   const tealBgHover = 'rgba(13,148,136,0.16)';
@@ -594,12 +594,12 @@ function CjmUpdateProposal({ json, onApply }: {
       }}>
         <NodeIndexOutlined style={{ color: teal, fontSize: 15, flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, color: '#d1fae5', fontWeight: 600 }}>{title}</div>
+          <div style={{ fontSize: 13, color: 'var(--ai-teal-strong)', fontWeight: 600 }}>{title}</div>
           <div style={{ fontSize: 12, color: TEXT_SECONDARY, marginTop: 2 }}>{summary}</div>
         </div>
       </div>
       <div style={{
-        display: 'flex', gap: 8, padding: '10px 14px', background: '#0a1a18',
+        display: 'flex', gap: 8, padding: '10px 14px', background: 'var(--ai-teal-surface)',
       }}>
         <div
           onClick={() => {
@@ -663,16 +663,16 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
               <li style={{ marginBottom: 3, color: TEXT_PRIMARY }}>{children}</li>
             ),
             strong: ({ children }) => (
-              <strong style={{ color: '#fff', fontWeight: 600 }}>{children}</strong>
+              <strong style={{ color: 'var(--ai-strong)', fontWeight: 600 }}>{children}</strong>
             ),
             h1: ({ children }) => (
-              <div style={{ fontWeight: 700, fontSize: 15, color: '#fff', margin: '12px 0 6px' }}>{children}</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--ai-strong)', margin: '12px 0 6px' }}>{children}</div>
             ),
             h2: ({ children }) => (
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#fff', margin: '10px 0 5px' }}>{children}</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--ai-strong)', margin: '10px 0 5px' }}>{children}</div>
             ),
             h3: ({ children }) => (
-              <div style={{ fontWeight: 600, fontSize: 13, color: '#fff', margin: '8px 0 4px' }}>{children}</div>
+              <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--ai-strong)', margin: '8px 0 4px' }}>{children}</div>
             ),
             h4: ({ children }) => (
               <div style={{ fontWeight: 600, fontSize: 13, color: TEXT_PRIMARY, margin: '6px 0 3px' }}>{children}</div>
@@ -714,8 +714,8 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                     transition: 'background 0.15s, border-color 0.15s',
                   }}
                   onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLAnchorElement).style.background = '#2D2E30';
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#4A4B4D';
+                    (e.currentTarget as HTMLAnchorElement).style.background = 'var(--ai-chip-hover-bg)';
+                    (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--ai-chip-hover-bd)';
                   }}
                   onMouseLeave={(e) => {
                     (e.currentTarget as HTMLAnchorElement).style.background = 'var(--ai-surface-2)';
@@ -880,12 +880,12 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(13,148,136,0.16)'; }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(13,148,136,0.08)'; }}
                     >
-                      <NodeIndexOutlined style={{ color: '#2dd4bf', fontSize: 18, flexShrink: 0 }} />
+                      <NodeIndexOutlined style={{ color: 'var(--ai-teal)', fontSize: 18, flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cjmTitle}</div>
-                        <div style={{ fontSize: 11, color: '#2dd4bf', marginTop: 2 }}>CJM создан · Нажмите чтобы открыть</div>
+                        <div style={{ fontSize: 11, color: 'var(--ai-teal)', marginTop: 2 }}>CJM создан · Нажмите чтобы открыть</div>
                       </div>
-                      <span style={{ fontSize: 12, color: '#2dd4bf', flexShrink: 0 }}>→</span>
+                      <span style={{ fontSize: 12, color: 'var(--ai-teal)', flexShrink: 0 }}>→</span>
                     </div>
                   );
                 }
@@ -998,7 +998,7 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                     borderRadius: 6, padding: '10px 12px', overflowX: 'auto',
                     fontSize: 12, lineHeight: 1.5, margin: '6px 0',
                   }}>
-                    <code style={{ color: '#A8C7FA', fontFamily: 'monospace' }}>{children}</code>
+                    <code style={{ color: 'var(--ai-code)', fontFamily: 'monospace' }}>{children}</code>
                   </pre>
                 );
               }
@@ -1009,9 +1009,9 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
                 const isTask = /^TASK-\d+$/.test(id);
                 const chipAccent = isFunnel ? '#7C6AF6' : isTask ? '#49aa19' : ACCENT;
                 const bgBase = isFunnel ? 'rgba(124,106,246,0.12)' : isTask ? 'rgba(73,170,25,0.10)' : 'var(--ai-surface-2)';
-                const bgHover = isFunnel ? 'rgba(124,106,246,0.22)' : isTask ? 'rgba(73,170,25,0.20)' : '#2D2E30';
+                const bgHover = isFunnel ? 'rgba(124,106,246,0.22)' : isTask ? 'rgba(73,170,25,0.20)' : 'var(--ai-chip-hover-bg)';
                 const borderBase = isFunnel ? 'rgba(124,106,246,0.4)' : isTask ? 'rgba(73,170,25,0.4)' : 'var(--ai-border-2)';
-                const textColor = isFunnel ? '#B5AAFF' : isTask ? '#6BCB3A' : TEXT_PRIMARY;
+                const textColor = isFunnel ? 'var(--ai-funnel-chip)' : isTask ? 'var(--ai-task-chip)' : TEXT_PRIMARY;
                 const tooltipText = isFunnel ? 'Открыть в воронке' : isTask ? 'Открыть задачу' : 'Открыть на дашборде';
                 const prefix = isFunnel ? '↳ ' : isTask ? '⊡ ' : '';
                 const label = isTask ? `${id}` : chipName;
@@ -1049,7 +1049,7 @@ function AssistantBubble({ msg, chipMap, onMetricClick, onSend, onApplyCjm }: {
               return (
                 <code style={{
                   background: 'var(--ai-surface-3)', borderRadius: 4, padding: '1px 5px',
-                  fontSize: 12, color: '#A8C7FA', fontFamily: 'monospace',
+                  fontSize: 12, color: 'var(--ai-code)', fontFamily: 'monospace',
                 }}>{children}</code>
               );
             },

@@ -326,6 +326,57 @@ body {
   min-height: 0;
 }
 
+/* «Мой кластер» — адаптивная раскладка групп KPI (container queries по ширине контента):
+   узко (<700px): группы друг под другом, тайлы в 2 колонки;
+   средне (700–1279px): группы друг под другом, тайлы группы в один ряд —
+     финансовые 2 в ряд, клиентские/производственные 4 в ряд;
+   широко (≥1280px): три группы в ряд — финансовые колонкой (1×2),
+     клиентские/производственные плиткой 2×2, растягиваются по ширине. */
+.cluster-groups-wrap { container-type: inline-size; }
+.cluster-groups {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+.cluster-group-tiles {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@container (min-width: 700px) {
+  .cluster-group--client .cluster-group-tiles,
+  .cluster-group--production .cluster-group-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@container (min-width: 1280px) {
+  .cluster-groups { grid-template-columns: minmax(220px, 2fr) 3fr 3fr; }
+  .cluster-group--financial .cluster-group-tiles { grid-template-columns: 1fr; }
+  .cluster-group--client .cluster-group-tiles,
+  .cluster-group--production .cluster-group-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* «Мой кластер» — таблица продуктов: без переносов, скролл по горизонтали */
+.cluster-products-table th.ant-table-cell,
+.cluster-products-table td.ant-table-cell {
+  white-space: nowrap;
+}
+
+/* «Мой кластер» — итоговая строка таблицы продуктов (жирнее фон + верхняя граница).
+   Фон обязан быть НЕПРОЗРАЧНЫМ: у fixed-колонки полупрозрачный фон просвечивает
+   проезжающие под ней при горизонтальном скролле ячейки. */
+.cluster-total-row > td.ant-table-cell {
+  background: #202021 !important;
+  border-top: 2px solid rgba(255, 255, 255, 0.14);
+  font-weight: 600;
+}
+:root[data-theme='light'] .cluster-total-row > td.ant-table-cell {
+  background: #F2F2F5 !important;
+  border-top: 2px solid rgba(0, 0, 0, 0.12);
+}
+
 .content-scroll {
   scrollbar-width: thin;
   scrollbar-color: #2A2B2D transparent;
@@ -385,6 +436,18 @@ body {
   --ai-text-hover: rgba(255,255,255,0.72);
   --ai-hover-10: rgba(255,255,255,0.1);
   --ai-hover-20: rgba(255,255,255,0.2);
+  /* Контент сообщений ассистента (маркдаун, чипы, карточки инструментов) */
+  --ai-strong: #fff;                 /* strong/h1-h3 в маркдауне */
+  --ai-code: #A8C7FA;                /* инлайн-код и код-блоки */
+  --ai-chip-hover-bg: #2D2E30;       /* ховер чипов метрик/внешних ссылок */
+  --ai-chip-hover-bd: #4A4B4D;
+  --ai-teal: #2dd4bf;                /* акцент CJM-карточек */
+  --ai-teal-strong: #d1fae5;         /* заголовок CJM-предложения */
+  --ai-teal-surface: #0a1a18;        /* футер CJM-предложения */
+  --ai-funnel-chip: #B5AAFF;         /* текст чипа шага воронки */
+  --ai-task-chip: #6BCB3A;           /* текст чипа задачи */
+  --ai-user-bubble-bg: #1E3A5F;      /* пузырь сообщения пользователя */
+  --ai-user-bubble-bd: #2A4A75;
 }
 :root[data-theme='light'] {
   --ai-bg: #FFFFFF;
@@ -407,6 +470,17 @@ body {
   --ai-text-hover: rgba(0,0,0,0.72);
   --ai-hover-10: rgba(0,0,0,0.08);
   --ai-hover-20: rgba(0,0,0,0.16);
+  --ai-strong: #111214;
+  --ai-code: #2F54C4;
+  --ai-chip-hover-bg: #DFE1E6;
+  --ai-chip-hover-bd: #B7BAC2;
+  --ai-teal: #0F766E;
+  --ai-teal-strong: #0B4F46;
+  --ai-teal-surface: #EAF6F3;
+  --ai-funnel-chip: #6D3FD8;
+  --ai-task-chip: #3E7E12;
+  --ai-user-bubble-bg: #E3EDFF;
+  --ai-user-bubble-bd: #C9DBFB;
 }
 
 /* ── Светлая тема: скроллбары ──────────────────────────────────────

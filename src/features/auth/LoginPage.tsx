@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Form, Input, Typography } from 'antd';
+import { Button, ConfigProvider, Form, Input, theme, Typography } from 'antd';
 import { CreditCardOutlined, LockOutlined, UserOutlined } from '@ant-design/icons';
 import { login } from './auth';
 
@@ -24,6 +24,10 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
   };
 
   return (
+    // Экран логина всегда тёмный по дизайну (фон захардкожен), поэтому antd-компоненты
+    // внутри принудительно на darkAlgorithm — иначе в светлой теме приложения инпуты
+    // и кнопка становились светлыми на тёмной карточке.
+    <ConfigProvider theme={{ algorithm: theme.darkAlgorithm }}>
     <div style={{
       height: '100vh',
       display: 'flex',
@@ -93,5 +97,6 @@ export default function LoginPage({ onSuccess }: LoginPageProps) {
         </Form>
       </div>
     </div>
+    </ConfigProvider>
   );
 }

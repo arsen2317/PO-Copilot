@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  ApartmentOutlined,
   AppstoreOutlined,
   BarChartOutlined,
   BellOutlined,
@@ -40,6 +41,7 @@ const ANALYTICS_SUBITEMS = [
 const ANALYTICS_KEYS = new Set(ANALYTICS_SUBITEMS.map((i) => i.key));
 
 const ASSISTANT_ITEM = { key: '/assistant', icon: MessageOutlined, label: 'Ассистент' } as const;
+const MY_CLUSTER_ITEM = { key: '/my-cluster', icon: ApartmentOutlined, label: 'Кластер' } as const;
 
 const NAV_ITEMS = [
   { key: '/metrics',    icon: LineChartOutlined,     label: 'Метрики' },
@@ -79,7 +81,7 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
   const [analyticsOpen, setAnalyticsOpen] = useState(true);
 
   const selectedKey: string =
-    [ASSISTANT_ITEM, ...NAV_ITEMS].find((item) => {
+    [ASSISTANT_ITEM, MY_CLUSTER_ITEM, ...NAV_ITEMS].find((item) => {
       const k = item.key as string;
       return location.pathname.startsWith(k);
     })?.key as string | undefined ?? (isAnalyticsActive ? location.pathname : '');
@@ -235,6 +237,25 @@ export default function AppSidebar({ unreadCount }: AppSidebarProps) {
               {!collapsed && (
                 <span style={{ ...labelStyle, color: ASSISTANT_ITEM.key === selectedKey ? C.textActive : C.text }}>
                   {ASSISTANT_ITEM.label}
+                </span>
+              )}
+            </div>
+          </Tooltip>
+
+          {/* ── My Cluster ── */}
+          <Tooltip title={collapsed ? MY_CLUSTER_ITEM.label : ''} placement="right">
+            <div
+              style={navItemStyle(MY_CLUSTER_ITEM.key)}
+              onClick={() => handleNavClick(MY_CLUSTER_ITEM.key)}
+              onMouseEnter={() => setHoveredKey(MY_CLUSTER_ITEM.key)}
+              onMouseLeave={() => setHoveredKey(null)}
+            >
+              <span style={iconStyle}>
+                <MY_CLUSTER_ITEM.icon />
+              </span>
+              {!collapsed && (
+                <span style={{ ...labelStyle, color: MY_CLUSTER_ITEM.key === selectedKey ? C.textActive : C.text }}>
+                  {MY_CLUSTER_ITEM.label}
                 </span>
               )}
             </div>

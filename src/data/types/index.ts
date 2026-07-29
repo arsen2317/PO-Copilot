@@ -305,6 +305,91 @@ export interface CjmMap {
   edges: CjmFlowEdge[];
 }
 
+// ── «Мой кластер» — сводка кластера в дизайне дашборда ───────────────────────
+// Контент BI-доски, лейаут и компоненты — как на /dashboard: KPI-тайлы сверху
+// (группы Финансы/Клиенты/Производство), разрез по продуктам таблицей внизу.
+
+/** Статус KPI: задаёт цвет индикатора (colorSuccess/Warning/Error). */
+export type ClusterKpiStatus = 'good' | 'warn' | 'bad';
+
+export interface ClusterKpi {
+  id: string;
+  /** Короткое имя показателя, напр. «ФинРез». */
+  label: string;
+  /** Отформатированное значение текущего периода, напр. «−512,4 млн». */
+  value: string;
+  status: ClusterKpiStatus;
+  /** Направление изменения к прошлому периоду. */
+  trend: 'up' | 'down';
+  /** Процент рядом со стрелкой (напр. «81,6%» — выполнение плана). */
+  pct?: string;
+  /** Значение за прошлый период, напр. «−468,1 млн». */
+  prevValue: string;
+  /** Короткая метка прошлого периода: «Q2», «Май». */
+  prevLabel: string;
+}
+
+export interface ClusterKpiGroup {
+  id: string;
+  title: string;
+  kpis: ClusterKpi[];
+}
+
+export interface ClusterStream {
+  id: string;
+  name: string;
+}
+
+/** Месяц фильтра периода, напр. { id: '2026-06', name: 'Июнь' }. */
+export interface ClusterMonth {
+  id: string;
+  name: string;
+}
+
+export interface ClusterProductRow {
+  id: string;
+  product: string;
+  code: string;
+  /** Стрим продукта — для фильтра; 'all' у итоговой строки. */
+  streamId: string;
+  /** ФинРез — факт / бюджет с начала года, в рублях; null = нет данных. */
+  finFact: number | null;
+  finBudget: number | null;
+  /** ФинРез выполнение, % (null = нет данных). */
+  finFulfil: number | null;
+  ctiFact: number | null;
+  ctiBudget: number | null;
+  ctiFulfil: number | null;
+  active: number | null;
+  inflow: number | null;
+  reactive: number | null;
+  churn: number | null;
+  crPct: number | null;
+  abs: number | null;
+  secDebt1H: number | null;
+  secDebt2H: number | null;
+  leadTime: number | null;
+  df: number | null;
+  cfr: number | null;
+  mttr: string;
+  /** Строка «Всего» рендерится жирным и с верхней границей. */
+  isTotal?: boolean;
+}
+
+export interface MyClusterData {
+  clusterName: string;
+  streams: ClusterStream[];
+  /** Месяцы фильтра «Месяц» (в пределах текущего года). */
+  months: ClusterMonth[];
+  /**
+   * Группы KPI по выбранному месяцу (ключ — id месяца). Квартальные метрики
+   * показывают квартал выбранного месяца (прошлый период — предыдущий квартал),
+   * месячные — сам месяц; метки периода уже включены в label/prevLabel.
+   */
+  groupsByMonth: Record<string, ClusterKpiGroup[]>;
+  products: ClusterProductRow[];
+}
+
 export interface MetricDefinition {
   id: string;
   name: string;

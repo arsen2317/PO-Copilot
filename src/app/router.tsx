@@ -18,6 +18,7 @@ import ArtifactDetailPage from '../features/knowledge-base/ArtifactDetailPage';
 import NotificationsPage from '../features/notifications/NotificationsPage';
 import ProfilePage from '../features/profile/ProfilePage';
 import MetricsPage from '../features/metrics/MetricsPage';
+import MyClusterPage from '../features/my-cluster/MyClusterPage';
 import PlaceholderPage from '../features/analytics/PlaceholderPage';
 import FunnelPage from '../features/funnel/FunnelPage';
 import UnitEconomicsPage from '../features/unit-economics/UnitEconomicsPage';
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { index: true, element: <Navigate to="/assistant" replace /> },
+          { path: 'my-cluster', element: <MyClusterPage /> },
           { path: 'dashboard', element: <DashboardPage /> },
           { path: 'metrics', element: <MetricsPage /> },
           { path: 'assistant', element: <AssistantPage /> },
