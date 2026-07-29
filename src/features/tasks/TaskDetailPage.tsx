@@ -218,7 +218,14 @@ export default function TaskDetailPage() {
                   {tab.id === 'criteria' && totalCriteria > 0 && (
                     <Badge
                       count={`${completedCriteria}/${totalCriteria}`}
-                      style={{ background: completedCriteria === totalCriteria ? token.colorSuccess : S.chip, boxShadow: 'none', fontSize: 10 }}
+                      style={{
+                        background: completedCriteria === totalCriteria ? token.colorSuccess : S.chip,
+                        // На нейтральном чипе дефолтный белый текст Badge нечитаем в светлой
+                        // теме — задаём токен, как у счётчика колонок канбана (KanbanView).
+                        color: completedCriteria === totalCriteria ? '#fff' : token.colorTextSecondary,
+                        boxShadow: 'none',
+                        fontSize: 10,
+                      }}
                     />
                   )}
                   {tab.id === 'compliance' && totalCompliance > 0 && (
