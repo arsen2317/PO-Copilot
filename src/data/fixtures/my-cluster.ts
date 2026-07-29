@@ -23,10 +23,9 @@ const groups: ClusterKpiGroup[] = [
     id: 'financial',
     title: 'Финансовые метрики',
     kpis: [
-      // ФинРез одной карточкой: значение + стрелка с % выполнения плана.
-      { id: 'fin',        label: 'ФинРез',       value: '−512,4 млн', status: 'bad',  trend: 'down', pct: '81,6%',  prevValue: '−468,1 млн', prevLabel: 'Q2' },
-      { id: 'cti-fact',   label: 'CTI',          value: '241,2%',     status: 'good', trend: 'up',                  prevValue: '218,6%',     prevLabel: 'Q2' },
-      { id: 'cti-fulfil', label: 'CTI, % плана', value: '118,7%',     status: 'good', trend: 'up',                  prevValue: '104,9%',     prevLabel: 'Q2' },
+      // ФинРез и CTI одной карточкой каждый: значение + стрелка с % выполнения плана.
+      { id: 'fin', label: 'ФинРез', value: '−512,4 млн', status: 'bad',  trend: 'down', pct: '81,6%',  prevValue: '−468,1 млн', prevLabel: 'Q2' },
+      { id: 'cti', label: 'CTI',    value: '241,2%',     status: 'good', trend: 'up',   pct: '118,7%', prevValue: '218,6%',     prevLabel: 'Q2' },
     ],
   },
   {
