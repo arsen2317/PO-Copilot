@@ -12,8 +12,6 @@ dist
 dist-ssr
 *.local
 
-# Vercel
-.vercel/
 
 # Editor directories and files
 .vscode/*

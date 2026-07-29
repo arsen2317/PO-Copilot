@@ -3,58 +3,68 @@
 Инструкции для Claude Code по проекту **«Барометр»**.
 
 ## Начало сессии
-1. Прочитай `STATUS.md` — состояние, решения, следующий шаг.
+1. Прочитай `STATUS.md` — состояние, известные ограничения, что осталось сделать.
 2. Открывай только файлы, нужные для текущей задачи.
 
 ## Конец сессии
 Обнови `STATUS.md`: что сделал, что осталось, новые решения, следующий шаг.
 
 ## Правила
-- **Дизайн-система — antd v5, тёмная тема** (`ConfigProvider` + `theme.darkAlgorithm`). Без других UI-библиотек. Стиль — через design tokens, не произвольный CSS.
-- **Язык интерфейса — русский.**
-- **TypeScript строгий**, без `any`. Типы — в `data/types/`.
+- **Дизайн-система — antd v5** (`ConfigProvider` + `theme.darkAlgorithm` / `defaultAlgorithm`). Поддержаны обе темы, тёмная — основная. Без других UI-библиотек. Стиль — через design tokens, не произвольный CSS.
+- **Язык интерфейса — русский.** Комментарии в коде тоже.
+- **TypeScript строгий**, без `any`. Типы — в `src/data/types/`.
 - **Одна фича — одна папка** в `src/features/`.
-- **Данные только через `data/api/`**, не из фикстур напрямую.
+- **Данные только через `src/data/api/`**, не из фикстур напрямую.
 - **Цвета рисков** — `colorError`/`colorWarning`/`colorSuccess`, не хардкодом.
+- **Системные промпты — в `src/skills/`**, по файлу на агента или сценарий. См. `src/skills/README.md`.
 - Перед коммитом — `npm run typecheck`, `npm run lint`, `npm run test`.
 
 ## Команды
 ```
 npm install        # установка
-npm run dev        # дев-сервер :5173
+npm run dev        # API :3001 + Vite :5173
 npm run typecheck  # TS
 npm run lint       # ESLint
 npm run test       # Vitest
 npm run build      # сборка
 ```
 
-## Инфраструктура
+## Архитектура в двух словах
 
-**VPS** — Timeweb Ubuntu 24.04, IP `72.56.34.107`, домен `copilot.mts-fintech.ru`.
-nginx → SPA (`dist/`) + проксирует `/api/` → PM2 `po-copilot-api` на порту 3001 (`scripts/api-server.ts`).
-CI/CD: push → `main` → GitHub Actions → SCP dist/ → SSH restart PM2.
-Секреты: GitHub Secrets → `.env.local` на сервере. Никогда не коммить `.env.local`.
+**Данные** — фикстуры в `src/data/fixtures/`, доступ через `src/data/api/`. Реальные
+источники (Jira, Confluence, Git, метрики) не подключены.
 
-**Модель** — OpenAI-совместимый API (vLLM + Qwen), адрес в `AI_BASE_URL`.
-Весь код провайдера — в `scripts/lib/ai-protocol.ts`, больше нигде формат не знают.
-Требования к запуску vLLM (вызов инструментов, reasoning-parser) — в README.
+**ИИ-ассистент** — оркестратор со специалистами. Браузер (`src/lib/ai.ts`) шлёт
+диалог в нейтральных типах приложения, сервер (`scripts/lib/ai-protocol.ts`)
+переводит в формат OpenAI-совместимого API и обратно. Это единственное место,
+знающее формат провайдера. Подробно — `agent-architecture-notes.txt`.
 
-**Cloudflare Worker** (`anthropic-proxy.arackelian.workers.dev`, репо `arsen2317/anthropic-proxy`) — прокси для Brave Search (обход блокировки РФ). Защищён `x-proxy-secret`.
-- `BRAVE_PROXY_URL = https://anthropic-proxy.arackelian.workers.dev/brave` → Worker стрипает `/brave`, форвардит на `api.search.brave.com`
-- Секреты Worker: `PROXY_SECRET`, `BRAVE_SEARCH_API_KEY` — настраиваются в Cloudflare Dashboard.
-- **Не менять маршруты и суффиксы URL** — они захардкожены в GitHub Secrets и переменных среды сервера.
+**Модель** — OpenAI-совместимый API (проверено на vLLM + Qwen), адрес в `AI_BASE_URL`.
+Требования к запуску vLLM — в README, раздел «Требования к серверу модели».
 
-Диагностика доступа к модели (запуск на сервере приложения):
+**Аудит-лог** — журнал изменений конфигурации, требование ИБ. `src/lib/audit.ts` →
+`POST /api/audit` → `scripts/lib/audit.ts`. Новое событие сначала вносится
+в словарь `AUDIT_ACTIONS`.
+
+## Развёртывание
+
+Основной способ — Docker: один контейнер отдаёт и SPA, и API (`Dockerfile`).
+Альтернатива — запуск под PM2 (`ecosystem.config.cjs`) с веб-сервером впереди.
+
+Переменные окружения — `.env.example` и раздел README «Переменные окружения».
+`.env.local` **никогда не коммитить** (покрыт `.gitignore`).
+
+Диагностика доступа к модели:
 ```bash
-AI_BASE_URL=$(grep ^AI_BASE_URL /var/www/po-copilot/.env.local | cut -d= -f2)
-AI_MODEL=$(grep ^AI_MODEL /var/www/po-copilot/.env.local | cut -d= -f2)
 curl -s -w "\nHTTP: %{http_code}\n" "${AI_BASE_URL}/chat/completions" \
   -H "content-type: application/json" \
   -d "{\"model\":\"${AI_MODEL}\",\"max_tokens\":10,\"messages\":[{\"role\":\"user\",\"content\":\"test\"}]}"
 ```
 
+Проверка живости приложения: `curl -s http://localhost:3001/api/health`.
+
 ## Нельзя без подтверждения
 - Менять стек или дизайн-систему.
-- Деплоить в production (merge в `main`).
-- Подключать реальные интеграции (Jira, Git и т.д.) — это фаза 4.
+- Деплоить в production.
+- Подключать реальные интеграции (Jira, Git и т.д.).
 - Рефакторить вне текущей задачи.
