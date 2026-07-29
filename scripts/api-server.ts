@@ -66,6 +66,12 @@ export function createApp() {
 
   app.options(/.*/, (_req, res) => res.sendStatus(204));
 
+  // Проба живости для контейнера (docker HEALTHCHECK, kubernetes probe). Без авторизации,
+  // ничего о конфигурации не раскрывает.
+  app.get('/api/health', (_req, res) => {
+    res.json({ status: 'ok' });
+  });
+
   // ── Auth endpoint ──────────────────────────────────────────────────────────
   app.post('/api/auth', async (req, res) => {
     const { username, password } = req.body as { username?: string; password?: string };
@@ -293,6 +299,25 @@ export function createApp() {
       res.json({ error: String(err), results: [] });
     }
   });
+
+  // ── Статика SPA ────────────────────────────────────────────────────────────
+  // В контейнере приложение отдаётся тем же процессом — отдельный nginx не нужен.
+  // В dev каталога `dist/` может не быть, тогда блок просто не подключается
+  // (фронтенд обслуживает Vite на :5173).
+  const distDir = path.resolve(process.cwd(), 'dist');
+  if (fs.existsSync(distDir)) {
+    app.use(express.static(distDir));
+    // Клиентский роутинг: любой неизвестный путь отдаёт index.html. Пути /api/
+    // сюда попадать не должны — на них честная 404, иначе ошибки эндпоинтов
+    // маскировались бы страницей приложения.
+    app.get(/.*/, (req, res) => {
+      if (req.path.startsWith('/api/')) {
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
+      res.sendFile(path.join(distDir, 'index.html'));
+    });
+  }
 
   return app;
 }

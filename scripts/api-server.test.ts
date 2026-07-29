@@ -149,6 +149,20 @@ const TOOLS = [
   { name: 'get_metrics', description: 'метрики продукта', parameters: { type: 'object', properties: { groupId: { type: 'string' } }, required: [] } },
 ];
 
+describe('служебные эндпоинты', () => {
+  it('проба живости отвечает без авторизации', async () => {
+    const res = await fetch(`${appUrl}/api/health`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ status: 'ok' });
+  });
+
+  it('неизвестный путь /api/ не маскируется страницей приложения', async () => {
+    const res = await fetch(`${appUrl}/api/nope`);
+    expect(res.status).toBe(404);
+    expect(res.headers.get('content-type') ?? '').not.toContain('text/html');
+  });
+});
+
 describe('/api/chat — доступ и конфигурация', () => {
   it('без токена отдаёт 401', async () => {
     const res = await chat({ messages: [{ role: 'user', content: 'привет' }] }, false);

@@ -1,0 +1,17 @@
+# Никогда не попадает в образ
+.env
+.env.local
+.env.*.local
+
+# Пересобирается внутри образа
+node_modules
+dist
+
+# Не нужно для сборки
+.git
+.github
+.vscode
+*.log
+coverage
+STATUS.md
+agent-architecture-notes.txt
