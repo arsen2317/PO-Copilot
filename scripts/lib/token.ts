@@ -36,6 +36,23 @@ export async function signToken(sub: string, secret: string): Promise<string> {
   return `${payload}.${b64url(sig)}`;
 }
 
+/**
+ * Возвращает субъекта (кого подписали) из валидного токена, иначе null.
+ * Нужен аудит-логу: «кто» берётся ОТСЮДА, а не из тела запроса, иначе значение
+ * можно подделать.
+ */
+export async function readTokenSubject(token: string, secret: string): Promise<string | null> {
+  if (!(await verifyToken(token, secret))) return null;
+  try {
+    const payload = token.split('.')[0];
+    if (!payload) return null;
+    const data = JSON.parse(new TextDecoder().decode(b64urlDecode(payload))) as { sub?: unknown };
+    return typeof data.sub === 'string' ? data.sub : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function verifyToken(token: string, secret: string): Promise<boolean> {
   const parts = token.split('.');
   if (parts.length !== 2) return false;

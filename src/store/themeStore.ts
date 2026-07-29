@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { recordAudit } from '../lib/audit';
 
 export type ThemeMode = 'dark' | 'light';
 
@@ -45,14 +46,25 @@ export const useThemeStore = create<ThemeState>((set, get) => {
   return {
     mode: initial,
     isDark: initial === 'dark',
+    // Смена темы — единственное реально существующее изменение настройки
+    // пользователя, поэтому здесь подключён аудит (требование ИБ). Остальные
+    // разделы настроек пока заглушки; при их реализации вызов recordAudit
+    // добавляется по этому образцу. Начальное чтение из localStorage аудитом
+    // НЕ сопровождается — это не действие пользователя.
     setMode: (mode) => {
+      const before = get().mode;
       persist(mode);
       set({ mode, isDark: mode === 'dark' });
+      if (before !== mode) {
+        recordAudit({ action: 'settings.theme.change', target: 'settings.theme', before, after: mode });
+      }
     },
     toggle: () => {
-      const mode: ThemeMode = get().mode === 'dark' ? 'light' : 'dark';
+      const before = get().mode;
+      const mode: ThemeMode = before === 'dark' ? 'light' : 'dark';
       persist(mode);
       set({ mode, isDark: mode === 'dark' });
+      recordAudit({ action: 'settings.theme.change', target: 'settings.theme', before, after: mode });
     },
   };
 });

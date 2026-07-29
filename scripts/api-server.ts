@@ -17,7 +17,8 @@ import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
 import { pathToFileURL } from 'node:url';
-import { signToken, verifyToken } from './lib/token';
+import { signToken, verifyToken, readTokenSubject } from './lib/token';
+import { buildAuditEvent, isKnownAction, writeAuditEvent, type AuditRequest } from './lib/audit';
 import {
   MAX_TOKENS,
   ToolCallAccumulator,
@@ -254,6 +255,57 @@ export function createApp() {
     } finally {
       finished = true;
       res.end();
+    }
+  });
+
+  // ── Audit endpoint ─────────────────────────────────────────────────────────
+  // Приём событий аудита от интерфейса (требование ИБ: кто, когда, что изменил,
+  // старое → новое). Подробности слоя — в scripts/lib/audit.ts.
+  app.post('/api/audit', async (req, res) => {
+    const secret = process.env.APP_SESSION_SECRET;
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+    // Субъект берём ИЗ ТОКЕНА, а не из тела запроса — иначе «кто» подделывается.
+    const actor = secret && token ? await readTokenSubject(token, secret) : null;
+    if (!actor) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const body = req.body as Partial<AuditRequest> | undefined;
+    if (!body || typeof body.action !== 'string' || typeof body.target !== 'string') {
+      res.status(400).json({ error: 'Требуются поля action и target' });
+      return;
+    }
+    if (!isKnownAction(body.action)) {
+      // Строгий словарь: неизвестное действие отклоняем, чтобы в журнал не попадал
+      // мусор. Новое событие сначала добавляется в AUDIT_ACTIONS.
+      res.status(400).json({ error: `Неизвестное действие аудита: ${body.action}` });
+      return;
+    }
+
+    const event = buildAuditEvent(
+      {
+        action: body.action,
+        target: body.target,
+        ...(body.targetId !== undefined ? { targetId: body.targetId } : {}),
+        ...(body.before !== undefined ? { before: body.before } : {}),
+        ...(body.after !== undefined ? { after: body.after } : {}),
+      },
+      actor,
+      {
+        ...(req.ip ? { ip: req.ip } : {}),
+        ...(typeof req.headers['user-agent'] === 'string' ? { userAgent: req.headers['user-agent'] } : {}),
+      },
+    );
+
+    try {
+      writeAuditEvent(event);
+      res.status(204).end();
+    } catch (err) {
+      console.error('[api/audit] не удалось записать событие', err);
+      res.status(500).json({ error: 'Не удалось записать событие аудита' });
     }
   });
 

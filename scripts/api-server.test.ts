@@ -7,6 +7,9 @@
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import http from 'node:http';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { createApp } from './api-server';
 import { signToken } from './lib/token';
@@ -160,6 +163,105 @@ describe('служебные эндпоинты', () => {
     const res = await fetch(`${appUrl}/api/nope`);
     expect(res.status).toBe(404);
     expect(res.headers.get('content-type') ?? '').not.toContain('text/html');
+  });
+});
+
+describe('/api/audit — журнал изменений конфигурации', () => {
+  const auditFile = path.join(os.tmpdir(), `audit-test-${process.pid}.log`);
+
+  const audit = (body: unknown, auth = true) =>
+    fetch(`${appUrl}/api/audit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(auth ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(body),
+    });
+
+  const readEvents = () =>
+    fs.existsSync(auditFile)
+      ? fs.readFileSync(auditFile, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l) as Record<string, unknown>)
+      : [];
+
+  beforeEach(() => {
+    process.env.AUDIT_LOG_FILE = auditFile;
+    if (fs.existsSync(auditFile)) fs.unlinkSync(auditFile);
+  });
+
+  afterAll(() => {
+    if (fs.existsSync(auditFile)) fs.unlinkSync(auditFile);
+    delete process.env.AUDIT_LOG_FILE;
+  });
+
+  it('без токена не принимает событие', async () => {
+    expect((await audit({ action: 'settings.theme.change', target: 'settings.theme' }, false)).status).toBe(401);
+    expect(readEvents()).toHaveLength(0);
+  });
+
+  it('записывает событие строкой JSON со всеми полями', async () => {
+    const res = await audit({
+      action: 'settings.theme.change',
+      target: 'settings.theme',
+      before: 'dark',
+      after: 'light',
+    });
+    expect(res.status).toBe(204);
+
+    const events = readEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      kind: 'audit',
+      actor: 'tester',
+      action: 'settings.theme.change',
+      target: 'settings.theme',
+      before: 'dark',
+      after: 'light',
+    });
+    expect(typeof events[0]?.ts).toBe('string');
+  });
+
+  it('субъекта и время берёт сервер — подделать с клиента нельзя', async () => {
+    await audit({
+      action: 'access.grant',
+      target: 'user.roles',
+      actor: 'admin-подделка',
+      ts: '2000-01-01T00:00:00.000Z',
+      kind: 'not-audit',
+    });
+    const event = readEvents()[0];
+    expect(event?.actor).toBe('tester');
+    expect(event?.ts).not.toBe('2000-01-01T00:00:00.000Z');
+    expect(event?.kind).toBe('audit');
+  });
+
+  it('неизвестное действие отклоняется и в журнал не попадает', async () => {
+    const res = await audit({ action: 'что-то.своё', target: 'x' });
+    expect(res.status).toBe(400);
+    expect(readEvents()).toHaveLength(0);
+  });
+
+  it('требует action и target', async () => {
+    expect((await audit({ target: 'x' })).status).toBe(400);
+    expect((await audit({ action: 'settings.theme.change' })).status).toBe(400);
+  });
+
+  it('секреты в значениях не попадают в журнал', async () => {
+    await audit({
+      action: 'integration.update',
+      target: 'integration.jira',
+      before: { url: 'https://old', apiKey: 'секрет-1' },
+      after: { url: 'https://new', apiKey: 'секрет-2', nested: { password: 'ещё-секрет' } },
+    });
+    const raw = fs.readFileSync(auditFile, 'utf8');
+    expect(raw).toContain('https://new');
+    expect(raw).not.toContain('секрет-1');
+    expect(raw).not.toContain('секрет-2');
+    expect(raw).not.toContain('ещё-секрет');
+    expect(raw).toContain('[скрыто]');
+  });
+
+  it('несколько событий пишутся отдельными строками', async () => {
+    await audit({ action: 'agent.enable', target: 'agent.metrics' });
+    await audit({ action: 'agent.disable', target: 'agent.metrics' });
+    expect(readEvents()).toHaveLength(2);
   });
 });
 
