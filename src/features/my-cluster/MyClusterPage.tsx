@@ -117,18 +117,29 @@ export default function MyClusterPage() {
             flexShrink: 0,
           }}
         >
-          {data.groups.map((g) => (
-            <div key={g.id} style={{ flex: '1 1 330px', minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: token.colorText, marginBottom: 8 }}>
-                {g.title}
+          {data.groups.map((g) => {
+            // Финансовые тайлы (ФинРез, CTI) — колонкой друг под другом:
+            // группа занимает меньше ширины, остальным тайлам достаётся больше.
+            const stacked = g.id === 'financial';
+            return (
+              <div key={g.id} style={{ flex: stacked ? '1 1 220px' : '2 1 340px', minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: token.colorText, marginBottom: 8 }}>
+                  {g.title}
+                </div>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: stacked ? '1fr' : 'repeat(auto-fit, minmax(160px, 1fr))',
+                    gap: 8,
+                  }}
+                >
+                  {g.kpis.map((k) => (
+                    <ClusterKpiTile key={k.id} kpi={k} />
+                  ))}
+                </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
-                {g.kpis.map((k) => (
-                  <ClusterKpiTile key={k.id} kpi={k} />
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
