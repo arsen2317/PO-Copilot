@@ -263,6 +263,42 @@ describe('/api/audit — журнал изменений конфигураци�
     await audit({ action: 'agent.disable', target: 'agent.metrics' });
     expect(readEvents()).toHaveLength(2);
   });
+
+  it('без TRUST_PROXY заголовок X-Forwarded-For игнорируется', async () => {
+    await fetch(`${appUrl}/api/audit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        'X-Forwarded-For': '203.0.113.9',
+      },
+      body: JSON.stringify({ action: 'agent.enable', target: 'agent.metrics' }),
+    });
+    // Приложение не за прокси — доверять заголовку нельзя, его можно подделать.
+    expect(readEvents()[0]?.ip).not.toBe('203.0.113.9');
+  });
+
+  it('с TRUST_PROXY в журнал попадает адрес пользователя, а не прокси', async () => {
+    process.env.TRUST_PROXY = '1';
+    const proxied = createApp().listen(0, '127.0.0.1');
+    await new Promise<void>((r) => proxied.once('listening', r));
+    const url = `http://127.0.0.1:${(proxied.address() as AddressInfo).port}`;
+    try {
+      await fetch(`${url}/api/audit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'X-Forwarded-For': '203.0.113.9',
+        },
+        body: JSON.stringify({ action: 'agent.enable', target: 'agent.metrics' }),
+      });
+      expect(readEvents()[0]?.ip).toBe('203.0.113.9');
+    } finally {
+      delete process.env.TRUST_PROXY;
+      await new Promise<void>((r) => proxied.close(() => r()));
+    }
+  });
 });
 
 describe('/api/chat — доступ и конфигурация', () => {

@@ -56,6 +56,17 @@ type StreamEvent =
 
 export function createApp() {
   const app = express();
+
+  // Позади nginx или ingress `req.ip` по умолчанию равен адресу прокси, а не
+  // пользователя — в аудит-логе такое поле бесполезно. Включается ЯВНО, потому что
+  // слепое доверие заголовку X-Forwarded-For позволяет подделать адрес, если прокси
+  // на самом деле нет. Значения: 1/true — доверять; либо строка express
+  // (например loopback или число хопов).
+  const trustProxy = process.env.TRUST_PROXY;
+  if (trustProxy) {
+    app.set('trust proxy', trustProxy === '1' || trustProxy === 'true' ? true : trustProxy);
+  }
+
   app.use(express.json({ limit: '10mb' }));
 
   app.use((_req, res, next) => {
