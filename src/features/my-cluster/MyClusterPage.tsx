@@ -94,7 +94,9 @@ export default function MyClusterPage() {
         </Dropdown>
       </div>
 
-      {/* ── KPI groups ── */}
+      {/* ── KPI groups ──
+          Раскладка групп и тайлов — адаптивная, через container queries
+          (.cluster-groups* в global.css): классы групп завязаны на g.id. */}
       {isLoading || !data ? (
         <div
           style={{
@@ -108,38 +110,21 @@ export default function MyClusterPage() {
           <Skeleton active paragraph={{ rows: 6 }} />
         </div>
       ) : (
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 16,
-            marginBottom: 16,
-            flexShrink: 0,
-          }}
-        >
-          {data.groups.map((g) => {
-            // Финансовые тайлы (ФинРез, CTI) — колонкой друг под другом:
-            // группа занимает меньше ширины, остальным тайлам достаётся больше.
-            const stacked = g.id === 'financial';
-            return (
-              <div key={g.id} style={{ flex: stacked ? '1 1 220px' : '2 1 340px', minWidth: 0 }}>
+        <div className="cluster-groups-wrap" style={{ marginBottom: 16, flexShrink: 0 }}>
+          <div className="cluster-groups">
+            {data.groups.map((g) => (
+              <div key={g.id} className={`cluster-group--${g.id}`} style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: token.colorText, marginBottom: 8 }}>
                   {g.title}
                 </div>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: stacked ? '1fr' : 'repeat(auto-fit, minmax(160px, 1fr))',
-                    gap: 8,
-                  }}
-                >
+                <div className="cluster-group-tiles">
                   {g.kpis.map((k) => (
                     <ClusterKpiTile key={k.id} kpi={k} />
                   ))}
                 </div>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
       )}
 

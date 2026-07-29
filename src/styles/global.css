@@ -326,6 +326,38 @@ body {
   min-height: 0;
 }
 
+/* «Мой кластер» — адаптивная раскладка групп KPI (container queries по ширине контента):
+   узко (<700px): группы друг под другом, тайлы в 2 колонки;
+   средне (700–1279px): группы друг под другом, тайлы группы в один ряд —
+     финансовые 2 в ряд, клиентские/производственные 4 в ряд;
+   широко (≥1280px): три группы в ряд — финансовые колонкой (1×2),
+     клиентские/производственные плиткой 2×2, растягиваются по ширине. */
+.cluster-groups-wrap { container-type: inline-size; }
+.cluster-groups {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+.cluster-group-tiles {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@container (min-width: 700px) {
+  .cluster-group--client .cluster-group-tiles,
+  .cluster-group--production .cluster-group-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@container (min-width: 1280px) {
+  .cluster-groups { grid-template-columns: minmax(220px, 2fr) 3fr 3fr; }
+  .cluster-group--financial .cluster-group-tiles { grid-template-columns: 1fr; }
+  .cluster-group--client .cluster-group-tiles,
+  .cluster-group--production .cluster-group-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* «Мой кластер» — таблица продуктов: без переносов, скролл по горизонтали */
 .cluster-products-table th.ant-table-cell,
 .cluster-products-table td.ant-table-cell {
